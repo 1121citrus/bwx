@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+
+# Docker-wrapped tool functions for commands not universally installed.
+# Source this file to get jq and bws as local functions when they are
+# not natively available.  The functions run Docker containers
+# transparently — no user-visible difference from native commands.
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+if ! command -v jq >/dev/null 2>&1; then
+    jq() {
+        docker run --rm -i \
+            "${BWX_JQ_IMAGE:-apteno/alpine-jq}" \
+            "$@"
+    }
+fi
+
+if ! command -v bws >/dev/null 2>&1; then
+    bws() {
+        docker run --rm \
+            -e BWS_ACCESS_TOKEN \
+            -e BWS_SERVER_BASE_URL \
+            "${BWX_BWS_IMAGE:-bitwarden/bws:latest}" \
+            "$@"
+    }
+fi

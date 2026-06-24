@@ -1,0 +1,154 @@
+# shellcheck disable=SC1090,SC1091
+
+# Wrapper around Docker 'bitwarden/bws' image to provide 'bws' command
+
+# Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+
+# This software and associated documentation files may not be copied,
+# modified, or distributed without express written permission.
+
+{
+    declare -F error && declare -F fatal && declare -F trace; } >/dev/null 2>&1 || {
+    source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+}
+
+declare -F bws-cache-dir >/dev/null 2>&1 || \
+    source "$(dirname "${BASH_SOURCE[0]}")/../include/bws-cache"
+
+# Preserve mocked bws function if it exists and we are in test mode
+if [[ "${CITRUS_ENABLE_MOCK_COMMANDS:-false}" == "true" ]] && declare -F bws >/dev/null 2>&1; then
+    # shellcheck disable=SC2317
+    return "${RETURN_SUCCESS}" 2>/dev/null || exit "${EXIT_SUCCESS}"
+fi
+
+bws() {
+    # Pre-parse --log-level before forwarding remaining args to _bws or Docker.
+    local _bws_args=()
+    while [[ $# -gt 0 ]]; do
+        case "${1}" in
+            -l|--log-level)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--log-level requires a value"
+                LOG_LEVEL="${2}"
+                export LOG_LEVEL
+                shift 2
+                ;;
+            *)
+                _bws_args+=("${1}")
+                shift
+                ;;
+        esac
+    done
+    set -- "${_bws_args[@]+"${_bws_args[@]}"}"
+
+    function _bws() {
+        set -o errexit -o errtrace -o nounset -o pipefail
+        [[ "${DEBUG:-false,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
+
+        command -v docker >/dev/null 2>&1 || {
+            fatal "${EXIT_NOTFOUND}" "Docker command not found in PATH"
+        }
+
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                -h|--help)
+                    docker run --rm --interactive bitwarden/bws help
+                    return "${EXIT_USAGE:-2}"
+                    ;;
+                *)
+                    break
+                    ;;
+            esac
+        done
+
+        declare -F error fatal trace >/dev/null 2>&1 ||
+            source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+
+        local image="${BWS_IMAGE:=bitwarden/bws}"
+        local tag="${BWS_IMAGE_TAG:-latest}"
+        local server_base="${BWS_SERVER_BASE_URL:-"https://vault.bitwarden.com"}"
+        local config_file="${BWS_CONFIG_FILE:-}"
+        if [[ -n "${config_file}" && ! -r "${config_file}" ]]; then
+            error "${EXIT_NOTFOUND}" "BWS_CONFIG_FILE '${config_file}' not found"
+        fi
+        [[ -r "${config_file}" ]] || {
+            config_file=$(mktemp)
+            # shellcheck disable=SC2064
+            trap "rm -f '${config_file}' >/dev/null 2>&1" RETURN EXIT
+            cat > "${config_file}" <<EOF
+[profiles.default]
+server_base = "${server_base}"
+state_opt_out = "true"
+EOF
+            chmod 644 "${config_file}"
+        }
+        trace "docker run --rm --interactive -v '${config_file}:/home/app/.config/bws/config' --env BWS_ACCESS_TOKEN '${image}:${tag}' $*"
+        docker run --rm --interactive \
+            -v "${config_file}:/home/app/.config/bws/config" \
+            --env BWS_ACCESS_TOKEN \
+            "${image}:${tag}" "$@"
+    }
+
+    function bws-validate-access() {
+        local token="${BWS_ACCESS_TOKEN:=}"
+        [[ -z "${token}" ]] && \
+            fatal "${EXIT_USAGE}" "Bitwarden Secrets Manager API access token environment variable BWS_ACCESS_TOKEN is not defined"
+
+        # Validate format (starts with "0." for machine accounts)
+        [[ "${token}" =~ ^0\. ]] || \
+            fatal "${EXIT_USAGE}" "Invalid Bitwarden Secrets Manager API access token format"
+
+        local server_base="${BWS_SERVER_BASE_URL:-https://vault.bitwarden.com}"
+        local validation_ttl="${BWS_VALIDATE_ACCESS_TTL_SECONDS:-300}"
+        local validation_file=
+        validation_file=$(bws-cache-file "validate-access" "${server_base}|${token}" "ok" 2>/dev/null || :)
+
+        if [[ -n "${validation_file}" ]] && \
+            bws-cache-is-fresh "${validation_file}" "${validation_ttl}"; then
+            trace "Using cached Bitwarden Secrets Manager access validation"
+            echo "true"
+            return 0
+        fi
+
+        # Validate against API
+        local output
+        if ! output=$(_bws project list --access-token "${token}" 2>&1); then
+            [[ -n "${validation_file}" ]] && bws-cache-delete "${validation_file}"
+            # shellcheck disable=SC2076
+            if [[ "${output}" =~ "dns error" || "${output}" =~ "Temporary failure in name resolution" || "${output}" =~ "client error (Connect)" ]]; then
+                 fatal "${EXIT_ERROR}" "Network error: Unable to connect to Bitwarden Secrets Manager API."
+            else
+                 echo "${output}" >&2
+                 fatal "${EXIT_USAGE}" "Bitwarden Secrets Manager API access token validation failed"
+            fi
+        fi
+
+        [[ -n "${validation_file}" ]] && bws-cache-write "${validation_file}" "true"
+        echo "true"
+    }
+
+    case "${1:-}" in
+        -h|--help|help)
+            _bws "$@"
+            return $?
+            ;;
+    esac
+
+    [[ -z "${BWS_ACCESS_TOKEN:=}" ]] && \
+        fatal "${EXIT_USAGE}" "Bitwarden Secrets Manager API access token environment variable BWS_ACCESS_TOKEN is not set"
+
+    is-true "${BWS_ACCESS_TOKEN_VALIDATED:-false}" || {
+        BWS_ACCESS_TOKEN_VALIDATED=
+        BWS_ACCESS_TOKEN_VALIDATED=$(bws-validate-access)
+        export BWS_ACCESS_TOKEN_VALIDATED
+    }
+
+    [[ "${BWS_ACCESS_TOKEN_VALIDATED}" != "true" ]] && \
+        fatal "${EXIT_USAGE}" "Bitwarden Secrets Manager API access token validation failed"
+
+    _bws "$@"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bws "$@"
+fi

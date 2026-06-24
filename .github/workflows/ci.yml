@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main, staging]
+    tags: ["v*"]
+  pull_request:
+    branches: [dev, main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    name: Lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ShellCheck entry point
+        run: |
+          docker run --rm \
+              -v "$PWD:/mnt" \
+              -w /mnt \
+              koalaman/shellcheck:stable \
+              bin/bwx
+
+      - name: ShellCheck include files
+        run: |
+          docker run --rm \
+              -v "$PWD:/mnt" \
+              -w /mnt \
+              koalaman/shellcheck:stable \
+              include/logging \
+              include/bws-cache \
+              include/tools
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    name: Unit Tests (BATS)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install BATS
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bats
+
+      - name: Run BATS tests
+        run: |
+          bats --tap test/bin/ > /tmp/bats-bwx.tap 2>&1 || true
+          awk '/^not ok/{print; c=1; next} c&&/^# /{print; next} {c=0}' \
+              /tmp/bats-bwx.tap
+          total=$(grep -cE '^(not )?ok ' /tmp/bats-bwx.tap || true)
+          failed=$(grep -c '^not ok' /tmp/bats-bwx.tap || true)
+          printf '\nTests: %d passed, %d failed\n' \
+              "$((total - failed))" "$failed"
+          [[ "$failed" -eq 0 ]]

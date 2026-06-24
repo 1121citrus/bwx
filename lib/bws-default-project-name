@@ -1,0 +1,57 @@
+# shellcheck disable=SC1090,SC1091
+
+# Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+
+# This software and associated documentation files may not be copied,
+# modified, or distributed without express written permission.
+
+bws-default-project-name() {
+    set -o errexit -o errtrace -o nounset -o pipefail
+    local _debug="${DEBUG:-false}"
+    [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                cat <<EOF
+Usage: bws-default-project-name [options]
+
+Print the name of the default default Bitwarden Secrets Manager project.
+
+Environment variables:
+    BWS_DEFAULT_PROJECT  Explicit default project name
+
+Options:
+    -h, --help   Display this help message
+    -l, --log-level LEVEL  Set log level (default: info)
+EOF
+                return "${EXIT_USAGE:-2}"
+                ;;
+            -l|--log-level)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--log-level requires a value"
+                LOG_LEVEL="${2}"
+                export LOG_LEVEL
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            -*)
+                declare -F error >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+                error "${EXIT_USAGE:-2}" "Unknown option '${1}'"
+                ;;
+            *)
+                declare -F error >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+                error "${EXIT_USAGE:-2}" "Too many arguments '${*}'"
+                ;;
+        esac
+    done
+
+    echo "${BWS_DEFAULT_PROJECT:-${BWS_DEFAULT_PROJECT:-}}"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bws-default-project-name "$@"
+fi

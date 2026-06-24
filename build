@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+
+# build — local CI equivalent for bwx.
+#
+# Stages:
+#   1. ShellCheck (bin/bwx, include/*)
+#   2. BATS unit tests
+#
+# Usage: ./build [--no-lint] [--no-test] [--help]
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+set -o errexit -o errtrace -o nounset -o pipefail
+
+script_dir="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+readonly script_dir
+
+DO_LINT=true
+DO_TEST=true
+
+while [[ $# -gt 0 ]]; do
+    case "${1}" in
+        --no-lint)  DO_LINT=false;  shift ;;
+        --no-test)  DO_TEST=false;  shift ;;
+        -h|--help)
+            printf 'Usage: ./build [--no-lint] [--no-test] [--help]\n'
+            exit 0
+            ;;
+        *)
+            printf 'Unknown option: %s\n' "${1}" >&2
+            exit 2
+            ;;
+    esac
+done
+
+# Stage 1: ShellCheck
+if [[ "${DO_LINT}" == "true" ]]; then
+    echo "==> Stage 1: ShellCheck" >&2
+    docker run --rm \
+        -v "${script_dir}:/mnt" \
+        -w /mnt \
+        koalaman/shellcheck:stable \
+        bin/bwx \
+        include/logging \
+        include/bws-cache \
+        include/tools
+    echo "    ShellCheck passed" >&2
+fi
+
+# Stage 2: BATS tests
+if [[ "${DO_TEST}" == "true" ]]; then
+    echo "==> Stage 2: BATS tests" >&2
+    docker run --rm \
+        -v "${script_dir}:/repo" \
+        -w /repo \
+        bats/bats:latest \
+        test/bin/
+    echo "    BATS tests passed" >&2
+fi
+
+echo "==> Build complete" >&2

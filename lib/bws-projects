@@ -1,0 +1,73 @@
+# shellcheck disable=SC1090,SC1091
+
+# Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+
+# This software and associated documentation files may not be copied,
+# modified, or distributed without express written permission.
+
+
+bws-projects() {
+    set -o errexit -o errtrace -o nounset -o pipefail
+    local _debug="${DEBUG:-false}"
+    [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
+
+    local refresh_flag=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                command -v bws-default-project-name >/dev/null 2>&1 || \
+                    source "$(dirname "${BASH_SOURCE[0]}")/bws-default-project-name"
+                cat <<EOF
+Usage: bws-projects [options]
+
+Prints a list of all Bitwarden Secrets Manager projects.
+
+Options:
+  -h, --help     Display this help message
+  -l, --log-level LEVEL  Set log level (default: info)
+  -R, --refresh  Refresh the cached project list
+EOF
+                return "${EXIT_USAGE:-2}"
+                ;;
+            -R|--refresh)
+                refresh_flag="--refresh"
+                shift
+                ;;
+            -l|--log-level)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--log-level requires a value"
+                LOG_LEVEL="${2}"
+                export LOG_LEVEL
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            -*)
+                declare -F error >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+                error "${EXIT_USAGE:-2}" "Unknown option '${1}'"
+                break
+                ;;
+            *)
+                declare -F error >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+                error "${EXIT_USAGE:-2}" "Too many arguments '${*}'"
+                break
+                ;;
+        esac
+    done
+
+    declare -F error trace >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+    if [[ "$#" -gt 0 ]]; then
+        error "${EXIT_USAGE:-2}" "Too many arguments '${*}'"
+    fi
+
+    declare -F bws-project-list >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/bws-project-list"
+
+    trace "bws-project-list --names ${refresh_flag}"
+    bws-project-list --names ${refresh_flag}
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bws-projects "$@"
+fi

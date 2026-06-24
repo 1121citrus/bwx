@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+
+# Shared cache helpers for Bitwarden Secrets Manager wrappers.
+
+# Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+
+# This software and associated documentation files may not be copied,
+# modified, or distributed without express written permission.
+
+declare -F bws-cache-dir >/dev/null 2>&1 || {
+    bws-cache-dir() {
+        if [[ "${CITRUS_ENABLE_MOCK_COMMANDS:-false}" == "true" && -z "${BWS_CACHE_DIR:-}" ]]; then
+            return 1
+        fi
+
+        local cache_dir="${BWS_CACHE_DIR:-${XDG_CACHE_HOME:-${HOME}/.cache}/1121-citrus/bws}"
+        mkdir -p "${cache_dir}" || return 1
+        chmod 700 "${cache_dir}" 2>/dev/null || :
+        printf '%s\n' "${cache_dir}"
+    }
+
+    bws-cache-hash() {
+        if [[ -x /usr/bin/shasum ]]; then
+            printf '%s' "$*" | /usr/bin/shasum -a 256 | awk '{print $1}'
+        elif command -v shasum >/dev/null 2>&1; then
+            printf '%s' "$*" | shasum -a 256 | awk '{print $1}'
+        else
+            printf '%s' "$*" | cksum | awk '{print $1}'
+        fi
+    }
+
+    bws-cache-file() {
+        local namespace="${1:?Need namespace}"
+        local cache_key="${2:?Need cache key}"
+        local extension="${3:-json}"
+        local cache_dir
+        cache_dir=$(bws-cache-dir) || return 1
+        printf '%s/%s-%s.%s\n' \
+            "${cache_dir}" \
+            "${namespace}" \
+            "$(bws-cache-hash "${cache_key}")" \
+            "${extension}"
+    }
+
+    bws-cache-mtime() {
+        local cache_file="${1:?Need cache file}"
+        date -r "${cache_file}" '+%s' 2>/dev/null || \
+            stat --format='%Y' "${cache_file}" 2>/dev/null || \
+            stat -f '%m' "${cache_file}" 2>/dev/null
+    }
+
+    bws-cache-is-fresh() {
+        local cache_file="${1:?Need cache file}"
+        local ttl="${2:-0}"
+        [[ -r "${cache_file}" ]] || return 1
+        [[ "${ttl}" =~ ^[0-9]+$ ]] || ttl=0
+        (( ttl > 0 )) || return 1
+
+        local now mtime
+        now=$(date '+%s') || return 1
+        mtime=$(bws-cache-mtime "${cache_file}") || return 1
+        (( now - mtime <= ttl ))
+    }
+
+    bws-cache-read() {
+        local cache_file="${1:?Need cache file}"
+        local ttl="${2:-0}"
+        bws-cache-is-fresh "${cache_file}" "${ttl}" || return 1
+        cat "${cache_file}"
+    }
+
+    bws-cache-write() {
+        local cache_file="${1:?Need cache file}"
+        local payload="${2-}"
+        local cache_dir temp_file
+
+        cache_dir=$(dirname "${cache_file}")
+        mkdir -p "${cache_dir}" || return 1
+        chmod 700 "${cache_dir}" 2>/dev/null || :
+
+        temp_file=$(mktemp "${cache_dir}/.$(basename "${cache_file}").XXXXXX") || return 1
+        (
+            umask 077
+            printf '%s' "${payload}" > "${temp_file}"
+        ) || {
+            rm -f "${temp_file}" >/dev/null 2>&1 || :
+            return 1
+        }
+        chmod 600 "${temp_file}" 2>/dev/null || :
+        mv -f "${temp_file}" "${cache_file}"
+    }
+
+    bws-cache-delete() {
+        local cache_file="${1:?Need cache file}"
+        rm -f -- "${cache_file}" "${cache_file}.tmp."* >/dev/null 2>&1 || :
+    }
+}

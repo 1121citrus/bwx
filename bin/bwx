@@ -1,0 +1,297 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+# shellcheck disable=SC1090,SC1091
+
+# bwx — Bitwarden Secrets Manager eXtended CLI.
+#
+# Single entry point with subcommand dispatch.  Internal functions
+# retain their bws-* names for backward compatibility; the dispatch
+# layer maps space-separated subcommands to function calls.
+#
+# Usage: bwx <family> <command> [args...]
+#        bwx completion bash
+#        bwx --help
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+set -o errexit
+set -o errtrace
+set -o nounset
+set -o pipefail
+
+BWX_ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+readonly BWX_ROOT
+
+# Source includes: logging, caching, tool wrappers
+source "${BWX_ROOT}/include/logging"
+source "${BWX_ROOT}/include/bws-cache"
+source "${BWX_ROOT}/include/tools"
+
+# Source all library functions
+for _bwx_lib in "${BWX_ROOT}"/lib/bws*; do
+    [[ -f "${_bwx_lib}" ]] && source "${_bwx_lib}"
+done
+unset _bwx_lib
+
+# Subcommand dispatch table: maps "family command" to internal function.
+# Args:
+#   $1  family (secret, project, tag, raw, completion)
+#   $2  command within the family
+#   $3+ arguments forwarded to the function
+# Returns:
+#   Exit code from the dispatched function
+_bwx_dispatch() {
+    local family="${1:-}"
+    local cmd="${2:-}"
+    shift 2 2>/dev/null || true
+
+    case "${family}" in
+        raw)
+            bws "$@"
+            ;;
+        secret)
+            case "${cmd}" in
+                create)         bws-create-secret "$@" ;;
+                clone)          bws-secret-clone "$@" ;;
+                filename)       bws-secret-filename "$@" ;;
+                id)             bws-secret-id "$@" ;;
+                key)            bws-secret-key "$@" ;;
+                list)           bws-secret-list "$@" ;;
+                ls)             bws-secrets "$@" ;;
+                name)           bws-secret-name "$@" ;;
+                note)           bws-secret-note "$@" ;;
+                show)           bws-secret "$@" ;;
+                tags)           bws-secret-release-tags "$@" ;;
+                value)          bws-secret-value "$@" ;;
+                set)
+                    local subcmd="${1:-}"
+                    shift 2>/dev/null || true
+                    case "${subcmd}" in
+                        filename) bws-secret-set-filename "$@" ;;
+                        key)      bws-secret-set-key "$@" ;;
+                        note)     bws-secret-set-note "$@" ;;
+                        value)    bws-secret-set-value "$@" ;;
+                        *)        _bwx_usage_error "secret set" "${subcmd}" \
+                                      "filename key note value" ;;
+                    esac
+                    ;;
+                *)  _bwx_usage_error "secret" "${cmd}" \
+                        "clone create filename id key list ls name note set show tags value" ;;
+            esac
+            ;;
+        project)
+            case "${cmd}" in
+                default)
+                    local subcmd="${1:-}"
+                    shift 2>/dev/null || true
+                    case "${subcmd}" in
+                        id)   bws-default-project-id "$@" ;;
+                        name) bws-default-project-name "$@" ;;
+                        *)    _bwx_usage_error "project default" "${subcmd}" \
+                                  "id name" ;;
+                    esac
+                    ;;
+                id)             bws-project-id "$@" ;;
+                list)           bws-project-list "$@" ;;
+                ls)             bws-projects "$@" ;;
+                name)           bws-project-name "$@" ;;
+                show)           bws-project "$@" ;;
+                *)  _bwx_usage_error "project" "${cmd}" \
+                        "default id list ls name show" ;;
+            esac
+            ;;
+        tag)
+            case "${cmd}" in
+                add)            bws-secret-add-release-tag "$@" ;;
+                list)           bws-release-tags "$@" ;;
+                project)        bws-tag-project "$@" ;;
+                remove)         bws-secret-remove-release-tag "$@" ;;
+                secrets)        bws-release-tag-secrets "$@" ;;
+                unproject)      bws-untag-project "$@" ;;
+                *)  _bwx_usage_error "tag" "${cmd}" \
+                        "add list project remove secrets unproject" ;;
+            esac
+            ;;
+        completion)
+            _bwx_completion "${cmd}" "$@"
+            ;;
+        *)
+            _bwx_usage_error "" "${family}" \
+                "completion project raw secret tag"
+            ;;
+    esac
+}
+
+# Print a usage error for an unknown subcommand.
+# Args:
+#   $1  context (e.g., "secret set")
+#   $2  unknown command
+#   $3  valid commands (space-separated)
+# Returns:
+#   EXIT_USAGE
+_bwx_usage_error() {
+    local context="${1}" unknown="${2}" valid="${3}"
+    if [[ -n "${context}" ]]; then
+        printf 'bwx %s: unknown command: %s\n' "${context}" "${unknown}" >&2
+        printf 'Valid commands: %s\n' "${valid}" >&2
+    else
+        printf 'bwx: unknown command: %s\n' "${unknown}" >&2
+        printf 'Valid commands: %s\n' "${valid}" >&2
+    fi
+    return "${EXIT_USAGE:-2}"
+}
+
+# Generate bash or zsh completion definitions.
+# Args:
+#   $1  shell type (bash or zsh)
+# Returns:
+#   0; writes completion definition to stdout
+_bwx_completion() {
+    local shell="${1:-bash}"
+    case "${shell}" in
+        bash)
+            cat <<'COMP'
+_bwx_completions() {
+    local cur prev families
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    families="completion project raw secret tag"
+
+    case "${COMP_CWORD}" in
+        1) COMPREPLY=($(compgen -W "${families}" -- "${cur}")) ;;
+        2)
+            case "${prev}" in
+                secret)     COMPREPLY=($(compgen -W "clone create filename id key list ls name note set show tags value" -- "${cur}")) ;;
+                project)    COMPREPLY=($(compgen -W "default id list ls name show" -- "${cur}")) ;;
+                tag)        COMPREPLY=($(compgen -W "add list project remove secrets unproject" -- "${cur}")) ;;
+                completion) COMPREPLY=($(compgen -W "bash zsh" -- "${cur}")) ;;
+            esac
+            ;;
+        3)
+            case "${COMP_WORDS[1]}" in
+                secret)
+                    [[ "${prev}" == "set" ]] && \
+                        COMPREPLY=($(compgen -W "filename key note value" -- "${cur}"))
+                    ;;
+                project)
+                    [[ "${prev}" == "default" ]] && \
+                        COMPREPLY=($(compgen -W "id name" -- "${cur}"))
+                    ;;
+            esac
+            ;;
+    esac
+}
+complete -F _bwx_completions bwx
+COMP
+            ;;
+        zsh)
+            # shellcheck disable=SC2016
+            printf '# Add to ~/.zshrc: eval "$(bwx completion zsh)"\n'
+            printf 'compdef _bwx bwx\n'
+            printf '_bwx() { _arguments "1:family:(completion project raw secret tag)" }\n'
+            ;;
+        *)
+            printf 'Unsupported shell: %s (use bash or zsh)\n' "${shell}" >&2
+            return "${EXIT_USAGE:-2}"
+            ;;
+    esac
+}
+
+# Print top-level usage.
+# Args:
+#   None
+# Returns:
+#   0
+_bwx_usage() {
+    local version
+    version="$(<"${BWX_ROOT}/version.txt")" 2>/dev/null || version="dev"
+    cat <<EOF
+bwx ${version} — Bitwarden Secrets Manager eXtended CLI
+
+Usage: bwx <command> [subcommand] [args...]
+
+Commands:
+    secret       Query and mutate secrets
+    project      Query projects
+    tag          Manage release tags
+    raw          Pass-through to the upstream bws binary
+    completion   Generate shell completion (bash, zsh)
+
+Secret commands:
+    bwx secret list              List all secrets in a project
+    bwx secret show SECRET       Show full secret details
+    bwx secret value SECRET      Get a secret's value
+    bwx secret note SECRET       Get a secret's note
+    bwx secret id SECRET         Get a secret's UUID
+    bwx secret key SECRET        Get a secret's key name
+    bwx secret name SECRET       Get a secret's name
+    bwx secret filename SECRET   Get the file: property from a note
+    bwx secret tags SECRET       List release tags on a secret
+    bwx secret ls                List secrets (summary format)
+    bwx secret create ...        Create a new secret
+    bwx secret clone SECRET      Clone with version increment
+    bwx secret set value SECRET VALUE   Set a secret's value
+    bwx secret set note SECRET NOTE     Set a secret's note
+    bwx secret set key SECRET KEY       Set a secret's key name
+    bwx secret set filename SECRET FN   Set the file: note property
+
+Project commands:
+    bwx project list             List all projects
+    bwx project show PROJECT     Show project details
+    bwx project id PROJECT       Get a project's UUID
+    bwx project name PROJECT     Get a project's name
+    bwx project ls               List projects (summary format)
+    bwx project default id       Get the default project UUID
+    bwx project default name     Get the default project name
+
+Tag commands:
+    bwx tag list                 List all release tags
+    bwx tag secrets TAG          List secrets tagged with TAG
+    bwx tag add SECRET TAG       Add a release tag to a secret
+    bwx tag remove SECRET TAG    Remove a release tag from a secret
+    bwx tag project TAG          Tag all secrets in the project
+    bwx tag unproject TAG        Remove tag from all secrets
+
+Completion:
+    eval "\$(bwx completion bash)"   Add to .bashrc
+    eval "\$(bwx completion zsh)"    Add to .zshrc
+
+Options:
+    -h, --help                   Show this help
+    -v, --version                Show version
+
+Environment:
+    BWS_ACCESS_TOKEN             Bitwarden Secrets Manager access token (required)
+    BWS_DEFAULT_PROJECT          Default project name
+    BWS_SERVER_BASE_URL          Bitwarden server URL
+EOF
+}
+
+# Main entry point.
+# Args:
+#   "$@" — command-line arguments
+# Returns:
+#   Exit code from dispatched subcommand
+main() {
+    case "${1:-}" in
+        -h|--help|help|"")
+            _bwx_usage
+            return 0
+            ;;
+        -v|--version|version)
+            cat "${BWX_ROOT}/version.txt"
+            return 0
+            ;;
+    esac
+
+    _bwx_dispatch "$@"
+}
+
+[[ "${BASH_SOURCE[0]}" == "${0}" ]] || {
+    printf 'bwx must be executed, not sourced\n' >&2
+    return "${EXIT_USAGE:-2}"
+}
+
+main "$@"

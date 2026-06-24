@@ -1,0 +1,169 @@
+# shellcheck disable=SC1090,SC1091
+
+# Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+
+# This software and associated documentation files may not be copied,
+# modified, or distributed without express written permission.
+
+bws-project-list() {
+    set -o errexit -o errtrace -o nounset -o pipefail # Ensure robust error handling
+    local _debug="${DEBUG:-false}"
+    [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace # Enable debug output if DEBUG is set
+
+    declare -F error trace >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+    declare -F bws-cache-dir >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/../include/bws-cache"
+
+    local export_project_list=
+    local refresh_requested=
+    local output_names=
+    local name_query=
+    local id_query=
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -e|--export)
+                debug "export_project_list=true"
+                export_project_list="true"
+                shift
+                ;;
+            -N|--names)
+                debug "output_names=true"
+                output_names="true"
+                shift
+                ;;
+            -n|--name)
+                [[ -n "${2:-}" ]] || error "${EXIT_USAGE:-2}" "PROJECT required"
+                name_query="${2}"
+                shift 2
+                ;;
+            -i|--id)
+                [[ -n "${2:-}" ]] || error "${EXIT_USAGE:-2}" "PROJECT required"
+                id_query="${2}"
+                shift 2
+                ;;
+            -h|--help)
+                cat <<EOF
+Usage: bws-project-list [options]
+
+Prints the Bitwarden Secrets Manager project list as JSON.
+
+Options:
+  -e, --export   Print an expression to set BWS_PROJECT_LIST environment variable in the current shell
+  -N, --names    Print project names, one per line
+  -n, --name     Resolve a project UUID or name to its canonical name
+  -i, --id       Resolve a project UUID or name to its canonical id
+  -h, --help     Display this help message
+  -l, --log-level LEVEL  Set log level (default: info)
+  -R, --refresh  Refresh the cached project list
+
+EOF
+                return "${EXIT_USAGE:-2}"
+                ;;
+            -R|--refresh)
+                refresh_requested="true"
+                unset "BWS_PROJECT_LIST"
+                export "BWS_PROJECT_LIST="
+                shift
+                ;;
+            -l|--log-level)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--log-level requires a value"
+                LOG_LEVEL="${2}"
+                export LOG_LEVEL
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            -*)
+                error "${EXIT_USAGE:-2}" "Unknown option '${1}'"
+                break
+                ;;
+            *)
+                error "${EXIT_USAGE:-2}" "Too many arguments"
+                break
+                ;;
+        esac
+    done
+
+    local cache_ttl="${BWS_PROJECT_LIST_CACHE_TTL_SECONDS:-300}"
+    local cache_key="${BWS_SERVER_BASE_URL:-https://vault.bitwarden.com}|${BWS_ACCESS_TOKEN:-}"
+    local cache_file=
+    cache_file=$(bws-cache-file "project-list" "${cache_key}" "json" 2>/dev/null || :)
+    [[ -n "${refresh_requested}" && -n "${cache_file}" ]] && bws-cache-delete "${cache_file}"
+
+    # Optimization: Use raw JSON directly from process or file cache if available.
+    local project_list="${BWS_PROJECT_LIST:-}"
+
+    if [[ -n "${project_list}" ]]; then
+        if ! printf '%s' "${project_list}" | jq -e '.' >/dev/null 2>&1; then
+            warn "Cached project list is invalid; refreshing"
+            export BWS_PROJECT_LIST=""
+            project_list=""
+            [[ -n "${cache_file}" ]] && bws-cache-delete "${cache_file}"
+        fi
+    fi
+
+    if [[ -z "${project_list}" && -n "${cache_file}" ]]; then
+        project_list=$(bws-cache-read "${cache_file}" "${cache_ttl}" 2>/dev/null || :)
+    fi
+
+    if [[ -n "${project_list}" ]]; then
+        if ! printf '%s' "${project_list}" | jq -e '.' >/dev/null 2>&1; then
+            warn "Project list file cache is invalid; refreshing"
+            export BWS_PROJECT_LIST=""
+            project_list=""
+            [[ -n "${cache_file}" ]] && bws-cache-delete "${cache_file}"
+        fi
+    fi
+
+    if [[ -z "${project_list}" ]]; then
+        for cmd in bws jq; do
+            declare -F "${cmd}" >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/${cmd}"
+        done
+
+        trace "bws project list --output json | jq -c ."
+        if ! project_list="$(bws project list --output json </dev/null | jq -c .)"; then
+            error "${EXIT_ERROR:-1}" "Failed to retrieve projects from Bitwarden Secrets Manager"
+        fi
+
+        [[ -z "${project_list}" ]] && error "${EXIT_NOTFOUND}" "No projects found in Bitwarden Secrets Manager account"
+
+        export BWS_PROJECT_LIST="${project_list}"
+        [[ -n "${cache_file}" ]] && bws-cache-write "${cache_file}" "${project_list}"
+    elif [[ "${BWS_PROJECT_LIST:-}" != "${project_list}" ]]; then
+        export BWS_PROJECT_LIST="${project_list}"
+    fi
+
+    local summary_length="${BWS_PROJECT_LIST_SUMMARY_LENGTH:-50}"
+    debug "Project list (prefix): ${project_list:0:${summary_length}}..."
+
+    if [[ -n "${export_project_list}" ]]; then
+        # Safely quote the JSON for evaluation
+        printf "export BWS_PROJECT_LIST=%q\n" "${project_list}"
+    else
+        if [[ -n "${output_names}" ]]; then
+            printf '%s' "${project_list}" | jq -r '.[] | .name // empty' | LC_ALL='C' sort -u
+        elif [[ -n "${name_query}" ]]; then
+            local name=
+            if ! name=$(printf '%s' "${project_list}" | jq -r --arg id "${name_query}" '.[] | select(.id == $id or .name == $id) | .name'); then
+                error "${EXIT_ERROR:-1}" "Failed to parse project list"
+            fi
+            [[ -n "${name}" ]] || error "${EXIT_NOTFOUND:-1}" "Project '${name_query}' not found"
+            echo "${name}"
+        elif [[ -n "${id_query}" ]]; then
+            local id=
+            if ! id=$(printf '%s' "${project_list}" | jq -r --arg name "${id_query}" '.[] | select(.name == $name or .id == $name) | .id'); then
+                error "${EXIT_ERROR:-1}" "Failed to parse project list"
+            fi
+            [[ -n "${id}" ]] || error "${EXIT_NOTFOUND:-1}" "Project '${id_query}' not found"
+            echo "${id}"
+        else
+            echo "${project_list}"
+        fi
+    fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bws-project-list "$@"
+fi

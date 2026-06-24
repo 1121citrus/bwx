@@ -1,0 +1,102 @@
+# shellcheck disable=SC1090,SC1091
+
+# Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+
+# This software and associated documentation files may not be copied,
+# modified, or distributed without express written permission.
+
+bws-project-name() {
+    set -o errexit -o errtrace -o nounset -o pipefail # Ensure robust error handling
+    local _debug="${DEBUG:-false}"
+    [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace # Enable debug output if DEBUG is set
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                command -v bws-default-project-name >/dev/null 2>&1 || \
+                    source "$(dirname "${BASH_SOURCE[0]}")/bws-default-project-name"
+                cat <<EOF
+Usage: bws-project-name [options] [PROJECT]
+
+Convert a Bitwarden Secrets Manager project UUID to its human-readable name.
+
+Arguments:
+  PROJECT  Project name or UUID (optional) [default: $(bws-default-project-name)]
+
+Options:
+  -h, --help   Display this help message
+  -l, --log-level LEVEL  Set log level (default: info)
+
+Returns the project name if found, otherwise exits with an error.
+
+EOF
+                return "${EXIT_USAGE:-2}"
+                ;;
+            -l|--log-level)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--log-level requires a value"
+                LOG_LEVEL="${2}"
+                export LOG_LEVEL
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            -*)
+                declare -F error >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+                error "${EXIT_USAGE:-2}" "Unknown option '${1}'"
+                break
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    declare -F error trace >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+    for cmd in bws-default-project-name bws-project-list; do
+        declare -F "${cmd}" >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/${cmd}"
+    done
+
+    local project="${1:-$(bws-default-project-name)}"
+    shift || :
+    [[ -n "${project}" ]] || error "${EXIT_NOTFOUND}" "Project name or UUID not found"
+    [[ "${#@}" -gt 0 ]] && error "${EXIT_USAGE}" "Too many arguments"
+
+    local uuid_regex='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    local name=
+
+    # Always validate non-UUID project names against the project list.
+    if [[ ! "${project}" =~ ${uuid_regex} ]]; then
+        name=$(bws-project-list --name "${project}" || : )
+    else
+        # Check small in-memory cache first.
+        if [[ -n "${BWS_PROJECT_NAME_CACHE:-}" ]]; then
+            while IFS=$'\t' read -r cache_id cache_name; do
+                if [[ "${cache_id}" == "${project}" ]]; then
+                    name="${cache_name}"
+                    break
+                fi
+            done <<< "${BWS_PROJECT_NAME_CACHE}"
+        fi
+
+        if [[ -z "${name}" ]]; then
+            name=$(bws-project-list --name "${project}" || : )
+        fi
+    fi
+
+    if [[ -z "${name}" ]]; then
+        error "${EXIT_NOTFOUND:-1}" "Project '${project}' not found: unable to resolve to a name"
+    fi
+    if [[ "${project}" =~ ${uuid_regex} ]]; then
+        BWS_PROJECT_NAME_CACHE+="${project}\t${name}"$'\n'
+        export BWS_PROJECT_NAME_CACHE
+    fi
+    trace "project '${project}' name='${name}'"
+    echo "${name}"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bws-project-name "$@"
+fi

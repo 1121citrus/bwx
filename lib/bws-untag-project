@@ -1,0 +1,221 @@
+# shellcheck disable=SC1090,SC1091
+
+# Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+
+# This software and associated documentation files may not be copied,
+# modified, or distributed without express written permission.
+
+bws-untag-project() {
+    set -o errexit -o errtrace -o nounset -o pipefail # Ensure robust error handling
+    local _debug="${DEBUG:-false}"
+    [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace # Enable debug output if DEBUG is set
+
+    local bindir
+    bindir=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
+
+    declare -F error trace >/dev/null 2>&1 || source "${bindir}/../include/logging"
+
+    local project=""
+    local -a select_tags=()
+
+    local refresh=
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                declare -F bws-default-project-name >/dev/null 2>&1 || \
+                    source "${bindir}/bws-default-project-name"
+                cat <<EOF
+Usage: bws-untag-project [OPTIONS] RELEASE_TAG [SECRETS...]
+
+Removes a release tag from specified secrets in a project.
+
+Secrets can be specified by name or UUID.
+
+The tag will be removed from all specified secrets. If the --select-tag option is used, then the
+secrets with the specified tag will also be untagged. If no secrets or select tags are specified,
+then the tag will be removed from all secrets in the project. The --select-tag option may be repeated.
+
+The project can be specified by name or UUID; if not specified, the default project will
+be used.
+
+Arguments:
+    RELEASE_TAG The release tag to remove from the selected secrets (required)
+    SECRETS...  Optional list of secrets to update; if not specified, all secrets
+                with the specified release tag will be updated. If neither SECRETS
+                nor --seclect-tag is specified, then all the secrets in the project
+                will be used.
+
+Options:
+    -h, --help   Display this help message
+    -l, --log-level LEVEL  Set log level (default: info)
+    -p, --project Specify the project name or UUID (default: $(bws-default-project-name))
+    -s, --select-tag Specify the release tag to select secrets (supplements SECRETS with
+                 secrets that have the SELECT_TAG release tag; may be repeated)
+    -R, --refresh  Refresh the cached secret list
+    --          End of options; any remaining arguments will be treated as secrets to update
+
+Returns SUCCESS if all secrets were updated.
+EOF
+                return "${EXIT_USAGE:-2}"
+                ;;
+            -R|--refresh)
+                refresh="true"
+                shift
+                ;;
+            -p|--project)
+                [[ -n "${2:-}" ]] || error "${EXIT_USAGE}" "PROJECT required"
+                project="$2"
+                shift 2
+                ;;
+            -s|--select-tag)
+                [[ -n "${2:-}" ]] || error "${EXIT_USAGE}" "SELECT_TAG required"
+                select_tags+=("${2}")
+                shift 2
+                ;;
+            -l|--log-level)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--log-level requires a value"
+                LOG_LEVEL="${2}"
+                export LOG_LEVEL
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            -*)
+                error "${EXIT_USAGE}" "Unknown option: $1"
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    local release_tag="${1:-}"
+    [[ -n "${release_tag}" ]] || error "${EXIT_USAGE}" "RELEASE_TAG required"
+    shift || :
+
+    local -a cli_secrets=()
+    if [[ "$#" -gt 0 ]]; then
+        cli_secrets=("$@")
+    fi
+
+    for cmd in bws-default-project-name bws-project-id bws-secret-list bws-secret-remove-release-tag jq; do
+        declare -F "${cmd}" >/dev/null 2>&1 || source "${bindir}/${cmd}"
+    done
+
+    local uuid_regex='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    if [[ -z "${project}" ]]; then
+        project=$(bws-default-project-name)
+    fi
+    local project_id
+    if [[ "${project}" =~ ${uuid_regex} ]]; then
+        project_id="${project}"
+    else
+        project_id="$(bws-project-id "${project}" || : )"
+    fi
+    [[ -n "${project_id}" ]] || error "${EXIT_NOTFOUND}" "Project name or UUID not found: '${project}'"
+    trace "project-id for project '${project:-}': ${project_id}" || :
+
+    # Purely for performance; cache the secrets list in the environment.
+    local secret_list
+    if [[ -n "${refresh}" ]]; then
+        secret_list="$(bws-secret-list --refresh --export "${project_id}" 2>/dev/null || : )"
+    else
+        secret_list="$(bws-secret-list --export "${project_id}" 2>/dev/null || : )"
+    fi
+    [[ -n "${secret_list:+x}" ]] || error "${EXIT_ERROR}" "Failed to retrieve secret list for project '${1:-}'"
+    eval "${secret_list}"
+
+    local sanitized_project
+    sanitized_project=$(LC_ALL='en_US.UTF-8' awk '{print toupper($0)}' <<<"${project_id//[^[:alnum:]]/_}")
+    local secret_list_var="BWS_PROJECT_SECRET_LIST_${sanitized_project}"
+
+    secrets_for_tag() {
+        local tag="$1"
+        printf '%s' "${!secret_list_var}" | \
+            jq -r --arg tag "${tag}" '.[] | select((.note // "") | split("\n") | map(select(startswith("release-tag: "))) | map(sub("^release-tag: "; "")) | index($tag)) | .key' || :
+    }
+
+    list_all_secrets() {
+        printf '%s' "${!secret_list_var}" | jq -r '.[].key' || :
+    }
+
+    local -a tag_secrets=()
+    if [[ "${#select_tags[@]}" -gt 0 ]]; then
+        local tag
+        for tag in "${select_tags[@]}"; do
+            mapfile -t tag_matches < <(secrets_for_tag "${tag}")
+            if [[ "${#tag_matches[@]}" -gt 0 ]]; then
+                tag_secrets+=("${tag_matches[@]}")
+                trace "Secrets for tag '${tag}': ${tag_matches[*]}" || :
+            fi
+        done
+    fi
+    trace "Secrets selected by tag: ${tag_secrets[*]:-}"
+
+    local -a selected_secrets=("${cli_secrets[@]}" "${tag_secrets[@]}")
+    if [[ "${#selected_secrets[@]}" -eq 0 && "${#select_tags[@]}" -eq 0 ]]; then
+        trace "No secrets specified on the command line or by select tags; selecting all secrets in project '${project_id}'" || :
+        mapfile -t selected_secrets < <(list_all_secrets)
+    fi
+
+    if [[ "${#selected_secrets[@]}" -eq 0 ]]; then
+        warn "No secrets selected for release tag '${release_tag}'" || :
+        return "${RETURN_SUCCESS}"
+    fi
+
+    local -a all_unique_secrets=()
+    mapfile -t all_unique_secrets < <(printf '%s\n' "${selected_secrets[@]}" | sort -u)
+    trace "Unique secrets to untag for release '${release_tag}': ${all_unique_secrets[*]:-}" || :
+
+    local -a release_tag_secrets=()
+    mapfile -t release_tag_secrets < <(secrets_for_tag "${release_tag}")
+
+    local -a unique_secrets=()
+    declare -A intersection_map
+    local secret
+    for secret in "${all_unique_secrets[@]}"; do
+        [[ -n "${secret}" ]] || continue
+        intersection_map["${secret}"]=1
+    done
+    # shellcheck disable=SC2048
+    for secret in ${release_tag_secrets[*]:-}; do
+        [[ -n "${secret}" ]] || continue
+        if [[ -n "${intersection_map[${secret}]:-}" ]]; then
+            unique_secrets+=("${secret}")
+        else
+            trace "Secret '${secret}' has release tag '${release_tag}' but was not selected; skipping" || :
+        fi
+    done
+    trace "Unique secrets with release tag '${release_tag}': ${unique_secrets[*]:-}" || ::
+
+    local processed=0
+    local failed=0
+    local secret
+    for secret in "${unique_secrets[@]}"; do
+        debug "Removing tag '${release_tag}' from secret '${secret}'"
+        trace "bws-secret-remove-release-tag '${secret}' '${release_tag}' '${project_id}'" || :
+        if BWS_SKIP_SECRET_LIST_REFRESH=true \
+            bws-secret-remove-release-tag "${secret}" "${release_tag}" "${project_id}"; then
+            info "Removed tag '${release_tag}' from secret '${secret}'" || :
+        else
+            error "${RETURN_ERROR}" "Failed to remove '${release_tag}' from secret '${secret}'" || :
+            ((failed++)) || :
+        fi
+        ((processed++)) || :
+    done
+
+    if [[ "${processed}" -gt 0 ]]; then
+        bws-secret-list --refresh "${project_id}" >/dev/null 2>&1 || \
+            warn "Failed to refresh cached secret list for project '${project_id}' after untagging" || :
+    fi
+
+    [[ "${processed}" -eq 0 ]] && info "No selected secrets have release tag '${release_tag}'" || :
+    [[ "${failed}" -eq 0 ]] || return "${RETURN_ERROR}"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bws-untag-project "$@"
+fi

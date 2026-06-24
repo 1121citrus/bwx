@@ -1,0 +1,22 @@
+# Stash for maybe trash
+.attic
+
+# macOS
+.DS_Store
+
+# Editors
+*.swp
+
+# Environments
+.env
+
+# Eclipse
+.project
+
+# Vendored dependencies
+vendor/
+
+# Coverage output
+coverage/
+
+*.new

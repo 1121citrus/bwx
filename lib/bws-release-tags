@@ -1,0 +1,99 @@
+# shellcheck disable=SC1090,SC1091
+
+# Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+
+# This software and associated documentation files may not be copied,
+# modified, or distributed without express written permission.
+
+bws-release-tags() {
+    set -o errexit -o errtrace -o nounset -o pipefail # Ensure robust error handling
+    [[ "${DEBUG:-false,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace # Enable debug output if DEBUG is set
+
+    local bindir
+    bindir=$(CDPATH= cd -- "${BASH_SOURCE[0]%/*}" && pwd)
+
+    local refresh_flag=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                declare -F bws-default-project-name >/dev/null 2>&1 || \
+                    source "${bindir}/bws-default-project-name"
+                cat <<EOF
+Usage: bws-release-tags [OPTIONS] [PROJECT]
+
+Displays the release tags that have been applied to secrets in a project.
+
+Arguments:
+  PROJECT      Project name or UUID (optional) [default: $(bws-default-project-name)]
+
+Options:
+  -h, --help     Display this help message
+  -l, --log-level LEVEL  Set log level (default: info)
+  -R, --refresh  Refresh the cached secret list
+
+Returns SUCCESS if all secrets were updated.
+EOF
+                return "${EXIT_USAGE:-2}"
+                ;;
+            -R|--refresh)
+                refresh_flag="--refresh"
+                shift
+                ;;
+            -l|--log-level)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--log-level requires a value"
+                LOG_LEVEL="${2}"
+                export LOG_LEVEL
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    declare -F warn >/dev/null 2>&1 || source "${bindir}/../include/logging"
+
+    for cmd in bws-default-project-name bws-secret-list jq; do
+        declare -F "${cmd}" >/dev/null 2>&1 || source "${bindir}/${cmd}"
+    done
+
+    local project_key
+    project_key="${1:-$(bws-default-project-name)}"
+    local sanitized_project
+    sanitized_project=$(LC_ALL='en_US.UTF-8' awk '{print toupper($0)}' <<<"${project_key//[^[:alnum:]]/_}")
+    local tag_cache_var="BWS_PROJECT_RELEASE_TAGS_${sanitized_project}"
+
+    if [[ -n "${refresh_flag}" ]]; then
+        export "${tag_cache_var}="
+    fi
+
+    local cached_tags="${!tag_cache_var:-}"
+    if [[ -n "${cached_tags}" ]]; then
+        if printf '%s
+' "${cached_tags}" | awk 'NF && $0 !~ /^[A-Za-z0-9._-]+$/ {exit 1}' >/dev/null; then
+            echo "${cached_tags}"
+            return 0
+        else
+            warn "Cached release tags for project '${project_key}' are invalid; refreshing"
+            export "${tag_cache_var}="
+            cached_tags=""
+        fi
+    fi
+
+    local tags
+    tags=$(bws-secret-list ${refresh_flag} "${project_key}" | \
+        jq -r '.[].note | split("\n") | .[] | select(startswith("release-tag:")) | sub("release-tag: "; "")' | \
+        sort -u || :)
+
+    export "${tag_cache_var}=${tags}"
+    echo "${tags}"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bws-release-tags "$@"
+fi
