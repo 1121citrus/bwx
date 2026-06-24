@@ -577,6 +577,13 @@ if [[ "${ADVISE_COVERAGE}" == "true" ]]; then
             bats-coverage \
                 --src /code/lib --include /code/lib,/code/bin \
                 test/bin/bwx.bats \
+                test/bin/bwx-secret.bats \
+                test/bin/bwx-secret-queries.bats \
+                test/bin/bwx-project.bats \
+                test/bin/bwx-project-queries.bats \
+                test/bin/bwx-tag.bats \
+                test/bin/bwx-tag-ops.bats \
+                test/bin/bwx-http.bats \
             >&2 || echo "    Coverage run failed (advisory only)" >&2
     fi
 fi

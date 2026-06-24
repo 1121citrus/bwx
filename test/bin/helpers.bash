@@ -8,12 +8,13 @@ BWX="${BWX_ROOT}/bin/bwx"
 # Set up the mock bws and required env vars.
 # Creates TEST_TMPDIR under the repo root (visible inside Docker).
 bwx_test_setup() {
-    TEST_TMPDIR="${BWX_ROOT}/test/.tmp-$$-${BATS_TEST_NUMBER}"
+    TEST_TMPDIR="$(mktemp -d)"
     mkdir -p "${TEST_TMPDIR}/stub-bin"
 
-    # Link the shared mock bws into the stub PATH
-    cp "${BWX_ROOT}/test/fixtures/mock-bws" "${TEST_TMPDIR}/stub-bin/bws"
-    chmod +x "${TEST_TMPDIR}/stub-bin/bws"
+    # Symlink the shared mock bws into the stub PATH (works on ro mounts)
+    ln -s "${BWX_ROOT}/test/fixtures/mock-bws" "${TEST_TMPDIR}/stub-bin/bws" \
+        || cp "${BWX_ROOT}/test/fixtures/mock-bws" "${TEST_TMPDIR}/stub-bin/bws"
+    chmod +x "${TEST_TMPDIR}/stub-bin/bws" 2>/dev/null || true
 
     export PATH="${TEST_TMPDIR}/stub-bin:${PATH}"
     export BWS_ACCESS_TOKEN="test-token"

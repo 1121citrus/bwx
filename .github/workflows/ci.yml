@@ -25,4 +25,5 @@ jobs:
         test/bin/bwx-secret.bats
         test/bin/bwx-project.bats
         test/bin/bwx-tag.bats
+      test-extra-packages: jq
     secrets: inherit
