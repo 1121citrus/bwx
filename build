@@ -583,6 +583,7 @@ if [[ "${ADVISE_COVERAGE}" == "true" ]]; then
                 test/bin/bwx-project-queries.bats \
                 test/bin/bwx-tag.bats \
                 test/bin/bwx-tag-ops.bats \
+                test/bin/bwx-mutations.bats \
                 test/bin/bwx-http.bats \
             >&2 || echo "    Coverage run failed (advisory only)" >&2
     fi

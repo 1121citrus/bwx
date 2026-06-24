@@ -128,8 +128,31 @@ if [[ "$1" == "secret" && "$2" == "get" ]]; then
     fi
 
 if [[ "$1" == "secret" && "$2" == "edit" ]]; then
-    # secret edit <id> [options]
-    # Simulate success
+    # secret edit <id> [options] — simulate success, echo the id
+    echo "{\"id\":\"$3\",\"key\":\"edited\"}"
+    exit 0
+fi
+
+if [[ "$1" == "secret" && "$2" == "create" ]]; then
+    # secret create [--note NOTE] KEY VALUE PROJECT_ID
+    # Parse out the key from positional args (skip --note/--note-file flags)
+    local_key=""
+    shift 2
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --note|--note-file) shift 2 ;;
+            -*) shift ;;
+            *)
+                if [[ -z "${local_key}" ]]; then
+                    local_key="$1"
+                fi
+                shift
+                ;;
+        esac
+    done
+    cat <<JSON
+{"id":"new-uuid-$(date +%s)","key":"${local_key:-new_secret}","value":"created","note":"","organizationId":"org-1","projectId":"proj-1"}
+JSON
     exit 0
 fi
 
