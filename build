@@ -158,6 +158,8 @@ if [[ "${ADVISE_COVERAGE}" == "true" ]]; then
             -w /code \
             "${BATS_KCOV_IMAGE}:${BATS_KCOV_TAG}" \
             bats-coverage \
+                --src /code/lib \
+                --include /code/lib,/code/bin \
                 test/bin/bwx.bats \
             >&2 || echo "    Coverage run failed (advisory only)" >&2
     fi
@@ -173,9 +175,9 @@ if [[ "${ADVISE_METRICS}" == "true" ]]; then
     else
         docker run --rm \
             -v "${script_dir}:/code:ro" \
-            -w /code \
+            --entrypoint scc \
             "${SCC_IMAGE}:${SCC_TAG}" \
-            /code \
+            /code/bin /code/lib /code/include \
             >&2 || echo "    Metrics run failed (advisory only)" >&2
     fi
 fi
