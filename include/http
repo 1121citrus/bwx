@@ -1,0 +1,112 @@
+# shellcheck shell=bash
+
+# Portable HTTP client abstraction.
+#
+# Resolves the best available HTTP tool on first use:
+#   curl → wget → fetch → Docker curlimages/curl
+#
+# Provides two functions:
+#   http_get URL          — GET to stdout
+#   http_download URL FILE — GET to file
+#
+# The resolution runs once per session; subsequent calls reuse the
+# resolved backend.  Override with HTTP_BACKEND=curl|wget|fetch|docker.
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+_HTTP_BACKEND=""
+_BWX_CURL_IMAGE="${BWX_CURL_IMAGE:-curlimages/curl}"
+
+# Resolve the HTTP backend once.
+# Args:
+#   None
+# Returns:
+#   0; sets _HTTP_BACKEND to curl, wget, fetch, or docker
+_http_resolve() {
+    if [[ -n "${_HTTP_BACKEND}" ]]; then
+        return 0
+    fi
+
+    if [[ -n "${HTTP_BACKEND:-}" ]]; then
+        _HTTP_BACKEND="${HTTP_BACKEND}"
+        return 0
+    fi
+
+    if command -v curl >/dev/null 2>&1; then
+        _HTTP_BACKEND=curl
+    elif command -v wget >/dev/null 2>&1; then
+        _HTTP_BACKEND=wget
+    elif command -v fetch >/dev/null 2>&1; then
+        _HTTP_BACKEND=fetch
+    elif command -v docker >/dev/null 2>&1; then
+        _HTTP_BACKEND=docker
+    else
+        echo "[ERROR] No HTTP client available (curl, wget, fetch, or docker)" >&2
+        return 1
+    fi
+}
+
+# GET a URL and write the response body to stdout.
+# Args:
+#   $1 — URL
+# Returns:
+#   0 on success; non-zero on HTTP or network error
+http_get() {
+    local url="${1:?URL required}"
+    _http_resolve || return 1
+
+    case "${_HTTP_BACKEND}" in
+        curl)
+            curl --fail --silent --show-error --location "${url}"
+            ;;
+        wget)
+            wget --quiet -O - "${url}"
+            ;;
+        fetch)
+            fetch --quiet -o - "${url}"
+            ;;
+        docker)
+            docker run --rm "${_BWX_CURL_IMAGE}" \
+                --fail --silent --show-error --location "${url}"
+            ;;
+    esac
+}
+
+# GET a URL and save the response body to a file.
+# Args:
+#   $1 — URL
+#   $2 — output file path
+# Returns:
+#   0 on success; non-zero on HTTP or network error
+http_download() {
+    local url="${1:?URL required}" dest="${2:?output file required}"
+    _http_resolve || return 1
+
+    case "${_HTTP_BACKEND}" in
+        curl)
+            curl --fail --silent --show-error --location -o "${dest}" "${url}"
+            ;;
+        wget)
+            wget --quiet -O "${dest}" "${url}"
+            ;;
+        fetch)
+            fetch --quiet -o "${dest}" "${url}"
+            ;;
+        docker)
+            docker run --rm "${_BWX_CURL_IMAGE}" \
+                --fail --silent --show-error --location "${url}" \
+                > "${dest}"
+            ;;
+    esac
+}
+
+# Return the name of the resolved HTTP backend.
+# Args:
+#   None
+# Returns:
+#   0; writes backend name to stdout
+http_backend() {
+    _http_resolve || return 1
+    printf '%s\n' "${_HTTP_BACKEND}"
+}

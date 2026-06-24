@@ -27,6 +27,7 @@ readonly BWX_ROOT
 source "${BWX_ROOT}/include/logging"
 source "${BWX_ROOT}/include/bws-cache"
 source "${BWX_ROOT}/include/tools"
+source "${BWX_ROOT}/include/http"
 
 # Source all library functions
 for _bwx_lib in "${BWX_ROOT}"/lib/bws*; do
