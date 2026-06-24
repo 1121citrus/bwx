@@ -119,7 +119,7 @@ EOF
     fi
 
     if [[ -z "${project_list}" ]]; then
-        for cmd in bws jq; do
+        for cmd in bws ; do
             declare -F "${cmd}" >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/${cmd}"
         done
 

@@ -16,8 +16,8 @@
 declare -F bws-cache-dir >/dev/null 2>&1 || \
     source "$(dirname "${BASH_SOURCE[0]}")/../include/bws-cache"
 
-# Preserve mocked bws function if it exists and we are in test mode
-if [[ "${CITRUS_ENABLE_MOCK_COMMANDS:-false}" == "true" ]] && declare -F bws >/dev/null 2>&1; then
+# In test mode, skip the Docker wrapper so the mock bws on PATH is used.
+if [[ "${CITRUS_ENABLE_MOCK_COMMANDS:-false}" == "true" ]]; then
     # shellcheck disable=SC2317
     return "${RETURN_SUCCESS}" 2>/dev/null || exit "${EXIT_SUCCESS}"
 fi

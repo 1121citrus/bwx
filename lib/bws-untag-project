@@ -102,7 +102,7 @@ EOF
         cli_secrets=("$@")
     fi
 
-    for cmd in bws-default-project-name bws-project-id bws-secret-list bws-secret-remove-release-tag jq; do
+    for cmd in bws-default-project-name bws-project-id bws-secret-list bws-secret-remove-release-tag ; do
         declare -F "${cmd}" >/dev/null 2>&1 || source "${bindir}/${cmd}"
     done
 

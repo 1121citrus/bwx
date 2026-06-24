@@ -9,6 +9,8 @@ setup() {
     TEST_TMPDIR="${BWX_ROOT}/test/.tmp-$$-${BATS_TEST_NUMBER}"
     mkdir -p "${TEST_TMPDIR}/stub-bin"
 
+    export CITRUS_ENABLE_MOCK_COMMANDS=true
+
     # Create a bws stub that returns mock JSON
     cat > "${TEST_TMPDIR}/stub-bin/bws" <<'STUB'
 #!/usr/bin/env bash

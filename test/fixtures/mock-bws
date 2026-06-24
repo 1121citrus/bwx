@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+# Mock bws command for testing
+# Usage: bws [subcommand] [args...]
+
+log_mock_call() {
+    if [[ -n "${MOCK_BWS_CALL_LOG:-}" ]]; then
+        printf '%s\n' "$*" >> "${MOCK_BWS_CALL_LOG}"
+    fi
+}
+
+log_mock_call "$@"
+
+if [[ "$1" == "project" && "$2" == "list" ]]; then
+    cat <<JSON
+[
+  {
+    "id": "11111111-1111-1111-1111-111111111111",
+    "name": "test-project",
+    "organizationId": "org-1",
+    "createdAt": "2023-01-01T00:00:00Z",
+    "updatedAt": "2023-01-01T00:00:00Z"
+  },
+  {
+    "id": "22222222-2222-2222-2222-222222222222",
+    "name": "other-project",
+    "organizationId": "org-1",
+    "createdAt": "2023-01-01T00:00:00Z",
+    "updatedAt": "2023-01-01T00:00:00Z"
+  }
+]
+JSON
+    exit 0
+fi
+
+get_mock_secrets() {
+    local project_id="$1"
+    # Using specific project ID or defaulting
+    project_id="${project_id:-11111111-1111-1111-1111-111111111111}"
+
+    cat <<JSON
+[
+  {
+    "id": "aaaa-bbbb-cccc-dddd",
+    "organizationId": "org-1",
+    "projectId": "${project_id}",
+    "key": "secret_key_1",
+    "value": "secret_value_1",
+    "note": "note 1",
+    "creationDate": "2023-01-01T00:00:00Z",
+    "revisionDate": "2023-01-01T00:00:00Z"
+  },
+  {
+    "id": "eeee-ffff-gggg-hhhh",
+    "organizationId": "org-1",
+    "projectId": "${project_id}",
+    "key": "secret_key_2",
+    "value": "secret_value_2",
+    "note": "note 2",
+    "creationDate": "2023-01-01T00:00:00Z",
+    "revisionDate": "2023-01-01T00:00:00Z"
+  },
+  {
+    "id": "iiii-jjjj-kkkk-llll",
+    "organizationId": "org-1",
+    "projectId": "${project_id}",
+    "key": "secret_key_3",
+    "value": "secret_value_3",
+    "note": "file: test-secret-1\nnote: \"A test secret\"\nrelease-tag: test-tag-1",
+    "creationDate": "2023-01-01T00:00:00Z",
+    "revisionDate": "2023-01-01T00:00:00Z"
+  },
+  {
+    "id": "mmmm-nnnn-oooo-pppp",
+    "organizationId": "org-1",
+    "projectId": "${project_id}",
+    "key": "secret_key_4",
+    "value": "secret_value_4",
+    "note": "Just a note",
+    "creationDate": "2023-01-01T00:00:00Z",
+    "revisionDate": "2023-01-01T00:00:00Z"
+  },
+  {
+    "id": "qqqq-rrrr-ssss-tttt",
+    "organizationId": "org-1",
+    "projectId": "${project_id}",
+    "key": "secret_key_5",
+    "value": "secret_value_5",
+    "file": "legacy-file.txt",
+    "note": "note 5",
+    "creationDate": "2023-01-01T00:00:00Z",
+    "revisionDate": "2023-01-01T00:00:00Z"
+  },
+  {
+    "id": "uuuu-vvvv-wwww-xxxx",
+    "organizationId": "org-1",
+    "projectId": "${project_id}",
+    "key": "secret_key_6",
+    "value": "secret_value_6",
+    "note": "release-tag: tag-b\nnote: multi-tag secret\nrelease-tag: tag-a",
+    "creationDate": "2023-01-01T00:00:00Z",
+    "revisionDate": "2023-01-01T00:00:00Z"
+  },
+  {
+    "id": "yyyy-zzzz-0000-1111",
+    "organizationId": "org-1",
+    "projectId": "${project_id}",
+    "key": "secret_key_7",
+    "value": "secret_value_7",
+    "note": "no tags here",
+    "creationDate": "2023-01-01T00:00:00Z",
+    "revisionDate": "2023-01-01T00:00:00Z"
+  }
+]
+JSON
+}
+
+if [[ "$1" == "secret" && "$2" == "list" ]]; then
+    project_id="${3:-}"
+    get_mock_secrets "${project_id}"
+    exit 0
+fi
+
+if [[ "$1" == "secret" && "$2" == "get" ]]; then
+    secret_id="$3"
+    # We fetch all secrets (using a dummy project ID) and filter by ID using jq
+    get_mock_secrets "dummy" | jq -r ".[] | select(.id == \"${secret_id}\")"
+        exit 0
+    fi
+
+if [[ "$1" == "secret" && "$2" == "edit" ]]; then
+    # secret edit <id> [options]
+    # Simulate success
+    exit 0
+fi
+
+echo "Mock bws: Unknown command $*" >&2
+exit 1
