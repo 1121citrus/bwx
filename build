@@ -3,10 +3,21 @@
 # build — local CI equivalent for bwx.
 #
 # Stages:
-#   1. ShellCheck (bin/bwx, include/*)
+#   1. ShellCheck lint (bin/bwx, include/*)
 #   2. BATS unit tests
 #
-# Usage: ./build [--no-lint] [--no-test] [--help]
+# Advisory stages (--advise):
+#   3. Coverage (kcov) — line coverage report
+#   4. Metrics (scc)   — code size and complexity
+#
+# Usage: ./build [OPTIONS]
+#
+#   --no-lint                    Skip ShellCheck
+#   --no-test                    Skip BATS tests
+#   --advise [ADVISEMENTS]       Run advisory stages (coverage, metrics, all)
+#   --no-advise                  Disable all advisory stages
+#   --dry-run                    Show commands without executing
+#   -h, --help                   Show this help
 
 # Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
 # Licensed under AGPL-3.0-or-later.
@@ -18,45 +29,155 @@ readonly script_dir
 
 DO_LINT=true
 DO_TEST=true
+DRY_RUN=false
+ADVISE_COVERAGE=false
+ADVISE_METRICS=false
+
+BATS_KCOV_IMAGE="${BATS_KCOV_IMAGE:-1121citrus/bats-kcov}"
+BATS_KCOV_TAG="${BATS_KCOV_TAG:-latest}"
+SCC_IMAGE="${SCC_IMAGE:-ghcr.io/boyter/scc}"
+SCC_TAG="${SCC_TAG:-v3.7.0}"
+
+usage() {
+    cat <<'EOF'
+Usage: ./build [OPTIONS]
+
+Stages:
+  1. ShellCheck lint (bin/bwx, include/*)
+  2. BATS unit tests
+
+Advisory stages (--advise):
+  coverage   kcov line-coverage report
+  metrics    scc code size and complexity
+  all        run all advisory stages
+
+Options:
+  --no-lint                Skip ShellCheck
+  --no-test                Skip BATS tests
+  --advise [ADVISEMENTS]   Run advisory stages (comma or space separated)
+  --no-advise              Disable all advisory stages
+  --dry-run                Show commands without executing
+  -h, --help               Show this help
+EOF
+}
 
 while [[ $# -gt 0 ]]; do
     case "${1}" in
-        --no-lint)  DO_LINT=false;  shift ;;
-        --no-test)  DO_TEST=false;  shift ;;
+        --no-lint)   DO_LINT=false;  shift ;;
+        --no-test)   DO_TEST=false;  shift ;;
+        --dry-run)   DRY_RUN=true;   shift ;;
+        --no-advise)
+            ADVISE_COVERAGE=false
+            ADVISE_METRICS=false
+            shift
+            ;;
+        --advise|--advice)
+            shift
+            while [[ $# -gt 0 && "${1}" != -* ]]; do
+                case "${1}" in
+                    coverage) ADVISE_COVERAGE=true ;;
+                    metrics)  ADVISE_METRICS=true ;;
+                    all)
+                        ADVISE_COVERAGE=true
+                        ADVISE_METRICS=true
+                        ;;
+                    none)
+                        ADVISE_COVERAGE=false
+                        ADVISE_METRICS=false
+                        ;;
+                    *)
+                        printf 'Unknown advisement: %s\n' "${1}" >&2
+                        printf 'Valid: coverage, metrics, all, none\n' >&2
+                        exit 2
+                        ;;
+                esac
+                shift
+            done
+            ;;
         -h|--help)
-            printf 'Usage: ./build [--no-lint] [--no-test] [--help]\n'
+            usage
             exit 0
             ;;
         *)
             printf 'Unknown option: %s\n' "${1}" >&2
+            usage >&2
             exit 2
             ;;
     esac
 done
 
+# ---------------------------------------------------------------------------
 # Stage 1: ShellCheck
+# ---------------------------------------------------------------------------
 if [[ "${DO_LINT}" == "true" ]]; then
     echo "==> Stage 1: ShellCheck" >&2
-    docker run --rm \
-        -v "${script_dir}:/mnt" \
-        -w /mnt \
-        koalaman/shellcheck:stable \
-        bin/bwx \
-        include/logging \
-        include/bws-cache \
-        include/tools
-    echo "    ShellCheck passed" >&2
+    if [[ "${DRY_RUN}" == "true" ]]; then
+        echo "[DRY RUN] docker run --rm koalaman/shellcheck:stable bin/bwx include/*" >&2
+    else
+        docker run --rm \
+            -v "${script_dir}:/mnt" \
+            -w /mnt \
+            koalaman/shellcheck:stable \
+            bin/bwx \
+            include/logging \
+            include/bws-cache \
+            include/tools
+        echo "    ShellCheck passed" >&2
+    fi
 fi
 
+# ---------------------------------------------------------------------------
 # Stage 2: BATS tests
+# ---------------------------------------------------------------------------
 if [[ "${DO_TEST}" == "true" ]]; then
     echo "==> Stage 2: BATS tests" >&2
-    docker run --rm \
-        -v "${script_dir}:/repo" \
-        -w /repo \
-        bats/bats:latest \
-        test/bin/
-    echo "    BATS tests passed" >&2
+    if [[ "${DRY_RUN}" == "true" ]]; then
+        echo "[DRY RUN] docker run --rm bats/bats:latest test/bin/" >&2
+    else
+        docker run --rm \
+            -v "${script_dir}:/repo" \
+            -w /repo \
+            bats/bats:latest \
+            test/bin/
+        echo "    BATS tests passed" >&2
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Stage 3: Coverage (kcov — advisory, never blocks)
+# ---------------------------------------------------------------------------
+if [[ "${ADVISE_COVERAGE}" == "true" ]]; then
+    echo "==> Stage 3: Coverage (advisory)" >&2
+    if [[ "${DRY_RUN}" == "true" ]]; then
+        echo "[DRY RUN] docker run --rm --cap-add SYS_PTRACE ${BATS_KCOV_IMAGE}:${BATS_KCOV_TAG} bats-coverage test/bin/" >&2
+    else
+        docker run --rm \
+            --cap-add SYS_PTRACE \
+            --security-opt seccomp=unconfined \
+            -v "${script_dir}:/code:ro" \
+            -w /code \
+            "${BATS_KCOV_IMAGE}:${BATS_KCOV_TAG}" \
+            bats-coverage \
+                test/bin/bwx.bats \
+            >&2 || echo "    Coverage run failed (advisory only)" >&2
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Stage 4: Metrics (scc — advisory, never blocks)
+# ---------------------------------------------------------------------------
+if [[ "${ADVISE_METRICS}" == "true" ]]; then
+    echo "==> Stage 4: Metrics (advisory)" >&2
+    if [[ "${DRY_RUN}" == "true" ]]; then
+        echo "[DRY RUN] docker run --rm ${SCC_IMAGE}:${SCC_TAG} /code" >&2
+    else
+        docker run --rm \
+            -v "${script_dir}:/code:ro" \
+            -w /code \
+            "${SCC_IMAGE}:${SCC_TAG}" \
+            /code \
+            >&2 || echo "    Metrics run failed (advisory only)" >&2
+    fi
 fi
 
 echo "==> Build complete" >&2

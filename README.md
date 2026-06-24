@@ -6,30 +6,32 @@ The official `bws` CLI provides single-secret CRUD; `bwx` adds bulk
 operations, release-tag lifecycle management, structured note metadata,
 local caching, and secret cloning with automatic version increment.
 
-## Quick start
+## Installation
+
+### Clone and add to PATH
 
 ```bash
-# Clone and add to PATH
 git clone https://github.com/1121citrus/bwx.git ~/.local/lib/bwx
-export PATH="${HOME}/.local/lib/bwx/bin:${PATH}"
-
-# Enable tab completion
-eval "$(bwx completion bash)"
-
-# Set your BWS access token
-export BWS_ACCESS_TOKEN="your-token-here"
-
-# List all secrets in the default project
-bwx secret list
-
-# Get a secret's value
-bwx secret value my_secret_v1
-
-# Tag all secrets for a release
-bwx tag project 2026.06.24.01
 ```
 
-## Prerequisites
+Add to your shell profile (`~/.bashrc` or `~/.zshrc`):
+
+```bash
+export PATH="${HOME}/.local/lib/bwx/bin:${PATH}"
+eval "$(bwx completion bash)"    # tab completion (bash)
+# eval "$(bwx completion zsh)"   # tab completion (zsh)
+```
+
+### As a vendor dependency
+
+For projects that consume `bwx` as a library:
+
+```bash
+git clone --branch v1.0.0 https://github.com/1121citrus/bwx.git vendor/bwx
+export PATH="${PWD}/vendor/bwx/bin:${PATH}"
+```
+
+### Prerequisites
 
 - **Bash 4.0+** (macOS ships 3.2 — install via
   [Homebrew](https://brew.sh/): `brew install bash`)
@@ -37,6 +39,17 @@ bwx tag project 2026.06.24.01
   installed; `bwx` wraps them transparently via Docker containers
 
 No other tools need to be installed.
+
+## Quick start
+
+```bash
+export BWS_ACCESS_TOKEN="your-token-here"
+
+bwx secret list                       # list all secrets
+bwx secret value my_secret_v1         # get a value
+bwx tag project 2026.06.24.01         # tag all secrets for a release
+bwx secret clone my_secret_v1         # clone _v1 → _v2
+```
 
 ## Commands
 
@@ -141,6 +154,13 @@ eval "$(bwx completion bash)"
 # Zsh — add to ~/.zshrc
 eval "$(bwx completion zsh)"
 ```
+
+## Documentation
+
+- [Full subcommand reference](doc/usage.md) — installation options,
+  detailed command docs, note metadata conventions, caching, env vars
+- [Extending bwx](doc/extending.md) — architecture, adding subcommands,
+  adding note properties, testing patterns, code conventions
 
 ## License
 
