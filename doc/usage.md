@@ -121,10 +121,28 @@ List all secrets in a project as JSON.
 
 **Example:**
 
-```bash
-bwx secret list
-bwx secret list --refresh my-project
+```console
+$ bwx secret list
+[
+  {
+    "id": "aaaa-bbbb-cccc-dddd",
+    "key": "secret_key_1",
+    "value": "secret_value_1",
+    "note": "note 1",
+    ...
+  },
+  {
+    "id": "eeee-ffff-gggg-hhhh",
+    "key": "secret_key_2",
+    "value": "secret_value_2",
+    "note": "note 2",
+    ...
+  },
+  ...
+]
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -146,9 +164,21 @@ note, id, and timestamps.
 
 **Example:**
 
-```bash
-bwx secret show tailscale_auth_key_v1
+```console
+$ bwx secret show secret_key_1
+{
+  "id": "aaaa-bbbb-cccc-dddd",
+  "organizationId": "org-1",
+  "projectId": "11111111-1111-1111-1111-111111111111",
+  "key": "secret_key_1",
+  "value": "secret_value_1",
+  "note": "note 1",
+  "creationDate": "2023-01-01T00:00:00Z",
+  "revisionDate": "2023-01-01T00:00:00Z"
+}
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -170,10 +200,15 @@ or assigning to a variable.
 
 **Example:**
 
-```bash
-export TOKEN
-TOKEN=$(bwx secret value github_pat_v1)
+```console
+$ bwx secret value secret_key_1
+secret_value_1
+
+$ export TOKEN
+$ TOKEN=$(bwx secret value secret_key_2)
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -195,9 +230,17 @@ metadata lines (see [Structured note metadata](#structured-note-metadata)).
 
 **Example:**
 
-```bash
-bwx secret note mosquitto_password_v1
+```console
+$ bwx secret note secret_key_1
+note 1
+
+$ bwx secret note secret_key_3
+file: test-secret-1
+note: "A test secret"
+release-tag: test-tag-1
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -218,10 +261,15 @@ Resolve a secret key name to its UUID.
 
 **Example:**
 
-```bash
-bwx secret id mosquitto_password_v1
-# Output: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+```console
+$ bwx secret id secret_key_1
+aaaa-bbbb-cccc-dddd
+
+$ bwx secret id secret_key_3
+iiii-jjjj-kkkk-llll
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -243,10 +291,15 @@ secret by UUID.
 
 **Example:**
 
-```bash
-bwx secret key a1b2c3d4-e5f6-7890-abcd-ef1234567890
-# Output: mosquitto_password_v1
+```console
+$ bwx secret key aaaa-bbbb-cccc-dddd
+secret_key_1
+
+$ bwx secret key eeee-ffff-gggg-hhhh
+secret_key_2
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -269,10 +322,15 @@ UUID-to-name resolution.
 
 **Example:**
 
-```bash
-bwx secret name a1b2c3d4-e5f6-7890-abcd-ef1234567890
-# Output: mosquitto_password_v1
+```console
+$ bwx secret name aaaa-bbbb-cccc-dddd
+secret_key_1
+
+$ bwx secret name iiii-jjjj-kkkk-llll
+secret_key_3
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -295,10 +353,15 @@ Returns empty (exit 0) if no `file:` property is set.
 
 **Example:**
 
-```bash
-bwx secret filename mosquitto_password_v1
-# Output: mosquitto-password
+```console
+$ bwx secret filename secret_key_3
+test-secret-1
+
+$ bwx secret filename secret_key_1
+
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -320,12 +383,16 @@ and deduplicated.
 
 **Example:**
 
-```bash
-bwx secret tags mosquitto_password_v1
-# Output:
-# 2026.06.01.01
-# 2026.06.24.01
+```console
+$ bwx secret tags secret_key_3
+test-tag-1
+
+$ bwx secret tags secret_key_6
+tag-a
+tag-b
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -352,9 +419,18 @@ to `bwx secret list` when only the names are needed.
 
 **Example:**
 
-```bash
-bwx secret ls my-project
+```console
+$ bwx secret ls
+secret_key_1
+secret_key_2
+secret_key_3
+secret_key_4
+secret_key_5
+secret_key_6
+secret_key_7
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -390,15 +466,19 @@ refreshed.
 
 **Example:**
 
-```bash
-bwx secret create mqtt_broker_password_v1 "s3cret" \
+```console
+$ bwx secret create mqtt_broker_password_v1 "s3cret" \
     --file mosquitto-password \
     --note "MQTT broker authentication" \
     --release-tag 2026.06.24.01
+[INFO] Created secret mqtt_broker_password_v1
 
-bwx secret create tls_cert_v1 --from-file ./cert.pem \
+$ bwx secret create tls_cert_v1 --from-file ./cert.pem \
     --file tls-cert.pem
+[INFO] Created secret tls_cert_v1
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -424,13 +504,15 @@ original.
 
 **Example:**
 
-```bash
-# Clone api_key_v1 -> api_key_v2 with the same value
-bwx secret clone api_key_v1
+```console
+$ bwx secret clone secret_key_1
+[INFO] Cloned secret_key_1 -> secret_key_2
 
-# Clone api_key_v2 -> api_key_v3 with a new value
-bwx secret clone api_key_v2 "new-rotated-value"
+$ bwx secret clone secret_key_2 "new-rotated-value"
+[INFO] Cloned secret_key_2 -> secret_key_3
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -460,10 +542,15 @@ reads from a file with `--from-file`. Refreshes the cache after update.
 
 **Example:**
 
-```bash
-bwx secret set value api_key_v1 "new-value"
-bwx secret set value tls_key_v1 --from-file ./new-key.pem
+```console
+$ bwx secret set value secret_key_1 "new_password"
+[INFO] Updated value for secret_key_1
+
+$ bwx secret set value secret_key_2 --from-file ./new-key.pem
+[INFO] Updated value for secret_key_2
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -494,11 +581,14 @@ content. Refreshes the cache after update.
 
 **Example:**
 
-```bash
-bwx secret set note api_key_v1 "file: api-key
+```console
+$ bwx secret set note secret_key_1 "file: api-key
 note: rotated 2026-06-24
 release-tag: 2026.06.24.01"
+[INFO] Updated note for secret_key_1
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -527,9 +617,12 @@ Rename the key of an existing secret. Refreshes the cache after update.
 
 **Example:**
 
-```bash
-bwx secret set key old_name_v1 new_name_v1
+```console
+$ bwx secret set key secret_key_1 secret_key_1_renamed
+[INFO] Updated key for secret_key_1
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -553,9 +646,12 @@ other metadata (release tags, notes, expires) is preserved.
 
 **Example:**
 
-```bash
-bwx secret set filename mqtt_cert_v1 mosquitto-cert.pem
+```console
+$ bwx secret set filename secret_key_3 mosquitto-cert.pem
+[INFO] Updated filename for secret_key_3
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -581,10 +677,25 @@ List all projects as JSON.
 
 **Example:**
 
-```bash
-bwx project list
-bwx project list --refresh
+```console
+$ bwx project list
+[
+  {
+    "id": "11111111-1111-1111-1111-111111111111",
+    "name": "test-project",
+    "organizationId": "org-1",
+    "createdAt": "2023-01-01T00:00:00Z",
+    "updatedAt": "2023-01-01T00:00:00Z"
+  },
+  {
+    "id": "22222222-2222-2222-2222-222222222222",
+    "name": "other-project",
+    ...
+  }
+]
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -604,9 +715,18 @@ Print the full JSON metadata for a single project.
 
 **Example:**
 
-```bash
-bwx project show my-project
+```console
+$ bwx project show test-project
+{
+  "id": "11111111-1111-1111-1111-111111111111",
+  "name": "test-project",
+  "organizationId": "org-1",
+  "createdAt": "2023-01-01T00:00:00Z",
+  "updatedAt": "2023-01-01T00:00:00Z"
+}
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -626,10 +746,15 @@ Resolve a project name to its UUID.
 
 **Example:**
 
-```bash
-bwx project id my-project
-# Output: f0e1d2c3-b4a5-6789-0abc-def123456789
+```console
+$ bwx project id test-project
+11111111-1111-1111-1111-111111111111
+
+$ bwx project id other-project
+22222222-2222-2222-2222-222222222222
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -649,10 +774,15 @@ Resolve a project UUID to its human-readable name.
 
 **Example:**
 
-```bash
-bwx project name f0e1d2c3-b4a5-6789-0abc-def123456789
-# Output: my-project
+```console
+$ bwx project name 11111111-1111-1111-1111-111111111111
+test-project
+
+$ bwx project name 22222222-2222-2222-2222-222222222222
+other-project
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -673,9 +803,13 @@ arguments.
 
 **Example:**
 
-```bash
-bwx project ls
+```console
+$ bwx project ls
+other-project
+test-project
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -692,10 +826,12 @@ session.
 
 **Example:**
 
-```bash
-bwx project default id
-# Output: f0e1d2c3-b4a5-6789-0abc-def123456789
+```console
+$ bwx project default id
+11111111-1111-1111-1111-111111111111
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -710,10 +846,12 @@ Print the name of the default project (the value of
 
 **Example:**
 
-```bash
-bwx project default name
-# Output: my-project
+```console
+$ bwx project default name
+test-project
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -749,12 +887,14 @@ line, sorted.
 
 **Example:**
 
-```bash
-bwx tag list
-# Output:
-# 2026.06.01.01
-# 2026.06.24.01
+```console
+$ bwx tag list
+tag-a
+tag-b
+test-tag-1
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -783,10 +923,17 @@ per line.
 
 **Example:**
 
-```bash
-bwx tag secrets 2026.06.24.01
-# Output: 2026.06.24.01: api_key_v1 mqtt_password_v1 tls_cert_v1
+```console
+$ bwx tag secrets test-tag-1
+test-tag-1: secret_key_3
+
+$ bwx tag secrets
+tag-a: secret_key_6
+tag-b: secret_key_6
+test-tag-1: secret_key_3
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -811,9 +958,12 @@ update.
 
 **Example:**
 
-```bash
-bwx tag add mqtt_password_v1 2026.06.24.01
+```console
+$ bwx tag add secret_key_1 2026.06.24.01
+[INFO] Added tag 2026.06.24.01 to secret_key_1
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -836,9 +986,12 @@ Remove a release tag from a single secret by deleting the matching
 
 **Example:**
 
-```bash
-bwx tag remove mqtt_password_v1 2026.05.01.01
+```console
+$ bwx tag remove secret_key_3 test-tag-1
+[INFO] Removed tag test-tag-1 from secret_key_3
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -870,16 +1023,22 @@ update and performs a single cache refresh at the end.
 
 **Example:**
 
-```bash
-# Tag all secrets in the default project
-bwx tag project 2026.06.24.01
+```console
+$ bwx tag project 2026.06.24.01
+[INFO] Added tag 2026.06.24.01 to secret_key_1
+[INFO] Added tag 2026.06.24.01 to secret_key_2
+[INFO] Added tag 2026.06.24.01 to secret_key_3
+...
 
-# Tag only secrets that have the previous release tag
-bwx tag project 2026.06.24.01 --select-tag 2026.06.01.01
+$ bwx tag project 2026.06.24.01 --select-tag test-tag-1
+[INFO] Added tag 2026.06.24.01 to secret_key_3
 
-# Tag specific secrets
-bwx tag project 2026.06.24.01 api_key_v1 mqtt_password_v1
+$ bwx tag project 2026.06.24.01 secret_key_1 secret_key_2
+[INFO] Added tag 2026.06.24.01 to secret_key_1
+[INFO] Added tag 2026.06.24.01 to secret_key_2
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -911,13 +1070,15 @@ are modified.
 
 **Example:**
 
-```bash
-# Remove an old release tag from all secrets
-bwx tag unproject 2026.05.01.01
+```console
+$ bwx tag unproject test-tag-1
+[INFO] Removed tag test-tag-1 from secret_key_3
 
-# Remove from specific secrets only
-bwx tag unproject 2026.05.01.01 api_key_v1
+$ bwx tag unproject tag-b secret_key_6
+[INFO] Removed tag tag-b from secret_key_6
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -933,10 +1094,20 @@ All arguments are forwarded without modification. Useful for accessing
 
 **Example:**
 
-```bash
-bwx raw secret get a1b2c3d4-e5f6-7890-abcd-ef1234567890 --output json
-bwx raw project list --output json
+```console
+$ bwx raw secret get aaaa-bbbb-cccc-dddd --output json
+{
+  "id": "aaaa-bbbb-cccc-dddd",
+  "key": "secret_key_1",
+  "value": "secret_value_1",
+  ...
+}
+
+$ bwx raw project list --output json
+[...]
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
@@ -959,6 +1130,8 @@ eval "$(bwx completion bash)"
 # Zsh -- add to ~/.zshrc
 eval "$(bwx completion zsh)"
 ```
+
+[**↑ Contents**](#bwx-subcommand-reference)
 
 ---
 
