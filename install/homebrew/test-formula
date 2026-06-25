@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+
+# test-formula — validate the Homebrew formula using a Docker container.
+#
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# SYNOPSIS
+#   test-formula [--skip-install] [--help]
+#
+# DESCRIPTION
+#   Runs the Homebrew formula through brew style, brew audit, brew
+#   install --HEAD, and post-install verification inside the
+#   homebrew/brew Docker image.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FORMULA="${SCRIPT_DIR}/Formula/bwx.rb"
+BREW_IMAGE="homebrew/brew:latest"
+
+SKIP_INSTALL=false
+
+log()  { printf "test-formula: %s\n" "$*" >&2; }
+pass() { printf "  PASS  %s\n" "$*" >&2; }
+fail() { printf "  FAIL  %s\n" "$*" >&2; }
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --skip-install) SKIP_INSTALL=true ;;
+        --help|-h)
+            printf 'Usage: test-formula [--skip-install] [--help]\n'
+            exit 0 ;;
+        *) printf 'Unknown option: %s\n' "$1" >&2; exit 2 ;;
+    esac
+    shift
+done
+
+[[ -f "${FORMULA}" ]] || { printf 'Formula not found: %s\n' "${FORMULA}" >&2; exit 1; }
+docker info >/dev/null 2>&1 || { printf 'Docker is not running\n' >&2; exit 1; }
+
+failures=0
+
+# Stage 1: brew style
+log "Stage 1: brew style"
+if cat "${FORMULA}" | docker run --rm -i "${BREW_IMAGE}" bash -c '
+    TAP_DIR="$(brew --repository)/Library/Taps/1121citrus/homebrew-bwx/Formula"
+    mkdir -p "${TAP_DIR}"
+    cat > "${TAP_DIR}/bwx.rb"
+    brew style "${TAP_DIR}/bwx.rb" 2>&1 \
+        | grep -v "style is a developer" \
+        | grep -v "developer mode"
+'; then
+    pass "brew style"
+else
+    fail "brew style"
+    (( failures++ ))
+fi
+
+# Stage 2: brew audit
+log "Stage 2: brew audit"
+if cat "${FORMULA}" | docker run --rm -i "${BREW_IMAGE}" bash -c '
+    TAP_DIR="$(brew --repository)/Library/Taps/1121citrus/homebrew-bwx/Formula"
+    mkdir -p "${TAP_DIR}"
+    cat > "${TAP_DIR}/bwx.rb"
+    brew audit --formula --except checksum \
+        1121citrus/bwx/bwx 2>&1
+'; then
+    pass "brew audit"
+else
+    fail "brew audit"
+    (( failures++ ))
+fi
+
+# Stage 3: brew install --HEAD
+if [[ "${SKIP_INSTALL}" == true ]]; then
+    log "Stage 3: skipped (--skip-install)"
+else
+    log "Stage 3: brew install --HEAD"
+    if cat "${FORMULA}" | docker run --rm -i "${BREW_IMAGE}" bash -c '
+        TAP_DIR="$(brew --repository)/Library/Taps/1121citrus/homebrew-bwx/Formula"
+        mkdir -p "${TAP_DIR}"
+
+        sed -e "/^  url /d" -e "/^  sha256 /d" > "${TAP_DIR}/bwx.rb"
+
+        export HOMEBREW_NO_AUTO_UPDATE=1
+        export HOMEBREW_NO_ENV_HINTS=1
+
+        brew install --HEAD 1121citrus/bwx/bwx 2>&1
+
+        echo "--- post-install verification ---"
+
+        INSTALLED="$(brew --prefix)/bin/bwx"
+
+        if [[ ! -x "${INSTALLED}" ]]; then
+            echo "FAIL: bwx not found or not executable" >&2
+            exit 1
+        fi
+
+        version_out=$(/bin/bash "${INSTALLED}" --version 2>&1)
+        echo "PASS: --version: ${version_out}"
+
+        help_out=$(/bin/bash "${INSTALLED}" --help 2>&1)
+        if [[ "${help_out}" == *"secret"* && "${help_out}" == *"project"* ]]; then
+            echo "PASS: --help contains expected families"
+        else
+            echo "FAIL: --help missing expected content" >&2
+            exit 1
+        fi
+
+        comp_out=$(/bin/bash "${INSTALLED}" completion bash 2>&1)
+        if [[ "${comp_out}" == *"complete -F"* ]]; then
+            echo "PASS: completion bash produces complete -F"
+        else
+            echo "FAIL: completion bash missing complete -F" >&2
+            exit 1
+        fi
+    '; then
+        pass "brew install --HEAD + verification"
+    else
+        fail "brew install --HEAD + verification"
+        (( failures++ ))
+    fi
+fi
+
+echo "" >&2
+if [[ "${failures}" -eq 0 ]]; then
+    log "All tests passed"
+    exit 0
+else
+    log "${failures} test(s) failed"
+    exit 1
+fi

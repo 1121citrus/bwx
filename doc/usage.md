@@ -7,7 +7,7 @@ Complete reference for `bwx` 1.0.0, a Bitwarden Secrets Manager extended CLI.
 - [bwx subcommand reference](#bwx-subcommand-reference)
   - [Installation](#installation)
     - [Clone to `~/.local/lib/bwx`](#clone-to-locallibbwx)
-    - [Homebrew (future)](#homebrew-future)
+    - [Homebrew](#homebrew)
     - [Vendor dependency](#vendor-dependency)
   - [Subcommand reference](#subcommand-reference)
     - [`secret` family](#secret-family)
@@ -69,9 +69,19 @@ eval "$(bwx completion bash)"
 Add the `export` and `eval` lines to `~/.bashrc` (or `~/.zshrc` for zsh)
 to make them permanent.
 
-### Homebrew (future)
+### Homebrew
 
-Not yet available. A Homebrew tap is planned for a future release.
+```bash
+brew tap 1121citrus/bwx https://github.com/1121citrus/bwx
+brew install bwx
+eval "$(bwx completion bash)"
+```
+
+Or install from a local clone:
+
+```bash
+brew install --formula ./install/homebrew/Formula/bwx.rb
+```
 
 ### Vendor dependency
 
