@@ -81,18 +81,18 @@ BWX="${BWX_ROOT}/bin/bwx"
 }
 
 @test "-- between family and command is consumed" {
-    run "${BWX}" secret -- value --help
-    [[ "${output}" == *"bwx secret value"* ]]
+    run "${BWX}" secret -- get --help
+    [[ "${output}" == *"bwx secret get"* ]]
 }
 
 @test "-- between command and subcommand is consumed" {
-    run "${BWX}" secret set -- value --help
-    [[ "${output}" == *"bwx secret set value"* ]]
+    run "${BWX}" secret -- set --help
+    [[ "${output}" == *"bwx secret set"* ]]
 }
 
 @test "multiple -- between subcommand words are consumed" {
-    run "${BWX}" -- secret -- value --help
-    [[ "${output}" == *"bwx secret value"* ]]
+    run "${BWX}" -- secret -- get --help
+    [[ "${output}" == *"bwx secret get"* ]]
 }
 
 # -- source guard --

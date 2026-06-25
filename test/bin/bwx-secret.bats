@@ -95,39 +95,15 @@ teardown() {
     [[ "${status}" -eq 0 || "${status}" -eq 2 ]]
 }
 
-# -- secret value --
+# -- secret get --
 
-@test "secret value --help exits 0" {
-    run "${BWX}" secret value --help
+@test "secret get --help exits 0 and lists properties" {
+    run "${BWX}" secret get --help
     [[ "${status}" -eq 0 || "${status}" -eq 2 ]]
-}
-
-# -- secret note --
-
-@test "secret note --help exits 0" {
-    run "${BWX}" secret note --help
-    [[ "${status}" -eq 0 || "${status}" -eq 2 ]]
-}
-
-# -- secret filename --
-
-@test "secret filename --help exits 0" {
-    run "${BWX}" secret filename --help
-    [[ "${status}" -eq 0 || "${status}" -eq 2 ]]
-}
-
-# -- secret id --
-
-@test "secret id --help exits 0" {
-    run "${BWX}" secret id --help
-    [[ "${status}" -eq 0 || "${status}" -eq 2 ]]
-}
-
-# -- secret key --
-
-@test "secret key --help exits 0" {
-    run "${BWX}" secret key --help
-    [[ "${status}" -eq 0 || "${status}" -eq 2 ]]
+    [[ "${output}" == *"value"* ]]
+    [[ "${output}" == *"note"* ]]
+    [[ "${output}" == *"filename"* ]]
+    [[ "${output}" == *"tags"* ]]
 }
 
 # -- secret create --
@@ -146,39 +122,20 @@ teardown() {
 
 # -- secret set --
 
-@test "secret set value --help exits 0" {
-    run "${BWX}" secret set value --help
+@test "secret set --help exits 0 and lists properties" {
+    run "${BWX}" secret set --help
     [[ "${status}" -eq 0 || "${status}" -eq 2 ]]
-}
-
-@test "secret set note --help exits 0" {
-    run "${BWX}" secret set note --help
-    [[ "${status}" -eq 0 || "${status}" -eq 2 ]]
-}
-
-@test "secret set key --help exits 0" {
-    run "${BWX}" secret set key --help
-    [[ "${status}" -eq 0 || "${status}" -eq 2 ]]
-}
-
-@test "secret set filename --help exits 0" {
-    run "${BWX}" secret set filename --help
-    [[ "${status}" -eq 0 || "${status}" -eq 2 ]]
+    [[ "${output}" == *"value"* ]]
+    [[ "${output}" == *"note"* ]]
+    [[ "${output}" == *"key"* ]]
+    [[ "${output}" == *"filename"* ]]
 }
 
 # -- help for every secret subcommand --
 
 @test "all secret subcommands accept --help" {
-    for cmd in clone create filename id key list ls name note show tags value; do
+    for cmd in clone create delete get list ls set show; do
         run "${BWX}" secret "${cmd}" --help
-        [[ "${status}" -eq 0 || "${status}" -eq 2 ]] || \
-            return 1
-    done
-}
-
-@test "all secret set subcommands accept --help" {
-    for cmd in filename key note value; do
-        run "${BWX}" secret set "${cmd}" --help
         [[ "${status}" -eq 0 || "${status}" -eq 2 ]] || \
             return 1
     done

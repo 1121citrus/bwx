@@ -45,20 +45,11 @@ declare -A _BWX_COMMANDS=(
     [secret/clone]=bwx-secret-clone
     [secret/create]=bwx-create-secret
     [secret/delete]=bwx-secret-delete
-    [secret/filename]=bwx-secret-filename
-    [secret/id]=bwx-secret-id
-    [secret/key]=bwx-secret-key
+    [secret/get]=bwx-secret-get
+    [secret/set]=bwx-secret-set
     [secret/list]=bwx-secret-list
     [secret/ls]=bwx-secrets
-    [secret/name]=bwx-secret-name
-    [secret/note]=bwx-secret-note
-    [secret/set/filename]=bwx-secret-set-filename
-    [secret/set/key]=bwx-secret-set-key
-    [secret/set/note]=bwx-secret-set-note
-    [secret/set/value]=bwx-secret-set-value
     [secret/show]=bwx-secret
-    [secret/tags]=bwx-secret-release-tags
-    [secret/value]=bwx-secret-value
     # project family
     [project/default/id]=bwx-default-project-id
     [project/default/name]=bwx-default-project-name
@@ -314,21 +305,14 @@ Commands:
 Secret commands:
     bwx secret list              List all secrets in a project
     bwx secret show SECRET       Show full secret details
-    bwx secret value SECRET      Get a secret's value
-    bwx secret note SECRET       Get a secret's note
-    bwx secret id SECRET         Get a secret's UUID
-    bwx secret key SECRET        Get a secret's key name
-    bwx secret name SECRET       Get a secret's name
-    bwx secret filename SECRET   Get the file: property from a note
-    bwx secret tags SECRET       List release tags on a secret
+    bwx secret get PROP SECRET   Get a property (value, note, id, key, filename, tags, ...)
+    bwx secret set PROP SECRET V Set a property (value, note, key, filename)
+    bwx secret list              List all secrets in a project
+    bwx secret show SECRET       Show full secret details
     bwx secret ls                List secrets (summary format)
     bwx secret create ...        Create a new secret
     bwx secret clone SECRET      Clone with version increment
     bwx secret delete SECRET     Delete a secret by name or UUID
-    bwx secret set value SECRET VALUE   Set a secret's value
-    bwx secret set note SECRET NOTE     Set a secret's note
-    bwx secret set key SECRET KEY       Set a secret's key name
-    bwx secret set filename SECRET FN   Set the file: note property
 
 Project commands:
     bwx project list             List all projects

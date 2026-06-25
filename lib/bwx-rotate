@@ -105,9 +105,9 @@ _bwx_rotate_one() {
     # Resolve the note to find the provider
     local note provider
     if [[ -n "${project}" ]]; then
-        note="$(bwx-secret-note "${secret}" "${project}" 2>/dev/null)" || note=""
+        note="$(bwx-secret-get note "${secret}" "${project}" 2>/dev/null)" || note=""
     else
-        note="$(bwx-secret-note "${secret}" 2>/dev/null)" || note=""
+        note="$(bwx-secret-get note "${secret}" 2>/dev/null)" || note=""
     fi
 
     provider="$(printf '%s' "${note}" \
@@ -157,9 +157,9 @@ _bwx_rotate_one() {
     # Update BWS
     info "Updating BWS secret ${secret}"
     if [[ -n "${project}" ]]; then
-        bwx-secret-set-value "${secret}" "${PROVIDER_VALUE}" "${project}"
+        bwx-secret-set value "${secret}" "${PROVIDER_VALUE}" "${project}"
     else
-        bwx-secret-set-value "${secret}" "${PROVIDER_VALUE}"
+        bwx-secret-set value "${secret}" "${PROVIDER_VALUE}"
     fi
 
     # Rebuild the note: preserve existing fields, update expires:
@@ -184,9 +184,9 @@ _bwx_rotate_one() {
     new_note+=$'\n'"provider: ${provider}"
 
     if [[ -n "${project}" ]]; then
-        bwx-secret-set-note "${secret}" "${new_note}" "${project}"
+        bwx-secret-set note "${secret}" "${new_note}" "${project}"
     else
-        bwx-secret-set-note "${secret}" "${new_note}"
+        bwx-secret-set note "${secret}" "${new_note}"
     fi
 
     info "${secret} rotated successfully (expires ${expires_date})"

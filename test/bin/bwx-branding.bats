@@ -18,8 +18,8 @@ BWX="${BWX_ROOT}/bin/bwx"
     [[ "${output}" != *"bws-"* ]]
 }
 
-@test "secret value help says bwx not bws" {
-    run "${BWX}" secret value --help
+@test "secret get value help says bwx not bws" {
+    run "${BWX}" secret get --help
     [[ "${output}" != *"bws-"* ]]
 }
 
@@ -57,9 +57,9 @@ BWX="${BWX_ROOT}/bin/bwx"
 # Verify all 28 subcommand help outputs in a loop
 @test "no subcommand help contains bws- prefix" {
     local cmds=(
-        "secret list" "secret show" "secret value" "secret note"
-        "secret id" "secret key" "secret name" "secret filename"
-        "secret tags" "secret ls" "secret create" "secret clone"
+        "secret list" "secret show" "secret get value" "secret get note"
+        "secret get id" "secret get key" "secret get name" "secret get filename"
+        "secret get tags" "secret ls" "secret create" "secret clone"
         "secret set value" "secret set note" "secret set key"
         "secret set filename"
         "project list" "project show" "project id" "project name"

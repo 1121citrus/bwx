@@ -41,10 +41,10 @@ BWX="${BWX_ROOT}/bin/bwx"
     run "${BWX}" secret bogus
     [[ "${status}" -eq 2 ]]
     [[ "${output}" == *"unknown command: bogus"* ]]
-    [[ "${output}" == *"clone"* ]]
-    [[ "${output}" == *"list"* ]]
+    [[ "${output}" == *"get"* ]]
     [[ "${output}" == *"set"* ]]
-    [[ "${output}" == *"value"* ]]
+    [[ "${output}" == *"list"* ]]
+    [[ "${output}" == *"show"* ]]
 }
 
 @test "unknown project subcommand shows project commands" {
@@ -61,14 +61,9 @@ BWX="${BWX_ROOT}/bin/bwx"
     [[ "${output}" == *"remove"* ]]
 }
 
-@test "unknown secret set subcommand shows set commands" {
-    run "${BWX}" secret set bogus
-    [[ "${status}" -eq 2 ]]
-    [[ "${output}" == *"secret set"* ]]
-    [[ "${output}" == *"filename"* ]]
-    [[ "${output}" == *"key"* ]]
-    [[ "${output}" == *"note"* ]]
-    [[ "${output}" == *"value"* ]]
+@test "secret set with unknown property exits non-zero" {
+    run "${BWX}" secret set bogus my-secret my-value
+    [[ "${status}" -ne 0 ]]
 }
 
 @test "unknown project default subcommand shows default commands" {
@@ -77,12 +72,6 @@ BWX="${BWX_ROOT}/bin/bwx"
     [[ "${output}" == *"project default"* ]]
     [[ "${output}" == *"id"* ]]
     [[ "${output}" == *"name"* ]]
-}
-
-@test "unknown secret set subcommand exits 2" {
-    run "${BWX}" secret set bogus
-    [[ "${status}" -eq 2 ]]
-    [[ "${output}" == *"filename key note value"* ]]
 }
 
 @test "unknown project default subcommand exits 2" {
@@ -109,12 +98,11 @@ BWX="${BWX_ROOT}/bin/bwx"
 
 @test "completion bash includes secret subcommands" {
     run "${BWX}" completion bash
-    [[ "${output}" == *"clone"* ]]
+    [[ "${output}" == *"get"* ]]
     [[ "${output}" == *"create"* ]]
     [[ "${output}" == *"list"* ]]
     [[ "${output}" == *"set"* ]]
-    [[ "${output}" == *"value"* ]]
-    [[ "${output}" == *"tags"* ]]
+    [[ "${output}" == *"delete"* ]]
 }
 
 @test "completion bash includes project subcommands" {
@@ -130,11 +118,10 @@ BWX="${BWX_ROOT}/bin/bwx"
     [[ "${output}" == *"unproject"* ]]
 }
 
-@test "completion bash includes nested secret set subcommands" {
+@test "completion bash includes secret get and set" {
     run "${BWX}" completion bash
-    [[ "${output}" == *"filename"* ]]
-    [[ "${output}" == *"key"* ]]
-    [[ "${output}" == *"note"* ]]
+    [[ "${output}" == *"get"* ]]
+    [[ "${output}" == *"set"* ]]
 }
 
 @test "completion bash includes nested project default subcommands" {
@@ -169,15 +156,8 @@ BWX="${BWX_ROOT}/bin/bwx"
 }
 
 @test "all secret subcommands are recognized" {
-    for cmd in clone create filename id key list ls name note show tags value; do
+    for cmd in clone create delete get list ls set show; do
         run "${BWX}" secret "${cmd}" --help
-        [[ "${status}" -eq 0 ]] || [[ "${status}" -eq 2 ]]
-    done
-}
-
-@test "secret set subcommands are recognized" {
-    for cmd in filename key note value; do
-        run "${BWX}" secret set "${cmd}" --help
         [[ "${status}" -eq 0 ]] || [[ "${status}" -eq 2 ]]
     done
 }
