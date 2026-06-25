@@ -27,27 +27,56 @@ BWX="${BWX_ROOT}/bin/bwx"
     [[ "${output}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 }
 
-@test "unknown top-level command exits 2" {
+@test "unknown top-level command shows families" {
     run "${BWX}" bogus
     [[ "${status}" -eq 2 ]]
     [[ "${output}" == *"unknown command: bogus"* ]]
+    [[ "${output}" == *"completion"* ]]
+    [[ "${output}" == *"secret"* ]]
+    [[ "${output}" == *"project"* ]]
+    [[ "${output}" == *"tag"* ]]
 }
 
-@test "unknown secret subcommand exits 2" {
+@test "unknown secret subcommand shows secret commands" {
     run "${BWX}" secret bogus
     [[ "${status}" -eq 2 ]]
     [[ "${output}" == *"unknown command: bogus"* ]]
-    [[ "${output}" == *"Valid commands:"* ]]
+    [[ "${output}" == *"clone"* ]]
+    [[ "${output}" == *"list"* ]]
+    [[ "${output}" == *"set"* ]]
+    [[ "${output}" == *"value"* ]]
 }
 
-@test "unknown project subcommand exits 2" {
+@test "unknown project subcommand shows project commands" {
     run "${BWX}" project bogus
     [[ "${status}" -eq 2 ]]
+    [[ "${output}" == *"default"* ]]
+    [[ "${output}" == *"list"* ]]
 }
 
-@test "unknown tag subcommand exits 2" {
+@test "unknown tag subcommand shows tag commands" {
     run "${BWX}" tag bogus
     [[ "${status}" -eq 2 ]]
+    [[ "${output}" == *"add"* ]]
+    [[ "${output}" == *"remove"* ]]
+}
+
+@test "unknown secret set subcommand shows set commands" {
+    run "${BWX}" secret set bogus
+    [[ "${status}" -eq 2 ]]
+    [[ "${output}" == *"secret set"* ]]
+    [[ "${output}" == *"filename"* ]]
+    [[ "${output}" == *"key"* ]]
+    [[ "${output}" == *"note"* ]]
+    [[ "${output}" == *"value"* ]]
+}
+
+@test "unknown project default subcommand shows default commands" {
+    run "${BWX}" project default bogus
+    [[ "${status}" -eq 2 ]]
+    [[ "${output}" == *"project default"* ]]
+    [[ "${output}" == *"id"* ]]
+    [[ "${output}" == *"name"* ]]
 }
 
 @test "unknown secret set subcommand exits 2" {

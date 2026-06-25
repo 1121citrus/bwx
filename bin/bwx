@@ -35,93 +35,143 @@ for _bwx_lib in "${BWX_ROOT}"/lib/bwx*; do
 done
 unset _bwx_lib
 
-# Subcommand dispatch table: maps "family command" to internal function.
+# Dispatch table: maps space-separated subcommand paths to functions.
+# Key format: "family/command[/subcommand]"
+# To add a subcommand: add one line to this table and implement the
+# function.  Completion and error messages derive from the table
+# automatically.
+declare -A _BWX_COMMANDS=(
+    # secret family
+    [secret/clone]=bwx-secret-clone
+    [secret/create]=bwx-create-secret
+    [secret/filename]=bwx-secret-filename
+    [secret/id]=bwx-secret-id
+    [secret/key]=bwx-secret-key
+    [secret/list]=bwx-secret-list
+    [secret/ls]=bwx-secrets
+    [secret/name]=bwx-secret-name
+    [secret/note]=bwx-secret-note
+    [secret/set/filename]=bwx-secret-set-filename
+    [secret/set/key]=bwx-secret-set-key
+    [secret/set/note]=bwx-secret-set-note
+    [secret/set/value]=bwx-secret-set-value
+    [secret/show]=bwx-secret
+    [secret/tags]=bwx-secret-release-tags
+    [secret/value]=bwx-secret-value
+    # project family
+    [project/default/id]=bwx-default-project-id
+    [project/default/name]=bwx-default-project-name
+    [project/id]=bwx-project-id
+    [project/list]=bwx-project-list
+    [project/ls]=bwx-projects
+    [project/name]=bwx-project-name
+    [project/show]=bwx-project
+    # tag family
+    [tag/add]=bwx-secret-add-release-tag
+    [tag/list]=bwx-release-tags
+    [tag/project]=bwx-tag-project
+    [tag/remove]=bwx-secret-remove-release-tag
+    [tag/secrets]=bwx-release-tag-secrets
+    [tag/unproject]=bwx-untag-project
+    # special
+    [raw]=bws
+    [completion/bash]=_bwx_completion_bash
+    [completion/zsh]=_bwx_completion_zsh
+)
+
+# Dispatch a subcommand by building the lookup key from positional args.
+# Tries 3-word, 2-word, then 1-word keys to support nested subcommands.
 # Args:
-#   $1  family (secret, project, tag, raw, completion)
-#   $2  command within the family
-#   $3+ arguments forwarded to the function
+#   $@ — subcommand words followed by arguments
 # Returns:
 #   Exit code from the dispatched function
 _bwx_dispatch() {
-    local family="${1:-}"
-    local cmd="${2:-}"
-    shift 2 2>/dev/null || true
+    local key fn
 
-    case "${family}" in
-        raw)
-            bws "$@"
-            ;;
-        secret)
-            case "${cmd}" in
-                create)         bwx-create-secret "$@" ;;
-                clone)          bwx-secret-clone "$@" ;;
-                filename)       bwx-secret-filename "$@" ;;
-                id)             bwx-secret-id "$@" ;;
-                key)            bwx-secret-key "$@" ;;
-                list)           bwx-secret-list "$@" ;;
-                ls)             bwx-secrets "$@" ;;
-                name)           bwx-secret-name "$@" ;;
-                note)           bwx-secret-note "$@" ;;
-                show)           bwx-secret "$@" ;;
-                tags)           bwx-secret-release-tags "$@" ;;
-                value)          bwx-secret-value "$@" ;;
-                set)
-                    local subcmd="${1:-}"
-                    shift 2>/dev/null || true
-                    case "${subcmd}" in
-                        filename) bwx-secret-set-filename "$@" ;;
-                        key)      bwx-secret-set-key "$@" ;;
-                        note)     bwx-secret-set-note "$@" ;;
-                        value)    bwx-secret-set-value "$@" ;;
-                        *)        _bwx_usage_error "secret set" "${subcmd}" \
-                                      "filename key note value" ;;
-                    esac
-                    ;;
-                *)  _bwx_usage_error "secret" "${cmd}" \
-                        "clone create filename id key list ls name note set show tags value" ;;
-            esac
-            ;;
-        project)
-            case "${cmd}" in
-                default)
-                    local subcmd="${1:-}"
-                    shift 2>/dev/null || true
-                    case "${subcmd}" in
-                        id)   bwx-default-project-id "$@" ;;
-                        name) bwx-default-project-name "$@" ;;
-                        *)    _bwx_usage_error "project default" "${subcmd}" \
-                                  "id name" ;;
-                    esac
-                    ;;
-                id)             bwx-project-id "$@" ;;
-                list)           bwx-project-list "$@" ;;
-                ls)             bwx-projects "$@" ;;
-                name)           bwx-project-name "$@" ;;
-                show)           bwx-project "$@" ;;
-                *)  _bwx_usage_error "project" "${cmd}" \
-                        "default id list ls name show" ;;
-            esac
-            ;;
-        tag)
-            case "${cmd}" in
-                add)            bwx-secret-add-release-tag "$@" ;;
-                list)           bwx-release-tags "$@" ;;
-                project)        bwx-tag-project "$@" ;;
-                remove)         bwx-secret-remove-release-tag "$@" ;;
-                secrets)        bwx-release-tag-secrets "$@" ;;
-                unproject)      bwx-untag-project "$@" ;;
-                *)  _bwx_usage_error "tag" "${cmd}" \
-                        "add list project remove secrets unproject" ;;
-            esac
-            ;;
-        completion)
-            _bwx_completion "${cmd}" "$@"
-            ;;
-        *)
-            _bwx_usage_error "" "${family}" \
-                "completion project raw secret tag"
-            ;;
-    esac
+    # Try 3-word key: family/cmd/subcmd
+    if [[ $# -ge 3 ]]; then
+        key="${1}/${2}/${3}"
+        fn="${_BWX_COMMANDS[${key}]:-}"
+        if [[ -n "${fn}" ]]; then
+            shift 3
+            "${fn}" "$@"
+            return $?
+        fi
+    fi
+
+    # Try 2-word key: family/cmd
+    if [[ $# -ge 2 ]]; then
+        key="${1}/${2}"
+        fn="${_BWX_COMMANDS[${key}]:-}"
+        if [[ -n "${fn}" ]]; then
+            shift 2
+            "${fn}" "$@"
+            return $?
+        fi
+    fi
+
+    # Try 1-word key: family (for raw)
+    if [[ $# -ge 1 ]]; then
+        key="${1}"
+        fn="${_BWX_COMMANDS[${key}]:-}"
+        if [[ -n "${fn}" ]]; then
+            shift 1
+            "${fn}" "$@"
+            return $?
+        fi
+    fi
+
+    # No match — find the deepest valid prefix and show its subcommands
+    local prefix valid
+
+    # Try 2-word prefix first (e.g., "secret/set")
+    if [[ $# -ge 3 ]]; then
+        prefix="${1}/${2}"
+        valid=$(_bwx_valid_commands "${prefix}")
+        if [[ -n "${valid}" ]]; then
+            _bwx_usage_error "${1} ${2}" "${3}" "${valid}"
+            return $?
+        fi
+    fi
+
+    # Try 1-word prefix (e.g., "secret")
+    if [[ $# -ge 2 ]]; then
+        prefix="${1}"
+        valid=$(_bwx_valid_commands "${prefix}")
+        if [[ -n "${valid}" ]]; then
+            _bwx_usage_error "${1}" "${2}" "${valid}"
+            return $?
+        fi
+    fi
+
+    # Unknown top-level family
+    valid=$(_bwx_valid_commands "")
+    _bwx_usage_error "" "${1:-}" "${valid}"
+}
+
+# List valid subcommands for a prefix by scanning the dispatch table.
+# Args:
+#   $1 — prefix (e.g., "secret", "secret/set", or "" for top-level)
+# Returns:
+#   0; writes space-separated subcommand names to stdout
+_bwx_valid_commands() {
+    local prefix="${1}"
+    local key child
+    local -A seen=()
+    for key in "${!_BWX_COMMANDS[@]}"; do
+        if [[ -z "${prefix}" ]]; then
+            child="${key%%/*}"
+        elif [[ "${key}" == "${prefix}/"* ]]; then
+            local rest="${key#"${prefix}/"}"
+            child="${rest%%/*}"
+        else
+            continue
+        fi
+        seen["${child}"]=1
+    done
+    local result
+    result="$(printf '%s\n' "${!seen[@]}" | sort | tr '\n' ' ')"
+    printf '%s' "${result%% }"
 }
 
 # Print a usage error for an unknown subcommand.
@@ -143,61 +193,78 @@ _bwx_usage_error() {
     return "${EXIT_USAGE:-2}"
 }
 
-# Generate bash or zsh completion definitions.
+# Generate bash completion from the dispatch table.
+# shellcheck disable=SC2016
 # Args:
-#   $1  shell type (bash or zsh)
+#   None
 # Returns:
 #   0; writes completion definition to stdout
-_bwx_completion() {
-    local shell="${1:-bash}"
-    case "${shell}" in
-        bash)
-            cat <<'COMP'
-_bwx_completions() {
-    local cur prev families
-    COMPREPLY=()
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
-    families="completion project raw secret tag"
+_bwx_completion_bash() {
+    local families level1 level2
+    families=$(_bwx_valid_commands "")
 
-    case "${COMP_CWORD}" in
-        1) COMPREPLY=($(compgen -W "${families}" -- "${cur}")) ;;
+    cat <<COMP_HEADER
+_bwx_completions() {
+    local cur prev
+    COMPREPLY=()
+    cur="\${COMP_WORDS[COMP_CWORD]}"
+    prev="\${COMP_WORDS[COMP_CWORD-1]}"
+
+    case "\${COMP_CWORD}" in
+        1) COMPREPLY=(\$(compgen -W "${families}" -- "\${cur}")) ;;
         2)
-            case "${prev}" in
-                secret)     COMPREPLY=($(compgen -W "clone create filename id key list ls name note set show tags value" -- "${cur}")) ;;
-                project)    COMPREPLY=($(compgen -W "default id list ls name show" -- "${cur}")) ;;
-                tag)        COMPREPLY=($(compgen -W "add list project remove secrets unproject" -- "${cur}")) ;;
-                completion) COMPREPLY=($(compgen -W "bash zsh" -- "${cur}")) ;;
+            case "\${prev}" in
+COMP_HEADER
+
+    local fam
+    for fam in ${families}; do
+        level1=$(_bwx_valid_commands "${fam}")
+        printf '                %s) COMPREPLY=($(compgen -W "%s" -- "${cur}")) ;;\n' \
+            "${fam}" "${level1}"
+    done
+
+    cat <<'COMP_L2_HEADER'
             esac
             ;;
         3)
             case "${COMP_WORDS[1]}" in
-                secret)
-                    [[ "${prev}" == "set" ]] && \
-                        COMPREPLY=($(compgen -W "filename key note value" -- "${cur}"))
-                    ;;
-                project)
-                    [[ "${prev}" == "default" ]] && \
-                        COMPREPLY=($(compgen -W "id name" -- "${cur}"))
-                    ;;
+COMP_L2_HEADER
+
+    for fam in ${families}; do
+        level1=$(_bwx_valid_commands "${fam}")
+        for sub in ${level1}; do
+            level2=$(_bwx_valid_commands "${fam}/${sub}")
+            if [[ -n "${level2}" ]]; then
+                printf '                %s)\n' "${fam}"
+                printf '                    [[ "${prev}" == "%s" ]] && \\\n' "${sub}"
+                printf '                        COMPREPLY=($(compgen -W "%s" -- "${cur}"))\n' \
+                    "${level2}"
+                printf '                    ;;\n'
+            fi
+        done
+    done
+
+    cat <<'COMP_FOOTER'
             esac
             ;;
     esac
 }
 complete -F _bwx_completions bwx
-COMP
-            ;;
-        zsh)
-            # shellcheck disable=SC2016
-            printf '# Add to ~/.zshrc: eval "$(bwx completion zsh)"\n'
-            printf 'compdef _bwx bwx\n'
-            printf '_bwx() { _arguments "1:family:(completion project raw secret tag)" }\n'
-            ;;
-        *)
-            printf 'Unsupported shell: %s (use bash or zsh)\n' "${shell}" >&2
-            return "${EXIT_USAGE:-2}"
-            ;;
-    esac
+COMP_FOOTER
+}
+
+# Generate zsh completion.
+# Args:
+#   None
+# Returns:
+#   0; writes completion definition to stdout
+_bwx_completion_zsh() {
+    local families
+    families=$(_bwx_valid_commands "")
+    # shellcheck disable=SC2016
+    printf '# Add to ~/.zshrc: eval "$(bwx completion zsh)"\n'
+    printf 'compdef _bwx bwx\n'
+    printf '_bwx() { _arguments "1:family:(%s)" }\n' "${families}"
 }
 
 # Print top-level usage.
