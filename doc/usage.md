@@ -122,25 +122,18 @@ List all secrets in a project as JSON.
 **Example:**
 
 ```console
-$ bwx secret list
-[
-  {
-    "id": "aaaa-bbbb-cccc-dddd",
-    "key": "secret_key_1",
-    "value": "secret_value_1",
-    "note": "note 1",
-    ...
-  },
-  {
-    "id": "eeee-ffff-gggg-hhhh",
-    "key": "secret_key_2",
-    "value": "secret_value_2",
-    "note": "note 2",
-    ...
-  },
+$ bwx secret list | jq '.[0]'
+{
+  "id": "aaaa-bbbb-cccc-dddd",
+  "key": "secret_key_1",
+  "value": "secret_value_1",
+  "note": "note 1",
   ...
-]
+}
 ```
+
+JSON output is compact by default; pipe through `jq .` to
+pretty-print.
 
 [**↑ Contents**](#bwx-subcommand-reference)
 
@@ -165,18 +158,18 @@ note, id, and timestamps.
 **Example:**
 
 ```console
-$ bwx secret show secret_key_1
+$ bwx secret show secret_key_1 | jq .
 {
   "id": "aaaa-bbbb-cccc-dddd",
-  "organizationId": "org-1",
-  "projectId": "11111111-1111-1111-1111-111111111111",
   "key": "secret_key_1",
   "value": "secret_value_1",
   "note": "note 1",
-  "creationDate": "2023-01-01T00:00:00Z",
-  "revisionDate": "2023-01-01T00:00:00Z"
+  ...
 }
 ```
+
+JSON output is compact by default; pipe through `jq .` to
+pretty-print.
 
 [**↑ Contents**](#bwx-subcommand-reference)
 
@@ -678,22 +671,13 @@ List all projects as JSON.
 **Example:**
 
 ```console
-$ bwx project list
-[
-  {
-    "id": "11111111-1111-1111-1111-111111111111",
-    "name": "test-project",
-    "organizationId": "org-1",
-    "createdAt": "2023-01-01T00:00:00Z",
-    "updatedAt": "2023-01-01T00:00:00Z"
-  },
-  {
-    "id": "22222222-2222-2222-2222-222222222222",
-    "name": "other-project",
-    ...
-  }
-]
+$ bwx project list | jq '.[].name'
+"test-project"
+"other-project"
 ```
+
+JSON output is compact by default; pipe through `jq .` to
+pretty-print.
 
 [**↑ Contents**](#bwx-subcommand-reference)
 
@@ -716,15 +700,12 @@ Print the full JSON metadata for a single project.
 **Example:**
 
 ```console
-$ bwx project show test-project
-{
-  "id": "11111111-1111-1111-1111-111111111111",
-  "name": "test-project",
-  "organizationId": "org-1",
-  "createdAt": "2023-01-01T00:00:00Z",
-  "updatedAt": "2023-01-01T00:00:00Z"
-}
+$ bwx project show test-project | jq .name
+"test-project"
 ```
+
+JSON output is compact by default; pipe through `jq .` to
+pretty-print.
 
 [**↑ Contents**](#bwx-subcommand-reference)
 

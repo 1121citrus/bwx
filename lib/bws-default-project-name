@@ -15,7 +15,7 @@ bws-default-project-name() {
         case "$1" in
             -h|--help)
                 cat <<EOF
-Usage: bws-default-project-name [options]
+Usage: bwx project default name [options]
 
 Print the name of the default default Bitwarden Secrets Manager project.
 

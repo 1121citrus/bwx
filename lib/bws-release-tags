@@ -20,7 +20,7 @@ bws-release-tags() {
                 declare -F bws-default-project-name >/dev/null 2>&1 || \
                     source "${bindir}/bws-default-project-name"
                 cat <<EOF
-Usage: bws-release-tags [OPTIONS] [PROJECT]
+Usage: bwx tag list [OPTIONS] [PROJECT]
 
 Displays the release tags that have been applied to secrets in a project.
 

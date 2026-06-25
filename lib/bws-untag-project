@@ -26,7 +26,7 @@ bws-untag-project() {
                 declare -F bws-default-project-name >/dev/null 2>&1 || \
                     source "${bindir}/bws-default-project-name"
                 cat <<EOF
-Usage: bws-untag-project [OPTIONS] RELEASE_TAG [SECRETS...]
+Usage: bwx tag unproject [OPTIONS] RELEASE_TAG [SECRETS...]
 
 Removes a release tag from specified secrets in a project.
 

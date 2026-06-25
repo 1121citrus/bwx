@@ -19,7 +19,7 @@ bws-projects() {
                 command -v bws-default-project-name >/dev/null 2>&1 || \
                     source "$(dirname "${BASH_SOURCE[0]}")/bws-default-project-name"
                 cat <<EOF
-Usage: bws-projects [options]
+Usage: bwx project ls [options]
 
 Prints a list of all Bitwarden Secrets Manager projects.
 

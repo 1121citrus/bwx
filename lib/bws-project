@@ -18,7 +18,7 @@ bws-project() {
                 command -v bws-default-project-name >/dev/null 2>&1 || \
                     source "$(dirname "${BASH_SOURCE[0]}")/bws-default-project-name"
                 cat <<EOF
-Usage: bws-project [options] [«PROJECT»]
+Usage: bwx project show [options] [«PROJECT»]
 
 Prints the metadata for the specified project. If the «PROJECT»
 is omitted then the UUID of the default project is used.

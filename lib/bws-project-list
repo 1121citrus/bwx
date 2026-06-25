@@ -43,7 +43,7 @@ bws-project-list() {
                 ;;
             -h|--help)
                 cat <<EOF
-Usage: bws-project-list [options]
+Usage: bwx project list [options]
 
 Prints the Bitwarden Secrets Manager project list as JSON.
 

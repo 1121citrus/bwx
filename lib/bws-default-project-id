@@ -16,7 +16,7 @@ bws-default-project-id() {
         case "$1" in
             -h|--help)
                 cat <<EOF
-Usage: bws-default-project-id [options]
+Usage: bwx project default id [options]
 
 Return the UUID of the default default Bitwarden Secrets Manager project.
 

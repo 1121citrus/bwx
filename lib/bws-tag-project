@@ -26,7 +26,7 @@ bws-tag-project() {
                 declare -F bws-default-project-name >/dev/null 2>&1 || \
                     source "${bindir}/bws-default-project-name"
                 cat <<EOF
-Usage: bws-tag-project [OPTIONS] RELEASE_TAG [SECRETS...]
+Usage: bwx tag project [OPTIONS] RELEASE_TAG [SECRETS...]
 
 Adds a release tag to specified secrets in a project.
 

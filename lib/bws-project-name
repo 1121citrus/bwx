@@ -17,7 +17,7 @@ bws-project-name() {
                 command -v bws-default-project-name >/dev/null 2>&1 || \
                     source "$(dirname "${BASH_SOURCE[0]}")/bws-default-project-name"
                 cat <<EOF
-Usage: bws-project-name [options] [PROJECT]
+Usage: bwx project name [options] [PROJECT]
 
 Convert a Bitwarden Secrets Manager project UUID to its human-readable name.
 
