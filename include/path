@@ -1,0 +1,76 @@
+# shellcheck shell=bash
+# Portable path helpers for bwx scripts.
+
+# Return an absolute canonical path, using native tools when available.
+# Args:
+#   $1 — path to resolve
+# Returns:
+#   0 and writes the resolved path to stdout
+_bwx_realpath() {
+    local path="${1:?path required}"
+
+    if command -v realpath >/dev/null 2>&1; then
+        realpath "${path}"
+        return $?
+    fi
+
+    if readlink -f "${path}" >/dev/null 2>&1; then
+        readlink -f "${path}"
+        return $?
+    fi
+
+    if command -v readlink >/dev/null 2>&1; then
+        local seen=0
+        while [[ -L "${path}" && ${seen} -lt 40 ]]; do
+            local link
+            link=$(readlink "${path}")
+            if [[ "${link}" == /* ]]; then
+                path="${link}"
+            else
+                path="$(dirname -- "${path}")/${link}"
+            fi
+            seen=$((seen + 1))
+        done
+    fi
+
+    local dir base
+    if [[ -d "${path}" ]]; then
+        dir="${path}"
+        base=""
+    else
+        dir="$(dirname -- "${path}")"
+        base="$(basename -- "${path}")"
+    fi
+
+    local oldpwd
+    oldpwd="$(pwd)"
+    cd "${dir}" || return 1
+    local resolved
+    resolved="$(pwd -P)"
+    cd "${oldpwd}" || return 1
+
+    if [[ -n "${base}" ]]; then
+        printf '%s/%s
+' "${resolved%/}" "${base}"
+    else
+        printf '%s
+' "${resolved}"
+    fi
+}
+
+# Alias for convenience in scripts.
+bwx-realpath() {
+    _bwx_realpath "$@"
+}
+
+# Return the canonical directory containing a script.
+# Args:
+#   $1 — path to script file (defaults to ${BASH_SOURCE[0]})
+# Returns:
+#   0 and writes the resolved directory path to stdout
+bwx-script-dir() {
+    local script="${1:-${BASH_SOURCE[0]}}"
+    local resolved
+    resolved="$(_bwx_realpath "${script}")" || return 1
+    dirname -- "${resolved}"
+}

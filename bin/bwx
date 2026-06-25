@@ -20,10 +20,35 @@ set -o errtrace
 set -o nounset
 set -o pipefail
 
-BWX_ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+resolve_script_dir() {
+    local source="${BASH_SOURCE[0]}"
+    local target
+    local dir
+
+    while [[ -L "${source}" ]]; do
+        if ! command -v readlink >/dev/null 2>&1; then
+            break
+        fi
+
+        target=$(readlink "${source}") || break
+        if [[ "${target}" == /* ]]; then
+            source="${target}"
+        else
+            dir=$(cd "$(dirname "${source}")" && pwd)
+            source="${dir}/${target}"
+        fi
+    done
+
+    cd "$(dirname "${source}")" && pwd
+}
+
+script_dir="$(resolve_script_dir)"
+source "${script_dir}/../include/path"
+
+BWX_ROOT="$(cd "${script_dir}/.." && pwd)"
 readonly BWX_ROOT
 
-# Source includes: logging, caching, tool wrappers
+# Source includes: logging, caching, tool wrappers, path helpers
 source "${BWX_ROOT}/include/logging"
 source "${BWX_ROOT}/include/bwx-cache"
 source "${BWX_ROOT}/include/tools"
