@@ -72,6 +72,31 @@ BWX="${BWX_ROOT}/bin/bwx"
 
 # -- source guard --
 
+# -- double-dash handling --
+
+@test "-- before family is consumed" {
+    run "${BWX}" -- --help
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"Usage:"* ]]
+}
+
+@test "-- between family and command is consumed" {
+    run "${BWX}" secret -- value --help
+    [[ "${output}" == *"bwx secret value"* ]]
+}
+
+@test "-- between command and subcommand is consumed" {
+    run "${BWX}" secret set -- value --help
+    [[ "${output}" == *"bwx secret set value"* ]]
+}
+
+@test "multiple -- between subcommand words are consumed" {
+    run "${BWX}" -- secret -- value --help
+    [[ "${output}" == *"bwx secret value"* ]]
+}
+
+# -- source guard --
+
 @test "bwx refuses to be sourced" {
     run bash -c "source '${BWX}'"
     [[ "${status}" -ne 0 ]]

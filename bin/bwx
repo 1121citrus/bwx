@@ -86,6 +86,22 @@ declare -A _BWX_COMMANDS=(
 # Returns:
 #   Exit code from the dispatched function
 _bwx_dispatch() {
+    # Consume leading -- between subcommand words.  Only the first
+    # three positional args are subcommand candidates; -- appearing
+    # later is passed through to the target function.
+    local -a head=()
+    local count=0
+    while [[ $# -gt 0 && "${count}" -lt 3 ]]; do
+        if [[ "${1}" == "--" ]]; then
+            shift
+            continue
+        fi
+        head+=("${1}")
+        shift
+        count=$((count + 1))
+    done
+    set -- "${head[@]+"${head[@]}"}" "$@"
+
     local key fn
 
     # Try 3-word key: family/cmd/subcmd
@@ -343,6 +359,9 @@ EOF
 # Returns:
 #   Exit code from dispatched subcommand
 main() {
+    # Strip leading -- (end-of-options marker before subcommand words)
+    while [[ "${1:-}" == "--" ]]; do shift; done
+
     case "${1:-}" in
         -h|--help|help|"")
             _bwx_usage
