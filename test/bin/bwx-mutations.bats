@@ -60,6 +60,34 @@ teardown() { bwx_test_teardown; }
     [[ "${status}" -ne 0 ]]
 }
 
+# -- secret delete --
+
+@test "secret delete deletes a secret by name" {
+    run "${BWX}" secret delete secret_key_1
+    [[ "${status}" -eq 0 ]]
+}
+
+@test "secret delete deletes a secret by UUID" {
+    run "${BWX}" secret delete aaaa-bbbb-cccc-dddd
+    [[ "${status}" -eq 0 ]]
+}
+
+@test "secret delete requires a secret argument" {
+    run "${BWX}" secret delete
+    [[ "${status}" -ne 0 ]]
+}
+
+@test "secret delete fails for unknown secret" {
+    run "${BWX}" secret delete nonexistent_secret
+    [[ "${status}" -ne 0 ]]
+}
+
+@test "secret delete --help shows usage" {
+    run "${BWX}" secret delete --help
+    [[ "${output}" == *"bwx secret delete"* ]]
+    [[ "${output}" != *"bws-"* ]]
+}
+
 # -- secret create --
 
 @test "secret create creates a new secret" {

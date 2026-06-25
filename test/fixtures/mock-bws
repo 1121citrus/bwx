@@ -127,6 +127,11 @@ if [[ "$1" == "secret" && "$2" == "get" ]]; then
         exit 0
     fi
 
+if [[ "$1" == "secret" && "$2" == "delete" ]]; then
+    # secret delete <id> — simulate success
+    exit 0
+fi
+
 if [[ "$1" == "secret" && "$2" == "edit" ]]; then
     # secret edit <id> [options] — simulate success, echo the id
     echo "{\"id\":\"$3\",\"key\":\"edited\"}"

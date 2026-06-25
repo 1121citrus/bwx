@@ -15,15 +15,61 @@ permissions:
   contents: read
 
 jobs:
-  ci:
-    uses: 1121citrus/shared-github-workflows/.github/workflows/pipeline.yml@v1
-    with:
-      image: 1121citrus/bwx
-      test-mode: bats
-      test-bats-files: |
-        test/bin/bwx.bats
-        test/bin/bwx-secret.bats
-        test/bin/bwx-project.bats
-        test/bin/bwx-tag.bats
-      test-extra-packages: jq
-    secrets: inherit
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    name: Lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ShellCheck
+        run: |
+          docker run --rm \
+              -v "$PWD:/mnt" \
+              -w /mnt \
+              koalaman/shellcheck:v0.11.0 \
+              bin/bwx \
+              include/logging \
+              include/bwx-cache \
+              include/tools \
+              include/http
+
+      - name: Markdownlint
+        run: |
+          docker run --rm \
+              -v "$PWD:/mnt" \
+              -w /mnt \
+              ghcr.io/igorshubovych/markdownlint-cli:v0.48.0 \
+              "**/*.md"
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    name: Unit Tests (BATS)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bats jq
+
+      - name: Run BATS tests
+        run: |
+          bats --tap --recursive test/bin/ \
+              > /tmp/bats-bwx.tap 2>&1 || true
+          awk '/^not ok/{print; c=1; next} c&&/^# /{print; next} {c=0}' \
+              /tmp/bats-bwx.tap
+          total=$(grep -cE '^(not )?ok ' /tmp/bats-bwx.tap || true)
+          failed=$(grep -c '^not ok' /tmp/bats-bwx.tap || true)
+          printf '\nTests: %d passed, %d failed\n' \
+              "$((total - failed))" "$failed"
+          [[ "$failed" -eq 0 ]]
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bats-logs-${{ github.run_id }}
+          path: /tmp/bats-bwx.tap
+          retention-days: 14

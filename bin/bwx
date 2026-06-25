@@ -44,6 +44,7 @@ declare -A _BWX_COMMANDS=(
     # secret family
     [secret/clone]=bwx-secret-clone
     [secret/create]=bwx-create-secret
+    [secret/delete]=bwx-secret-delete
     [secret/filename]=bwx-secret-filename
     [secret/id]=bwx-secret-id
     [secret/key]=bwx-secret-key
@@ -316,6 +317,7 @@ Secret commands:
     bwx secret ls                List secrets (summary format)
     bwx secret create ...        Create a new secret
     bwx secret clone SECRET      Clone with version increment
+    bwx secret delete SECRET     Delete a secret by name or UUID
     bwx secret set value SECRET VALUE   Set a secret's value
     bwx secret set note SECRET NOTE     Set a secret's note
     bwx secret set key SECRET KEY       Set a secret's key name
