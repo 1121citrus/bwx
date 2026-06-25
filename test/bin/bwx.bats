@@ -97,10 +97,65 @@ BWX="${BWX_ROOT}/bin/bwx"
     [[ "${output}" == *"complete -F"* ]]
 }
 
+@test "completion bash includes all top-level families" {
+    run "${BWX}" completion bash
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"completion"* ]]
+    [[ "${output}" == *"project"* ]]
+    [[ "${output}" == *"raw"* ]]
+    [[ "${output}" == *"secret"* ]]
+    [[ "${output}" == *"tag"* ]]
+}
+
+@test "completion bash includes secret subcommands" {
+    run "${BWX}" completion bash
+    [[ "${output}" == *"clone"* ]]
+    [[ "${output}" == *"create"* ]]
+    [[ "${output}" == *"list"* ]]
+    [[ "${output}" == *"set"* ]]
+    [[ "${output}" == *"value"* ]]
+    [[ "${output}" == *"tags"* ]]
+}
+
+@test "completion bash includes project subcommands" {
+    run "${BWX}" completion bash
+    [[ "${output}" == *"default"* ]]
+    [[ "${output}" == *"show"* ]]
+}
+
+@test "completion bash includes tag subcommands" {
+    run "${BWX}" completion bash
+    [[ "${output}" == *"add"* ]]
+    [[ "${output}" == *"remove"* ]]
+    [[ "${output}" == *"unproject"* ]]
+}
+
+@test "completion bash includes nested secret set subcommands" {
+    run "${BWX}" completion bash
+    [[ "${output}" == *"filename"* ]]
+    [[ "${output}" == *"key"* ]]
+    [[ "${output}" == *"note"* ]]
+}
+
+@test "completion bash includes nested project default subcommands" {
+    run "${BWX}" completion bash
+    # project default has id and name
+    [[ "${output}" == *'"default"'* ]]
+    [[ "${output}" == *"id"* ]]
+    [[ "${output}" == *"name"* ]]
+}
+
 @test "completion zsh outputs compdef" {
     run "${BWX}" completion zsh
     [[ "${status}" -eq 0 ]]
     [[ "${output}" == *"compdef"* ]]
+}
+
+@test "completion zsh includes families" {
+    run "${BWX}" completion zsh
+    [[ "${output}" == *"secret"* ]]
+    [[ "${output}" == *"project"* ]]
+    [[ "${output}" == *"tag"* ]]
 }
 
 @test "completion unknown shell exits 2" {
