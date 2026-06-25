@@ -18,67 +18,67 @@ bin/bwx
   source lib/bwx-*              # all library functions (glob)
 ```
 
-Dispatch maps the user-facing command syntax to internal function calls.
-`bwx <family> <command>` becomes a `bws-<function>()` call inside
-`_bwx_dispatch()`:
+Dispatch is table-driven.  The associative array `_BWX_COMMANDS` maps
+slash-delimited subcommand paths to function names:
 
-| User types | Dispatches to |
-|---|---|
-| `bwx secret value my-key` | `bws-secret-value my-key` |
-| `bwx secret set filename my-key config.env` | `bws-secret-set-filename my-key config.env` |
-| `bwx tag add my-key v2.1.0` | `bws-secret-add-release-tag my-key v2.1.0` |
-| `bwx project default id` | `bws-default-project-id` |
+```bash
+declare -A _BWX_COMMANDS=(
+    [secret/value]=bwx-secret-value
+    [secret/set/filename]=bwx-secret-set-filename
+    [tag/add]=bwx-secret-add-release-tag
+    [project/default/id]=bwx-default-project-id
+    ...
+)
+```
 
-Internal function names use the `bws-*` prefix. Because the functions are
-sourced (not placed on PATH), they do not pollute the shell namespace of
-callers.
+`_bwx_dispatch` tries 3-word, 2-word, then 1-word keys against the
+table.  Error messages and tab completion are derived from the same
+table automatically via `_bwx_valid_commands`, which scans the keys
+by prefix.
 
-Tab completion is generated from the dispatch table inside
-`_bwx_completion()`, which emits a `complete -F` definition for bash and a
-`compdef` definition for zsh.
+Adding a subcommand requires **one line** in the table plus the
+function implementation.  No case statement to edit, no completion
+word list to update.
 
 ## Adding a new subcommand
 
 ### 1. Create the library file
 
-Create `lib/bwx-<name>` containing a single function `bws-<name>()`.
+Create `lib/bwx-<name>` containing a single function `bwx-<name>()`.
 The file must:
 
-- Begin with the `# shellcheck disable=SC1090,SC1091` directive.
-- Contain exactly one top-level function whose name matches the filename.
+- Begin with `# shellcheck shell=bash`.
+- Contain exactly one top-level function whose name matches the filename
+  (prefixed with `bwx-`).
 - Set strict mode at the top of the function body.
 - Parse `--help` and `--log-level` options before positional arguments.
-- Lazy-source any dependency functions it needs (logging, other lib files).
-- End with the standalone-invocation guard.
+- Lazy-source any dependency functions it needs (other lib files).
+  Logging is already sourced by `bin/bwx` before lib files load.
 
-### 2. Add the dispatch entry
+### 2. Add the dispatch table entry
 
-Open `bin/bwx` and add a line to the appropriate `case` block inside
-`_bwx_dispatch()`. If the new command belongs to an existing family (e.g.,
-`secret`), add it alphabetically within that family's case block. Update
-the wildcard `*` error list to include the new command name.
-
-For example, adding `bwx secret owner`:
+Add one line to the `_BWX_COMMANDS` associative array in `bin/bwx`:
 
 ```bash
-# In _bwx_dispatch(), inside case "${cmd}" under "secret)"
-owner)          bws-secret-owner "$@" ;;
+declare -A _BWX_COMMANDS=(
+    ...
+    [secret/owner]=bwx-secret-owner       # ← new entry
+    ...
+)
 ```
 
-Update the `*` branch's valid-command list:
+That's it.  Error messages and tab completion are derived from the
+table automatically — no word lists to edit, no case branches to add.
 
-```bash
-*)  _bwx_usage_error "secret" "${cmd}" \
-        "clone create filename id key list ls name note owner set show tags value" ;;
-```
+### 3. Completion — automatic
 
-### 3. Add completion support
+Tab completion derives from the dispatch table.  No manual editing
+needed.  Verify with:
 
-In `_bwx_completion()`, add the new command to the appropriate `compgen -W`
-word list. For a `secret` family command:
-
-```bash
-secret) COMPREPLY=($(compgen -W "clone create filename id key list ls name note owner set show tags value" -- "${cur}")) ;;
+```console
+$ eval "$(bwx completion bash)"
+$ bwx secret <TAB>
+clone  create  filename  id  key  list  ls  name  note  owner  set  show  tags  value
 ```
 
 ### 4. Add usage text
@@ -115,7 +115,7 @@ Library file `lib/bwx-secret-owner`:
 #   PROJECT  Project name or UUID (optional; defaults to BWX_DEFAULT_PROJECT)
 # Returns:
 #   0 and writes the owner value to stdout, or empty if no owner is set
-bws-secret-owner() {
+bwx-secret-owner() {
     set -o errexit -o errtrace -o nounset -o pipefail
     local _debug="${DEBUG:-false}"
     [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
@@ -124,16 +124,16 @@ bws-secret-owner() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -h|--help)
-                declare -F bws-default-project-name >/dev/null 2>&1 || \
-                    source "$(dirname "${BASH_SOURCE[0]}")/bws-default-project-name"
+                declare -F bwx-default-project-name >/dev/null 2>&1 || \
+                    source "$(dirname "${BASH_SOURCE[0]}")/bwx-default-project-name"
                 cat <<EOF
-Usage: bws-secret-owner [options] SECRET [PROJECT]
+Usage: bwx secret owner [options] SECRET [PROJECT]
 
 Returns the 'owner' property from a Bitwarden Secrets Manager secret.
 
 Arguments:
   SECRET       Secret name or UUID (required)
-  PROJECT      Project name or UUID (optional) [default: $(bws-default-project-name)]
+  PROJECT      Project name or UUID (optional) [default: $(bwx-default-project-name)]
 
 Options:
   -h, --help   Display this help message
@@ -167,7 +167,7 @@ EOF
     # Lazy-source dependencies
     declare -F error trace >/dev/null 2>&1 || \
         source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
-    for cmd in bws-default-project-name bws-secret-list jq; do
+    for cmd in bwx-default-project-name bwx-secret-list jq; do
         declare -F "${cmd}" >/dev/null 2>&1 || \
             source "$(dirname "${BASH_SOURCE[0]}")/${cmd}"
     done
@@ -178,7 +178,7 @@ EOF
 
     local project="${1:-}"
     if [[ -z "${project}" ]]; then
-        project=$(bws-default-project-name)
+        project=$(bwx-default-project-name)
     fi
     shift || :
     [[ -n "${project}" ]] || \
@@ -187,7 +187,7 @@ EOF
 
     # Retrieve the note and extract the owner property
     local note
-    note=$(bws-secret-list ${refresh_flag} "${project}" \
+    note=$(bwx-secret-list ${refresh_flag} "${project}" \
         | jq -r --arg id "${secret}" \
             '.[] | select(.key == $id or .id == $id) | .note // ""' \
         || :)
@@ -204,7 +204,7 @@ EOF
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    bws-secret-owner "$@"
+    bwx-secret-owner "$@"
 fi
 ```
 
@@ -256,10 +256,10 @@ own lib file:
 
 | Purpose | Filename | Function |
 |---|---|---|
-| Getter | `lib/bwx-secret-owner` | `bws-secret-owner()` |
-| Setter | `lib/bwx-secret-set-owner` | `bws-secret-set-owner()` |
+| Getter | `lib/bwx-secret-owner` | `bwx-secret-owner()` |
+| Setter | `lib/bwx-secret-set-owner` | `bwx-secret-set-owner()` |
 
-The getter reads the note via the cached secret list (`bws-secret-list`). The
+The getter reads the note via the cached secret list (`bwx-secret-list`). The
 setter mutates the note through the BWS API (`bws secret edit ... --note`)
 and refreshes the cache afterward.
 
@@ -286,7 +286,7 @@ Complete setter for `owner:` in `lib/bwx-secret-set-owner`:
 #   PROJECT  Project name or UUID (optional; defaults to BWX_DEFAULT_PROJECT)
 # Returns:
 #   0 on success; exits non-zero on failure
-bws-secret-set-owner() {
+bwx-secret-set-owner() {
     set -o errexit -o errtrace -o nounset -o pipefail
     local _debug="${DEBUG:-false}"
     [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
@@ -294,17 +294,17 @@ bws-secret-set-owner() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -h|--help)
-                declare -F bws-default-project-name >/dev/null 2>&1 || \
-                    source "$(dirname "${BASH_SOURCE[0]}")/bws-default-project-name"
+                declare -F bwx-default-project-name >/dev/null 2>&1 || \
+                    source "$(dirname "${BASH_SOURCE[0]}")/bwx-default-project-name"
                 cat <<EOF
-Usage: bws-secret-set-owner SECRET OWNER [PROJECT]
+Usage: bwx-secret-set-owner SECRET OWNER [PROJECT]
 
 Set the owner metadata property for a Bitwarden Secrets Manager secret.
 
 Arguments:
   SECRET      Secret name or UUID (required)
   OWNER       New owner value (required)
-  PROJECT     Project name or UUID (optional) [default: $(bws-default-project-name)]
+  PROJECT     Project name or UUID (optional) [default: $(bwx-default-project-name)]
 
 Options:
   -h, --help  Display this help message
@@ -332,7 +332,7 @@ EOF
     # Lazy-source dependencies
     declare -F error trace >/dev/null 2>&1 || \
         source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
-    for cmd in bws bws-project-id bws-project-name bws-secret-id; do
+    for cmd in bwx-project-id bwx-project-name bwx-secret-id; do
         declare -F "${cmd}" >/dev/null 2>&1 || \
             source "$(dirname "${BASH_SOURCE[0]}")/${cmd}"
     done
@@ -343,13 +343,13 @@ EOF
     local owner="${2:-}"
     [[ -n "${owner}" ]] || error "${EXIT_USAGE}" "Owner value required"
     local project="${3:-}"
-    project="$(bws-project-id "${project}")"
+    project="$(bwx-project-id "${project}")"
     local project_name
-    project_name=$(bws-project-name "${project}")
+    project_name=$(bwx-project-name "${project}")
 
     # Resolve secret UUID
     local secret_uuid
-    secret_uuid=$(bws-secret-id "${secret}" "${project}" || :)
+    secret_uuid=$(bwx-secret-id "${secret}" "${project}" || :)
     if [[ -z "${secret_uuid:+x}" ]]; then
         error "${EXIT_NOTFOUND}" \
             "Secret '${secret}' not found in project ${project_name}"
@@ -375,7 +375,7 @@ EOF
     fi
 
     # Refresh the cached secret list
-    if bws-secret-list --refresh "${project}" >/dev/null 2>&1; then
+    if bwx-secret-list --refresh "${project}" >/dev/null 2>&1; then
         local secret_list_project="${project_name^^}"
         secret_list_project="${secret_list_project//-/_}"
         local secret_list_var="BWS_PROJECT_SECRET_LIST_${secret_list_project}"
@@ -389,7 +389,7 @@ EOF
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    bws-secret-set-owner "$@"
+    bwx-secret-set-owner "$@"
 fi
 ```
 
@@ -402,10 +402,10 @@ After creating both lib files, update `bin/bwx` in three places:
 
 ```bash
 # Under secret)
-owner)          bws-secret-owner "$@" ;;
+owner)          bwx-secret-owner "$@" ;;
 
 # Under secret set)
-owner)    bws-secret-set-owner "$@" ;;
+owner)    bwx-secret-set-owner "$@" ;;
 ```
 
 **`_bwx_completion()`** -- add `owner` to both the `secret` and `set` word
@@ -548,7 +548,7 @@ the "all ... subcommands are recognized" tests so the new name is verified.
   The only project-wide suppression is `SC1090,SC1091` (non-constant source
   paths) at the top of each lib file.
 - **4-space indentation.** No tabs.
-- **Function names** use kebab-case with a `bws-` prefix: `bws-secret-owner`.
+- **Function names** use kebab-case with a `bwx-` prefix: `bwx-secret-owner`.
   The name must match the lib filename exactly.
 - **Functions are lexically sorted** within files. When a file contains only
   one function this is trivially satisfied; in files with helpers, sort them
@@ -562,7 +562,7 @@ the "all ... subcommands are recognized" tests so the new name is verified.
     #   PROJECT  Project name or UUID (optional)
     # Returns:
     #   0 and writes the owner value to stdout
-    bws-secret-owner() {
+    bwx-secret-owner() {
     ```
 
 - **Strict mode** at the function entry, not the file level:
@@ -590,7 +590,7 @@ the "all ... subcommands are recognized" tests so the new name is verified.
 
     ```bash
     if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-        bws-secret-owner "$@"
+        bwx-secret-owner "$@"
     fi
     ```
 
