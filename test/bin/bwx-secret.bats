@@ -2,7 +2,7 @@
 # Tests for bwx secret subcommands.
 # Uses a bws stub to avoid requiring a live BWS account.
 
-BWX_ROOT="$(realpath "$(dirname "${BATS_TEST_FILENAME}")/../..")"
+BWX_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
 BWX="${BWX_ROOT}/bin/bwx"
 
 setup() {

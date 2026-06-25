@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # Verify that all user-visible output uses bwx naming, not bws-.
 
-BWX_ROOT="$(realpath "$(dirname "${BATS_TEST_FILENAME}")/../..")"
+BWX_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
 BWX="${BWX_ROOT}/bin/bwx"
 
 # Every subcommand's --help must show "bwx" in the Usage line,

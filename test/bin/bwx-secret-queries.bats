@@ -134,6 +134,19 @@ teardown() { bwx_test_teardown; }
     [[ "${output}" == *"tag-b"* ]]
 }
 
+@test "secret get tags strips comments and whitespace" {
+    run "${BWX}" secret get tags secret_key_tags_edge
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"tag-c"* ]]
+    [[ "${output}" == *"tag-d"* ]]
+}
+
+@test "secret get provider returns provider line with comments and spaces" {
+    run "${BWX}" secret get provider secret_key_provider_edge
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == "tailscale-manual" ]]
+}
+
 @test "secret get tags returns empty for untagged secret" {
     run "${BWX}" secret get tags secret_key_7
     # No tags → empty output; status may be 0 or non-zero

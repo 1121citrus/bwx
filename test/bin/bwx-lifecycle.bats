@@ -3,7 +3,7 @@
 
 load helpers
 
-BWX_ROOT="$(realpath "$(dirname "${BATS_TEST_FILENAME}")/../..")"
+BWX_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
 BWX="${BWX_ROOT}/bin/bwx"
 
 setup()    { bwx_test_setup; }
@@ -101,6 +101,13 @@ teardown() { bwx_test_teardown; }
     [[ "${status}" -eq 0 ]]
     [[ "${output}" == *"Rotating secret_expiring_v1 (provider: prompt)"* ]]
     [[ "${output}" == *"[dry-run] Would call bwx-provider-prompt for secret_expiring_v1"* ]]
+}
+
+@test "rotate --dry-run uses parsed provider driver from note edge case" {
+    run "${BWX}" rotate --dry-run secret_key_provider_edge
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"Rotating secret_key_provider_edge (provider: tailscale-manual)"* ]]
+    [[ "${output}" == *"[dry-run] Would call bwx-provider-tailscale-manual for secret_key_provider_edge"* ]]
 }
 
 # -- completion includes new families --

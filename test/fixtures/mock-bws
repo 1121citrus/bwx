@@ -129,6 +129,26 @@ get_mock_secrets() {
     "note": "no tags here",
     "creationDate": "2023-01-01T00:00:00Z",
     "revisionDate": "2023-01-01T00:00:00Z"
+  },
+  {
+    "id": "7777-8888-9999-0000",
+    "organizationId": "org-1",
+    "projectId": "${project_id}",
+    "key": "secret_key_provider_edge",
+    "value": "secret_value_8",
+    "note": "file: provider-edge\nnote: provider edge secret\nprovider :   tailscale-manual   # inline comment\nrelease-tag: provider-tag",
+    "creationDate": "2023-01-01T00:00:00Z",
+    "revisionDate": "2023-01-01T00:00:00Z"
+  },
+  {
+    "id": "1212-3434-5656-7878",
+    "organizationId": "org-1",
+    "projectId": "${project_id}",
+    "key": "secret_key_tags_edge",
+    "value": "secret_value_9",
+    "note": "file: tags-edge\nnote: tag parsing edge secret\nrelease-tag: tag-c  # comment\nrelease-tag :   tag-d\n",
+    "creationDate": "2023-01-01T00:00:00Z",
+    "revisionDate": "2023-01-01T00:00:00Z"
   }
 ]
 JSON

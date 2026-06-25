@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # Tests for miscellaneous bwx behaviors: version, raw, log-level.
 
-BWX_ROOT="$(realpath "$(dirname "${BATS_TEST_FILENAME}")/../..")"
+BWX_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
 BWX="${BWX_ROOT}/bin/bwx"
 
 # -- version --

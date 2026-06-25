@@ -2,7 +2,7 @@
 # Shared test helpers for bwx BATS tests.
 # Source from setup() in each test file.
 
-BWX_ROOT="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../..")"
+BWX_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BWX="${BWX_ROOT}/bin/bwx"
 
 # Set up the mock bws and required env vars.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # Core tests for the bwx dispatch layer.
 
-BWX_ROOT="$(realpath "$(dirname "${BATS_TEST_FILENAME}")/../..")"
+BWX_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
 BWX="${BWX_ROOT}/bin/bwx"
 
 @test "help flag exits 0" {

@@ -5,7 +5,7 @@
 # Each test masks tools via PATH manipulation and checks which
 # backend is resolved.
 
-BWX_ROOT="$(realpath "$(dirname "${BATS_TEST_FILENAME}")/../..")"
+BWX_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
 
 setup() {
     source "${BWX_ROOT}/include/http"
