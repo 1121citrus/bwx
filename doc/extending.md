@@ -23,8 +23,8 @@ slash-delimited subcommand paths to function names:
 
 ```bash
 declare -A _BWX_COMMANDS=(
-    [secret/value]=bwx-secret-value
-    [secret/set/filename]=bwx-secret-set-filename
+    [secret/get]=bwx-secret-get
+    [secret/set]=bwx-secret-set
     [tag/add]=bwx-secret-add-release-tag
     [project/default/id]=bwx-default-project-id
     ...
@@ -328,169 +328,53 @@ release_tags=$(printf '%s' "${note}" \
     | sort --unique)
 ```
 
-### Required subcommands
+### Adding a property to the unified get/set
 
-Adding a note property requires both a getter and a setter. Each lives in its
-own lib file:
+Adding a note property requires no new files — just add `case`
+branches to `lib/bwx-secret-get` and `lib/bwx-secret-set`.
 
-| Purpose | Filename | Function |
-|---|---|---|
-| Getter | `lib/bwx-secret-owner` | `bwx-secret-owner()` |
-| Setter | `lib/bwx-secret-set-owner` | `bwx-secret-set-owner()` |
-
-The getter reads the note via the cached secret list (`bwx-secret-list`). The
-setter mutates the note through the BWS API (`bws secret edit ... --note`)
-and refreshes the cache afterward.
-
-### Setter implementation
-
-The setter for a single-value property follows a three-step pattern:
-
-1. Fetch the current note.
-2. Remove any existing lines for the property (`grep -vE`).
-3. Append the new value and write back via `bws secret edit`.
-
-Complete setter for `owner:` in `lib/bwx-secret-set-owner`:
+**Getter** — add to the `case "${property}"` in `bwx-secret-get`:
 
 ```bash
-# shellcheck disable=SC1090,SC1091
-
-# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
-# Licensed under AGPL-3.0-or-later.
-
-# Set the owner property in a secret's note field.
-# Args:
-#   SECRET   Secret name or UUID (required)
-#   OWNER    Owner value (required)
-#   PROJECT  Project name or UUID (optional; defaults to BWX_DEFAULT_PROJECT)
-# Returns:
-#   0 on success; exits non-zero on failure
-bwx-secret-set-owner() {
-    set -o errexit -o errtrace -o nounset -o pipefail
-    local _debug="${DEBUG:-false}"
-    [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
-
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -h|--help)
-                declare -F bwx-default-project-name >/dev/null 2>&1 || \
-                    source "$(dirname "${BASH_SOURCE[0]}")/bwx-default-project-name"
-                cat <<EOF
-Usage: bwx-secret-set-owner SECRET OWNER [PROJECT]
-
-Set the owner metadata property for a Bitwarden Secrets Manager secret.
-
-Arguments:
-  SECRET      Secret name or UUID (required)
-  OWNER       New owner value (required)
-  PROJECT     Project name or UUID (optional) [default: $(bwx-default-project-name)]
-
-Options:
-  -h, --help  Display this help message
-  -l, --log-level LEVEL  Set log level (default: info)
-EOF
-                return "${EXIT_USAGE:-2}"
-                ;;
-            -l|--log-level)
-                [[ -n "${2:-}" && "${2}" != -* ]] || \
-                    error "${EXIT_USAGE}" "--log-level requires a value"
-                LOG_LEVEL="${2}"
-                export LOG_LEVEL
-                shift 2
-                ;;
-            --)
-                shift
-                break
-                ;;
-            *)
-                break
-                ;;
-        esac
-    done
-
-    # Lazy-source dependencies
-    declare -F error trace >/dev/null 2>&1 || \
-        source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
-    for cmd in bwx-project-id bwx-project-name bwx-secret-id; do
-        declare -F "${cmd}" >/dev/null 2>&1 || \
-            source "$(dirname "${BASH_SOURCE[0]}")/${cmd}"
-    done
-
-    # Parse positional arguments
-    local secret="${1:-}"
-    [[ -n "${secret}" ]] || error "${EXIT_USAGE}" "Secret name or UUID required"
-    local owner="${2:-}"
-    [[ -n "${owner}" ]] || error "${EXIT_USAGE}" "Owner value required"
-    local project="${3:-}"
-    project="$(bwx-project-id "${project}")"
-    local project_name
-    project_name=$(bwx-project-name "${project}")
-
-    # Resolve secret UUID
-    local secret_uuid
-    secret_uuid=$(bwx-secret-id "${secret}" "${project}" || :)
-    if [[ -z "${secret_uuid:+x}" ]]; then
-        error "${EXIT_NOTFOUND}" \
-            "Secret '${secret}' not found in project ${project_name}"
-    fi
-
-    # Fetch current note
-    local existing_notes
-    existing_notes="$(bws secret get "${secret_uuid}" --output json \
-        | jq -r '.note')"
-
-    # Replace: strip existing owner lines, append new value, sort
-    local new_notes
-    new_notes=$(echo "${existing_notes}" | grep -vE '^owner:')
-    new_notes=$(echo "${new_notes}" && echo "owner: ${owner}")
-    new_notes=$(echo "${new_notes}" | sort --unique)
-
-    # Write back
-    trace "bws secret edit '${secret_uuid}' --note '${new_notes}'"
-    if bws secret edit "${secret_uuid}" --note "${new_notes}" >/dev/null; then
-        debug "Secret owner updated successfully"
-    else
-        error "${EXIT_ERROR}" "Failed to update secret owner"
-    fi
-
-    # Refresh the cached secret list
-    if bwx-secret-list --refresh "${project}" >/dev/null 2>&1; then
-        local secret_list_project="${project_name^^}"
-        secret_list_project="${secret_list_project//-/_}"
-        local secret_list_var="BWS_PROJECT_SECRET_LIST_${secret_list_project}"
-        warn "Be sure to unset the cached secret list for project" \
-            "'${project_name}' (i.e. 'unset ${secret_list_var}') to" \
-            "ensure you get the updated data" || :
-    else
-        warn "Failed to refresh cached secret list for project" \
-            "'${project_name}'" || :
-    fi || :
-}
-
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    bwx-secret-set-owner "$@"
-fi
+        owner)
+            local note
+            note="$(printf '%s' "${secret_json}" | jq -r '.note // ""')"
+            printf '%s' "${note}" \
+                | grep -iE '^[[:space:]]*owner[[:space:]]*:' \
+                | sed -E 's/^[[:space:]]*owner[[:space:]]*:[[:space:]]*//' \
+                | head -1
+            ;;
 ```
 
-### Dispatch and completion updates for getter and setter
-
-After creating both lib files, update `bin/bwx` in three places:
-
-**`_bwx_dispatch()`** -- add `owner)` to the `secret` case block and
-`set-owner` to the `secret set` sub-case:
+**Setter** — add to the `case "${property}"` in `bwx-secret-set`:
 
 ```bash
-# Under secret)
-owner)          bwx-secret-owner "$@" ;;
-
-# Under secret set)
-owner)    bwx-secret-set-owner "$@" ;;
+        owner)
+            local current_note
+            current_note="$(bwx-secret-get note "${secret}" ${project_id:+"${project_id}"})"
+            local new_note
+            if printf '%s' "${current_note}" | grep -qiE '^[[:space:]]*owner[[:space:]]*:'; then
+                new_note="$(printf '%s' "${current_note}" \
+                    | sed -E "s|^([[:space:]]*)owner[[:space:]]*:.*|\1owner: ${value}|")"
+            else
+                new_note="owner: ${value}"$'\n'"${current_note}"
+            fi
+            bws secret edit "${secret_uuid}" --note "${new_note}" >/dev/null || \
+                error "${EXIT_ERROR}" "Failed to update owner for '${secret}'"
+            info "Updated owner for '${secret}' to '${value}'"
+            ;;
 ```
 
-**`_bwx_completion()`** -- add `owner` to both the `secret` and `set` word
-lists.
+No dispatch table changes, no completion changes, no new lib files.
+The property is immediately available:
 
-**`_bwx_usage()`** -- add help lines for both commands.
+```console
+$ bwx secret set owner my_secret_v1 "ops-team"
+[INFO] Updated owner for 'my_secret_v1' to 'ops-team'
+
+$ bwx secret get owner my_secret_v1
+ops-team
+```
 
 ## Testing patterns
 

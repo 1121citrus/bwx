@@ -56,22 +56,14 @@ bwx secret clone my_secret_v1         # clone _v1 → _v2
 ### Secret commands
 
 ```text
+bwx secret get PROP SECRET   Get a property (value, note, id, key, filename, tags, ...)
+bwx secret set PROP SECRET V Set a property (value, note, key, filename)
 bwx secret list              List all secrets in a project
 bwx secret show SECRET       Show full secret details
-bwx secret value SECRET      Get a secret's value
-bwx secret note SECRET       Get a secret's note
-bwx secret id SECRET         Get a secret's UUID
-bwx secret key SECRET        Get a secret's key name
-bwx secret name SECRET       Get a secret's name
-bwx secret filename SECRET   Get the file: property from a note
-bwx secret tags SECRET       List release tags on a secret
 bwx secret ls                List secrets (summary format)
 bwx secret create KEY VALUE  Create a new secret
 bwx secret clone SECRET      Clone with version increment (_v1 → _v2)
-bwx secret set value SECRET VALUE     Set a secret's value
-bwx secret set note SECRET NOTE       Set a secret's note
-bwx secret set key SECRET KEY         Set a secret's key name
-bwx secret set filename SECRET NAME   Set the file: note property
+bwx secret delete SECRET     Delete a secret
 ```
 
 ### Project commands

@@ -11,22 +11,14 @@ Complete reference for `bwx` 1.0.0, a Bitwarden Secrets Manager extended CLI.
     - [Vendor dependency](#vendor-dependency)
   - [Subcommand reference](#subcommand-reference)
     - [`secret` family](#secret-family)
+      - [`bwx secret get`](#bwx-secret-get)
+      - [`bwx secret set`](#bwx-secret-set)
       - [`bwx secret list`](#bwx-secret-list)
       - [`bwx secret show`](#bwx-secret-show)
-      - [`bwx secret value`](#bwx-secret-value)
-      - [`bwx secret note`](#bwx-secret-note)
-      - [`bwx secret id`](#bwx-secret-id)
-      - [`bwx secret key`](#bwx-secret-key)
-      - [`bwx secret name`](#bwx-secret-name)
-      - [`bwx secret filename`](#bwx-secret-filename)
-      - [`bwx secret tags`](#bwx-secret-tags)
       - [`bwx secret ls`](#bwx-secret-ls)
       - [`bwx secret create`](#bwx-secret-create)
       - [`bwx secret clone`](#bwx-secret-clone)
-      - [`bwx secret set value`](#bwx-secret-set-value)
-      - [`bwx secret set note`](#bwx-secret-set-note)
-      - [`bwx secret set key`](#bwx-secret-set-key)
-      - [`bwx secret set filename`](#bwx-secret-set-filename)
+      - [`bwx secret delete`](#bwx-secret-delete)
     - [`project` family](#project-family)
       - [`bwx project list`](#bwx-project-list)
       - [`bwx project show`](#bwx-project-show)
@@ -191,212 +183,57 @@ pretty-print.
 
 ---
 
-#### `bwx secret value`
+#### `bwx secret get`
 
 ```text
-bwx secret value SECRET [PROJECT]
+bwx secret get [options] PROPERTY SECRET [PROJECT]
 ```
 
-Print only the value of a secret. Useful for piping into other commands
-or assigning to a variable.
+Get a property of a secret.
+
+**Properties:**
+
+| Property | Description |
+|----------|-------------|
+| `value` | Secret value |
+| `note` | Full note text |
+| `id` | Secret UUID |
+| `key` | Secret key name |
+| `name` | Display name (alias for key) |
+| `filename` | The `file:` property from the note |
+| `tags` | Release tags (one per line) |
+| `expires` | The `expires:` date from the note |
+| `provider` | The `provider:` name from the note |
 
 **Arguments:**
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `SECRET` | Yes | Secret key name or UUID. |
+| `PROPERTY` | Yes | Property to retrieve |
+| `SECRET` | Yes | Secret name or UUID |
 | `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-R`, `--refresh` | Force a fresh API fetch, bypassing the cache |
 
 **Example:**
 
 ```console
-$ bwx secret value secret_key_1
+$ bwx secret get value secret_key_1
 secret_value_1
 
-$ export TOKEN
-$ TOKEN=$(bwx secret value secret_key_2)
-```
-
-[**↑ Contents**](#bwx-subcommand-reference)
-
----
-
-#### `bwx secret note`
-
-```text
-bwx secret note SECRET [PROJECT]
-```
-
-Print the note field of a secret. The note typically contains structured
-metadata lines (see [Structured note metadata](#structured-note-metadata)).
-
-**Arguments:**
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `SECRET` | Yes | Secret key name or UUID. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
-
-**Example:**
-
-```console
-$ bwx secret note secret_key_1
-note 1
-
-$ bwx secret note secret_key_3
+$ bwx secret get note secret_key_3
 file: test-secret-1
 note: "A test secret"
 release-tag: test-tag-1
-```
 
-[**↑ Contents**](#bwx-subcommand-reference)
-
----
-
-#### `bwx secret id`
-
-```text
-bwx secret id SECRET [PROJECT]
-```
-
-Resolve a secret key name to its UUID.
-
-**Arguments:**
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `SECRET` | Yes | Secret key name or UUID. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
-
-**Example:**
-
-```console
-$ bwx secret id secret_key_1
+$ bwx secret get id secret_key_1
 aaaa-bbbb-cccc-dddd
 
-$ bwx secret id secret_key_3
-iiii-jjjj-kkkk-llll
-```
-
-[**↑ Contents**](#bwx-subcommand-reference)
-
----
-
-#### `bwx secret key`
-
-```text
-bwx secret key SECRET [PROJECT]
-```
-
-Print the key (name) of a secret. Primarily useful when looking up a
-secret by UUID.
-
-**Arguments:**
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `SECRET` | Yes | Secret key name or UUID. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
-
-**Example:**
-
-```console
-$ bwx secret key aaaa-bbbb-cccc-dddd
-secret_key_1
-
-$ bwx secret key eeee-ffff-gggg-hhhh
-secret_key_2
-```
-
-[**↑ Contents**](#bwx-subcommand-reference)
-
----
-
-#### `bwx secret name`
-
-```text
-bwx secret name SECRET [PROJECT]
-```
-
-Resolve a secret UUID to its human-readable key name. Functionally
-equivalent to `bwx secret key` but uses optimized cache lookups for
-UUID-to-name resolution.
-
-**Arguments:**
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `SECRET` | Yes | Secret key name or UUID. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
-
-**Example:**
-
-```console
-$ bwx secret name aaaa-bbbb-cccc-dddd
-secret_key_1
-
-$ bwx secret name iiii-jjjj-kkkk-llll
-secret_key_3
-```
-
-[**↑ Contents**](#bwx-subcommand-reference)
-
----
-
-#### `bwx secret filename`
-
-```text
-bwx secret filename SECRET [PROJECT]
-```
-
-Extract the `file:` property from a secret's structured note. Returns
-the filename that deployment tools use to write the secret to disk.
-Returns empty (exit 0) if no `file:` property is set.
-
-**Arguments:**
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `SECRET` | Yes | Secret key name or UUID. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
-
-**Example:**
-
-```console
-$ bwx secret filename secret_key_3
-test-secret-1
-
-$ bwx secret filename secret_key_1
-
-```
-
-[**↑ Contents**](#bwx-subcommand-reference)
-
----
-
-#### `bwx secret tags`
-
-```text
-bwx secret tags SECRET [PROJECT]
-```
-
-List all release tags attached to a secret, one per line, sorted
-and deduplicated.
-
-**Arguments:**
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `SECRET` | Yes | Secret key name or UUID. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
-
-**Example:**
-
-```console
-$ bwx secret tags secret_key_3
-test-tag-1
-
-$ bwx secret tags secret_key_6
+$ bwx secret get tags secret_key_6
 tag-a
 tag-b
 ```
@@ -525,139 +362,72 @@ $ bwx secret clone secret_key_2 "new-rotated-value"
 
 ---
 
-#### `bwx secret set value`
+#### `bwx secret delete`
 
 ```text
-bwx secret set value SECRET VALUE [PROJECT]
-bwx secret set value SECRET --from-file FILE [PROJECT]
+bwx secret delete SECRET [PROJECT]
 ```
 
-Update the value of an existing secret. Accepts a positional value or
-reads from a file with `--from-file`. Refreshes the cache after update.
+Delete a secret by name or UUID.
 
 **Arguments:**
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `SECRET` | Yes | Secret key name or UUID. |
-| `VALUE` | Yes (unless `--from-file`) | New value. |
+| `SECRET` | Yes | Secret name or UUID |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
+
+**Example:**
+
+```console
+$ bwx secret delete old_api_key_v1
+[INFO] Deleted secret 'old_api_key_v1' (uuid-here)
+```
+
+[**↑ Contents**](#bwx-subcommand-reference)
+
+---
+
+#### `bwx secret set`
+
+```text
+bwx secret set [options] PROPERTY SECRET VALUE [PROJECT]
+```
+
+Set a property of a secret.
+
+**Properties:**
+
+| Property | Description |
+|----------|-------------|
+| `value` | Secret value (`--from-file` supported) |
+| `note` | Full note text (`--from-file` supported) |
+| `key` | Secret key name |
+| `filename` | The `file:` property in the note |
+
+**Arguments:**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `PROPERTY` | Yes | Property to set |
+| `SECRET` | Yes | Secret name or UUID |
+| `VALUE` | Yes (unless `--from-file`) | New value |
 | `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Options:**
 
 | Option | Description |
 |--------|-------------|
-| `--from-file FILE` | Read the new value from a file. |
+| `--from-file FILE` | Read the new value from FILE |
 
 **Example:**
 
 ```console
 $ bwx secret set value secret_key_1 "new_password"
-[INFO] Updated value for secret_key_1
+[INFO] Updated value for 'secret_key_1'
 
-$ bwx secret set value secret_key_2 --from-file ./new-key.pem
-[INFO] Updated value for secret_key_2
-```
-
-[**↑ Contents**](#bwx-subcommand-reference)
-
----
-
-#### `bwx secret set note`
-
-```text
-bwx secret set note SECRET NOTE [PROJECT]
-bwx secret set note SECRET --from-file FILE [PROJECT]
-```
-
-Replace the note field of an existing secret. This overwrites the entire
-note, including any structured metadata. Use `--from-file` for multi-line
-content. Refreshes the cache after update.
-
-**Arguments:**
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `SECRET` | Yes | Secret key name or UUID. |
-| `NOTE` | Yes (unless `--from-file`) | New note content. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
-
-**Options:**
-
-| Option | Description |
-|--------|-------------|
-| `--from-file FILE` | Read the new note from a file (supports multi-line markdown). |
-
-**Example:**
-
-```console
-$ bwx secret set note secret_key_1 "file: api-key
-note: rotated 2026-06-24
-release-tag: 2026.06.24.01"
-[INFO] Updated note for secret_key_1
-```
-
-[**↑ Contents**](#bwx-subcommand-reference)
-
----
-
-#### `bwx secret set key`
-
-```text
-bwx secret set key SECRET KEY [PROJECT]
-bwx secret set key SECRET --from-file FILE [PROJECT]
-```
-
-Rename the key of an existing secret. Refreshes the cache after update.
-
-**Arguments:**
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `SECRET` | Yes | Current secret key name or UUID. |
-| `KEY` | Yes (unless `--from-file`) | New key name. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
-
-**Options:**
-
-| Option | Description |
-|--------|-------------|
-| `--from-file FILE` | Read the new key from a file. |
-
-**Example:**
-
-```console
-$ bwx secret set key secret_key_1 secret_key_1_renamed
-[INFO] Updated key for secret_key_1
-```
-
-[**↑ Contents**](#bwx-subcommand-reference)
-
----
-
-#### `bwx secret set filename`
-
-```text
-bwx secret set filename SECRET FILENAME [PROJECT]
-```
-
-Update the `file:` property in a secret's structured note without
-affecting other note lines. Any existing `file:` line is replaced; all
-other metadata (release tags, notes, expires) is preserved.
-
-**Arguments:**
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `SECRET` | Yes | Secret key name or UUID. |
-| `FILENAME` | Yes | New filename value. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
-
-**Example:**
-
-```console
-$ bwx secret set filename secret_key_3 mosquitto-cert.pem
-[INFO] Updated filename for secret_key_3
+$ bwx secret set filename secret_key_3 "new-config.env"
+[INFO] Updated filename for 'secret_key_3' to 'new-config.env'
 ```
 
 [**↑ Contents**](#bwx-subcommand-reference)
