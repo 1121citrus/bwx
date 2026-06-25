@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-whereami=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+whereami="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 started_at=$(date +%s)
 summary_file="${TEST_SUMMARY_JSON:-}"
 

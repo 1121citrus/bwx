@@ -491,7 +491,7 @@ if [[ "${PUSH}" == "true" && "${VERSION}" != dev-* ]]; then
 fi
 
 # Script directory for build context and relative paths.
-script_dir=$(dirname "$(readlink -f "$0")")
+script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 echo "Version:   ${VERSION}" >&2
 
