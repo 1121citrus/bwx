@@ -509,7 +509,7 @@ if [[ "${LINT}" == "true" ]]; then
  \
             /src/bin/bwx \
             /src/include/logging \
-            /src/include/bws-cache \
+            /src/include/bwx-cache \
             /src/include/tools)
 
     echo "    markdownlint **/*.md" >&2

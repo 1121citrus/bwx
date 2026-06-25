@@ -95,7 +95,7 @@ or similar).
 Commands for querying and mutating individual secrets. Every command that
 accepts a `SECRET` argument resolves it by key name or UUID. Every command
 that accepts an optional `PROJECT` argument defaults to the value of
-`BWS_DEFAULT_PROJECT`.
+`BWX_DEFAULT_PROJECT`.
 
 ---
 
@@ -111,7 +111,7 @@ List all secrets in a project as JSON.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Options:**
 
@@ -153,7 +153,7 @@ note, id, and timestamps.
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `SECRET` | Yes | Secret key name or UUID. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -189,7 +189,7 @@ or assigning to a variable.
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `SECRET` | Yes | Secret key name or UUID. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -219,7 +219,7 @@ metadata lines (see [Structured note metadata](#structured-note-metadata)).
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `SECRET` | Yes | Secret key name or UUID. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -250,7 +250,7 @@ Resolve a secret key name to its UUID.
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `SECRET` | Yes | Secret key name or UUID. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -280,7 +280,7 @@ secret by UUID.
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `SECRET` | Yes | Secret key name or UUID. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -311,7 +311,7 @@ UUID-to-name resolution.
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `SECRET` | Yes | Secret key name or UUID. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -342,7 +342,7 @@ Returns empty (exit 0) if no `file:` property is set.
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `SECRET` | Yes | Secret key name or UUID. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -372,7 +372,7 @@ and deduplicated.
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `SECRET` | Yes | Secret key name or UUID. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -402,7 +402,7 @@ to `bwx secret list` when only the names are needed.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Options:**
 
@@ -445,7 +445,7 @@ refreshed.
 |----------|----------|-------------|
 | `KEY` | Yes | Secret key name. |
 | `VALUE` | Yes (unless `--from-file`) | Secret value. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Options:**
 
@@ -493,7 +493,7 @@ original.
 |----------|----------|-------------|
 | `SECRET` | Yes | Source secret key name or UUID (must end in `_vN`). |
 | `VALUE` | No | New value for the clone. If omitted, the original value is copied. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -525,7 +525,7 @@ reads from a file with `--from-file`. Refreshes the cache after update.
 |----------|----------|-------------|
 | `SECRET` | Yes | Secret key name or UUID. |
 | `VALUE` | Yes (unless `--from-file`) | New value. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Options:**
 
@@ -564,7 +564,7 @@ content. Refreshes the cache after update.
 |----------|----------|-------------|
 | `SECRET` | Yes | Secret key name or UUID. |
 | `NOTE` | Yes (unless `--from-file`) | New note content. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Options:**
 
@@ -600,7 +600,7 @@ Rename the key of an existing secret. Refreshes the cache after update.
 |----------|----------|-------------|
 | `SECRET` | Yes | Current secret key name or UUID. |
 | `KEY` | Yes (unless `--from-file`) | New key name. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Options:**
 
@@ -635,7 +635,7 @@ other metadata (release tags, notes, expires) is preserved.
 |----------|----------|-------------|
 | `SECRET` | Yes | Secret key name or UUID. |
 | `FILENAME` | Yes | New filename value. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -695,7 +695,7 @@ Print the full JSON metadata for a single project.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -723,7 +723,7 @@ Resolve a project name to its UUID.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -751,7 +751,7 @@ Resolve a project UUID to its human-readable name.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -801,8 +801,8 @@ bwx project default id
 ```
 
 Print the UUID of the default project (resolved from
-`BWS_DEFAULT_PROJECT`). The result is cached in
-`BWS_DEFAULT_PROJECT_ID` for subsequent calls within the same shell
+`BWX_DEFAULT_PROJECT`). The result is cached in
+`BWX_DEFAULT_PROJECT_ID` for subsequent calls within the same shell
 session.
 
 **Example:**
@@ -823,7 +823,7 @@ bwx project default name
 ```
 
 Print the name of the default project (the value of
-`BWS_DEFAULT_PROJECT`).
+`BWX_DEFAULT_PROJECT`).
 
 **Example:**
 
@@ -858,7 +858,7 @@ line, sorted.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Options:**
 
@@ -894,7 +894,7 @@ per line.
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `TAG` | No | Filter to a specific release tag. If omitted, all tags are shown. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Options:**
 
@@ -935,7 +935,7 @@ update.
 |----------|----------|-------------|
 | `SECRET` | Yes | Secret key name or UUID. |
 | `TAG` | Yes | Release tag to add. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -963,7 +963,7 @@ Remove a release tag from a single secret by deleting the matching
 |----------|----------|-------------|
 | `SECRET` | Yes | Secret key name or UUID. |
 | `TAG` | Yes | Release tag to remove. |
-| `PROJECT` | No | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Example:**
 
@@ -984,7 +984,7 @@ bwx tag project [OPTIONS] TAG [SECRETS...]
 
 Add a release tag to multiple secrets in bulk. Without explicit
 `SECRETS` or `--select-tag`, tags all secrets in the project. Uses
-`BWS_SKIP_SECRET_LIST_REFRESH=true` internally for each individual
+`BWX_SKIP_SECRET_LIST_REFRESH=true` internally for each individual
 update and performs a single cache refresh at the end.
 
 **Arguments:**
@@ -998,7 +998,7 @@ update and performs a single cache refresh at the end.
 
 | Option | Description |
 |--------|-------------|
-| `-p`, `--project PROJECT` | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `-p`, `--project PROJECT` | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 | `-s`, `--select-tag TAG` | Select secrets that already have this tag. Repeatable. Supplements any positional `SECRETS`. |
 | `--refresh`, `-R` | Force a fresh API fetch before tagging. |
 
@@ -1045,7 +1045,7 @@ are modified.
 
 | Option | Description |
 |--------|-------------|
-| `-p`, `--project PROJECT` | Project name or UUID. Defaults to `BWS_DEFAULT_PROJECT`. |
+| `-p`, `--project PROJECT` | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 | `-s`, `--select-tag TAG` | Select secrets that already have this tag. Repeatable. |
 | `--refresh`, `-R` | Force a fresh API fetch before untagging. |
 
@@ -1188,7 +1188,7 @@ improve performance.
    session.
 
 2. **File cache** -- JSON responses are persisted to disk at
-   `${BWS_CACHE_DIR}` (default:
+   `${BWX_CACHE_DIR}` (default:
    `${XDG_CACHE_HOME:-$HOME/.cache}/1121-citrus/bws/`). Files are
    keyed by a SHA-256 hash of the server URL, access token, and
    project identifier.
@@ -1196,7 +1196,7 @@ improve performance.
 ### TTL
 
 Both cache layers use the same TTL, controlled by
-`BWS_SECRET_LIST_CACHE_TTL_SECONDS` (default: 300 seconds / 5 minutes).
+`BWX_SECRET_LIST_CACHE_TTL_SECONDS` (default: 300 seconds / 5 minutes).
 Set to `0` to disable file caching entirely. The environment variable
 cache is always populated.
 
@@ -1223,12 +1223,12 @@ Cache files are created with mode `0600` inside a directory with mode
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BWS_ACCESS_TOKEN` | (required) | Bitwarden Secrets Manager machine-account access token. Validated on first API call; the validation result is cached for `BWS_VALIDATE_ACCESS_TTL_SECONDS`. |
-| `BWS_DEFAULT_PROJECT` | (none) | Default project name for all commands. When set, the `[PROJECT]` argument can be omitted from every subcommand. |
+| `BWS_ACCESS_TOKEN` | (required) | Bitwarden Secrets Manager machine-account access token. Validated on first API call; the validation result is cached for `BWX_VALIDATE_ACCESS_TTL_SECONDS`. |
+| `BWX_DEFAULT_PROJECT` | (none) | Default project name for all commands. When set, the `[PROJECT]` argument can be omitted from every subcommand. |
 | `BWS_SERVER_BASE_URL` | `https://vault.bitwarden.com` | Bitwarden server URL. Override for self-hosted instances. |
-| `BWS_SECRET_LIST_CACHE_TTL_SECONDS` | `300` | TTL in seconds for secret-list and project-list file caches. Set to `0` to disable file caching. |
-| `BWS_VALIDATE_ACCESS_TTL_SECONDS` | `300` | TTL in seconds for caching access-token validation results. |
-| `BWS_CACHE_DIR` | `${XDG_CACHE_HOME:-$HOME/.cache}/1121-citrus/bws` | Override the cache directory location. |
+| `BWX_SECRET_LIST_CACHE_TTL_SECONDS` | `300` | TTL in seconds for secret-list and project-list file caches. Set to `0` to disable file caching. |
+| `BWX_VALIDATE_ACCESS_TTL_SECONDS` | `300` | TTL in seconds for caching access-token validation results. |
+| `BWX_CACHE_DIR` | `${XDG_CACHE_HOME:-$HOME/.cache}/1121-citrus/bws` | Override the cache directory location. |
 | `BWX_JQ_IMAGE` | `apteno/alpine-jq` | Docker image used for `jq` when `jq` is not natively installed. |
 | `BWX_BWS_IMAGE` | `bitwarden/bws:latest` | Docker image used for `bws` when `bws` is not natively installed. |
 | `BWS_IMAGE` | `bitwarden/bws` | Docker image name used by the internal `bws` wrapper (without tag). |

@@ -6,7 +6,7 @@
 # This software and associated documentation files may not be copied,
 # modified, or distributed without express written permission.
 
-bws-project-id() {
+bwx-project-id() {
     set -o errexit -o errtrace -o nounset -o pipefail # Ensure robust error handling
     local _debug="${DEBUG:-false}"
     [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace # Enable debug output if DEBUG is set
@@ -14,15 +14,15 @@ bws-project-id() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -h|--help)
-                command -v bws-default-project-name >/dev/null 2>&1 || \
-                    source "$(dirname "${BASH_SOURCE[0]}")/bws-default-project-name"
+                command -v bwx-default-project-name >/dev/null 2>&1 || \
+                    source "$(dirname "${BASH_SOURCE[0]}")/bwx-default-project-name"
                 cat <<EOF
 Usage: bwx project id [options] [PROJECT]
 
 Convert a Bitwarden Secrets Manager project name to its UUID.
 
 Arguments:
-  PROJECT  Project name or UUID (optional) [default: $(bws-default-project-name)]
+  PROJECT  Project name or UUID (optional) [default: $(bwx-default-project-name)]
 
 Options:
   -h, --help   Display this help message
@@ -51,18 +51,18 @@ EOF
     done
 
     declare -F error trace >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
-    for cmd in bws-default-project-name bws-project-list; do
+    for cmd in bwx-default-project-name bwx-project-list; do
         declare -F "${cmd}" >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/${cmd}"
     done
 
-    local project="${1:-$(bws-default-project-name)}"
+    local project="${1:-$(bwx-default-project-name)}"
     shift || :
     [[ -n "${project}" ]] || error "${EXIT_NOTFOUND}" "Project name or UUID not found"
     [[ "${#@}" -gt 0 ]] && error "${EXIT_USAGE}" "Too many arguments"
 
     local id=
     # Validate that the UUID/name exists in the project list.
-    id=$(bws-project-list --id "${project}" || : )
+    id=$(bwx-project-list --id "${project}" || : )
 
     if [[ -z "${id}" ]]; then
         error "${EXIT_NOTFOUND:-1}" "Unable to resolve Bitwarden project '${project}' to a UUID"
@@ -72,6 +72,6 @@ EOF
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    bws-project-id "$@"
+    bwx-project-id "$@"
 fi
 

@@ -70,7 +70,7 @@ teardown() { bwx_test_teardown; }
 
 # -- project default --
 
-@test "project default name returns BWS_DEFAULT_PROJECT" {
+@test "project default name returns BWX_DEFAULT_PROJECT" {
     run "${BWX}" project default name
     [[ "${status}" -eq 0 ]]
     [[ "${output}" == "test-project" ]]

@@ -13,8 +13,8 @@
     source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
 }
 
-declare -F bws-cache-dir >/dev/null 2>&1 || \
-    source "$(dirname "${BASH_SOURCE[0]}")/../include/bws-cache"
+declare -F bwx-cache-dir >/dev/null 2>&1 || \
+    source "$(dirname "${BASH_SOURCE[0]}")/../include/bwx-cache"
 
 # In test mode, skip the Docker wrapper so the mock bws on PATH is used.
 if [[ "${CITRUS_ENABLE_MOCK_COMMANDS:-false}" == "true" ]]; then
@@ -90,7 +90,7 @@ EOF
             "${image}:${tag}" "$@"
     }
 
-    function bws-validate-access() {
+    function bwx-validate-access() {
         local token="${BWS_ACCESS_TOKEN:=}"
         [[ -z "${token}" ]] && \
             fatal "${EXIT_USAGE}" "Bitwarden Secrets Manager API access token environment variable BWS_ACCESS_TOKEN is not defined"
@@ -100,12 +100,12 @@ EOF
             fatal "${EXIT_USAGE}" "Invalid Bitwarden Secrets Manager API access token format"
 
         local server_base="${BWS_SERVER_BASE_URL:-https://vault.bitwarden.com}"
-        local validation_ttl="${BWS_VALIDATE_ACCESS_TTL_SECONDS:-300}"
+        local validation_ttl="${BWX_VALIDATE_ACCESS_TTL_SECONDS:-300}"
         local validation_file=
-        validation_file=$(bws-cache-file "validate-access" "${server_base}|${token}" "ok" 2>/dev/null || :)
+        validation_file=$(bwx-cache-file "validate-access" "${server_base}|${token}" "ok" 2>/dev/null || :)
 
         if [[ -n "${validation_file}" ]] && \
-            bws-cache-is-fresh "${validation_file}" "${validation_ttl}"; then
+            bwx-cache-is-fresh "${validation_file}" "${validation_ttl}"; then
             trace "Using cached Bitwarden Secrets Manager access validation"
             echo "true"
             return 0
@@ -114,7 +114,7 @@ EOF
         # Validate against API
         local output
         if ! output=$(_bws project list --access-token "${token}" 2>&1); then
-            [[ -n "${validation_file}" ]] && bws-cache-delete "${validation_file}"
+            [[ -n "${validation_file}" ]] && bwx-cache-delete "${validation_file}"
             # shellcheck disable=SC2076
             if [[ "${output}" =~ "dns error" || "${output}" =~ "Temporary failure in name resolution" || "${output}" =~ "client error (Connect)" ]]; then
                  fatal "${EXIT_ERROR}" "Network error: Unable to connect to Bitwarden Secrets Manager API."
@@ -124,7 +124,7 @@ EOF
             fi
         fi
 
-        [[ -n "${validation_file}" ]] && bws-cache-write "${validation_file}" "true"
+        [[ -n "${validation_file}" ]] && bwx-cache-write "${validation_file}" "true"
         echo "true"
     }
 
@@ -138,13 +138,13 @@ EOF
     [[ -z "${BWS_ACCESS_TOKEN:=}" ]] && \
         fatal "${EXIT_USAGE}" "Bitwarden Secrets Manager API access token environment variable BWS_ACCESS_TOKEN is not set"
 
-    is-true "${BWS_ACCESS_TOKEN_VALIDATED:-false}" || {
-        BWS_ACCESS_TOKEN_VALIDATED=
-        BWS_ACCESS_TOKEN_VALIDATED=$(bws-validate-access)
-        export BWS_ACCESS_TOKEN_VALIDATED
+    is-true "${BWX_ACCESS_TOKEN_VALIDATED:-false}" || {
+        BWX_ACCESS_TOKEN_VALIDATED=
+        BWX_ACCESS_TOKEN_VALIDATED=$(bwx-validate-access)
+        export BWX_ACCESS_TOKEN_VALIDATED
     }
 
-    [[ "${BWS_ACCESS_TOKEN_VALIDATED}" != "true" ]] && \
+    [[ "${BWX_ACCESS_TOKEN_VALIDATED}" != "true" ]] && \
         fatal "${EXIT_USAGE}" "Bitwarden Secrets Manager API access token validation failed"
 
     _bws "$@"

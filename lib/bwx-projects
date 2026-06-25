@@ -7,7 +7,7 @@
 # modified, or distributed without express written permission.
 
 
-bws-projects() {
+bwx-projects() {
     set -o errexit -o errtrace -o nounset -o pipefail
     local _debug="${DEBUG:-false}"
     [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
@@ -16,8 +16,8 @@ bws-projects() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -h|--help)
-                command -v bws-default-project-name >/dev/null 2>&1 || \
-                    source "$(dirname "${BASH_SOURCE[0]}")/bws-default-project-name"
+                command -v bwx-default-project-name >/dev/null 2>&1 || \
+                    source "$(dirname "${BASH_SOURCE[0]}")/bwx-default-project-name"
                 cat <<EOF
 Usage: bwx project ls [options]
 
@@ -63,12 +63,12 @@ EOF
         error "${EXIT_USAGE:-2}" "Too many arguments '${*}'"
     fi
 
-    declare -F bws-project-list >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/bws-project-list"
+    declare -F bwx-project-list >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/bwx-project-list"
 
-    trace "bws-project-list --names ${refresh_flag}"
-    bws-project-list --names ${refresh_flag}
+    trace "bwx-project-list --names ${refresh_flag}"
+    bwx-project-list --names ${refresh_flag}
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    bws-projects "$@"
+    bwx-projects "$@"
 fi

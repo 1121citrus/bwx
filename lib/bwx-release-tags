@@ -6,7 +6,7 @@
 # This software and associated documentation files may not be copied,
 # modified, or distributed without express written permission.
 
-bws-release-tags() {
+bwx-release-tags() {
     set -o errexit -o errtrace -o nounset -o pipefail # Ensure robust error handling
     [[ "${DEBUG:-false,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace # Enable debug output if DEBUG is set
 
@@ -17,15 +17,15 @@ bws-release-tags() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -h|--help)
-                declare -F bws-default-project-name >/dev/null 2>&1 || \
-                    source "${bindir}/bws-default-project-name"
+                declare -F bwx-default-project-name >/dev/null 2>&1 || \
+                    source "${bindir}/bwx-default-project-name"
                 cat <<EOF
 Usage: bwx tag list [OPTIONS] [PROJECT]
 
 Displays the release tags that have been applied to secrets in a project.
 
 Arguments:
-  PROJECT      Project name or UUID (optional) [default: $(bws-default-project-name)]
+  PROJECT      Project name or UUID (optional) [default: $(bwx-default-project-name)]
 
 Options:
   -h, --help     Display this help message
@@ -59,15 +59,15 @@ EOF
 
     declare -F warn >/dev/null 2>&1 || source "${bindir}/../include/logging"
 
-    for cmd in bws-default-project-name bws-secret-list ; do
+    for cmd in bwx-default-project-name bwx-secret-list ; do
         declare -F "${cmd}" >/dev/null 2>&1 || source "${bindir}/${cmd}"
     done
 
     local project_key
-    project_key="${1:-$(bws-default-project-name)}"
+    project_key="${1:-$(bwx-default-project-name)}"
     local sanitized_project
     sanitized_project=$(LC_ALL='en_US.UTF-8' awk '{print toupper($0)}' <<<"${project_key//[^[:alnum:]]/_}")
-    local tag_cache_var="BWS_PROJECT_RELEASE_TAGS_${sanitized_project}"
+    local tag_cache_var="BWX_PROJECT_RELEASE_TAGS_${sanitized_project}"
 
     if [[ -n "${refresh_flag}" ]]; then
         export "${tag_cache_var}="
@@ -87,7 +87,7 @@ EOF
     fi
 
     local tags
-    tags=$(bws-secret-list ${refresh_flag} "${project_key}" | \
+    tags=$(bwx-secret-list ${refresh_flag} "${project_key}" | \
         jq -r '.[].note | split("\n") | .[] | select(startswith("release-tag:")) | sub("release-tag: "; "")' | \
         sort -u || :)
 
@@ -96,5 +96,5 @@ EOF
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    bws-release-tags "$@"
+    bwx-release-tags "$@"
 fi

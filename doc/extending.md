@@ -8,14 +8,14 @@ CLI.
 ## Architecture overview
 
 `bin/bwx` is the single entry point. On startup it sources three include
-files and then every `lib/bws-*` file:
+files and then every `lib/bwx-*` file:
 
 ```text
 bin/bwx
   source include/logging        # exit codes, log functions (error, trace, ...)
-  source include/bws-cache      # file-backed TTL cache helpers
+  source include/bwx-cache      # file-backed TTL cache helpers
   source include/tools          # docker-wrapped jq and bws fallbacks
-  source lib/bws-*              # all library functions (glob)
+  source lib/bwx-*              # all library functions (glob)
 ```
 
 Dispatch maps the user-facing command syntax to internal function calls.
@@ -41,7 +41,7 @@ Tab completion is generated from the dispatch table inside
 
 ### 1. Create the library file
 
-Create `lib/bws-<name>` containing a single function `bws-<name>()`.
+Create `lib/bwx-<name>` containing a single function `bws-<name>()`.
 The file must:
 
 - Begin with the `# shellcheck disable=SC1090,SC1091` directive.
@@ -101,7 +101,7 @@ command reference.
 
 ### Complete example: `bwx secret owner`
 
-Library file `lib/bws-secret-owner`:
+Library file `lib/bwx-secret-owner`:
 
 ```bash
 # shellcheck disable=SC1090,SC1091
@@ -112,7 +112,7 @@ Library file `lib/bws-secret-owner`:
 # Print the owner property from a secret's note field.
 # Args:
 #   SECRET   Secret name or UUID (required)
-#   PROJECT  Project name or UUID (optional; defaults to BWS_DEFAULT_PROJECT)
+#   PROJECT  Project name or UUID (optional; defaults to BWX_DEFAULT_PROJECT)
 # Returns:
 #   0 and writes the owner value to stdout, or empty if no owner is set
 bws-secret-owner() {
@@ -256,8 +256,8 @@ own lib file:
 
 | Purpose | Filename | Function |
 |---|---|---|
-| Getter | `lib/bws-secret-owner` | `bws-secret-owner()` |
-| Setter | `lib/bws-secret-set-owner` | `bws-secret-set-owner()` |
+| Getter | `lib/bwx-secret-owner` | `bws-secret-owner()` |
+| Setter | `lib/bwx-secret-set-owner` | `bws-secret-set-owner()` |
 
 The getter reads the note via the cached secret list (`bws-secret-list`). The
 setter mutates the note through the BWS API (`bws secret edit ... --note`)
@@ -271,7 +271,7 @@ The setter for a single-value property follows a three-step pattern:
 2. Remove any existing lines for the property (`grep -vE`).
 3. Append the new value and write back via `bws secret edit`.
 
-Complete setter for `owner:` in `lib/bws-secret-set-owner`:
+Complete setter for `owner:` in `lib/bwx-secret-set-owner`:
 
 ```bash
 # shellcheck disable=SC1090,SC1091
@@ -283,7 +283,7 @@ Complete setter for `owner:` in `lib/bws-secret-set-owner`:
 # Args:
 #   SECRET   Secret name or UUID (required)
 #   OWNER    Owner value (required)
-#   PROJECT  Project name or UUID (optional; defaults to BWS_DEFAULT_PROJECT)
+#   PROJECT  Project name or UUID (optional; defaults to BWX_DEFAULT_PROJECT)
 # Returns:
 #   0 on success; exits non-zero on failure
 bws-secret-set-owner() {

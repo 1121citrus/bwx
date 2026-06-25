@@ -39,7 +39,7 @@ JQ
 
     export PATH="${TEST_TMPDIR}/stub-bin:${PATH}"
     export BWS_ACCESS_TOKEN="test-token"
-    export BWS_DEFAULT_PROJECT="my-project"
+    export BWX_DEFAULT_PROJECT="my-project"
 }
 
 teardown() {

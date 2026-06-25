@@ -5,7 +5,7 @@
 # bwx — Bitwarden Secrets Manager eXtended CLI.
 #
 # Single entry point with subcommand dispatch.  Internal functions
-# retain their bws-* names for backward compatibility; the dispatch
+# use bwx-* function names internally; the dispatch
 # layer maps space-separated subcommands to function calls.
 #
 # Usage: bwx <family> <command> [args...]
@@ -25,12 +25,12 @@ readonly BWX_ROOT
 
 # Source includes: logging, caching, tool wrappers
 source "${BWX_ROOT}/include/logging"
-source "${BWX_ROOT}/include/bws-cache"
+source "${BWX_ROOT}/include/bwx-cache"
 source "${BWX_ROOT}/include/tools"
 source "${BWX_ROOT}/include/http"
 
 # Source all library functions
-for _bwx_lib in "${BWX_ROOT}"/lib/bws*; do
+for _bwx_lib in "${BWX_ROOT}"/lib/bwx*; do
     [[ -f "${_bwx_lib}" ]] && source "${_bwx_lib}"
 done
 unset _bwx_lib
@@ -53,26 +53,26 @@ _bwx_dispatch() {
             ;;
         secret)
             case "${cmd}" in
-                create)         bws-create-secret "$@" ;;
-                clone)          bws-secret-clone "$@" ;;
-                filename)       bws-secret-filename "$@" ;;
-                id)             bws-secret-id "$@" ;;
-                key)            bws-secret-key "$@" ;;
-                list)           bws-secret-list "$@" ;;
-                ls)             bws-secrets "$@" ;;
-                name)           bws-secret-name "$@" ;;
-                note)           bws-secret-note "$@" ;;
-                show)           bws-secret "$@" ;;
-                tags)           bws-secret-release-tags "$@" ;;
-                value)          bws-secret-value "$@" ;;
+                create)         bwx-create-secret "$@" ;;
+                clone)          bwx-secret-clone "$@" ;;
+                filename)       bwx-secret-filename "$@" ;;
+                id)             bwx-secret-id "$@" ;;
+                key)            bwx-secret-key "$@" ;;
+                list)           bwx-secret-list "$@" ;;
+                ls)             bwx-secrets "$@" ;;
+                name)           bwx-secret-name "$@" ;;
+                note)           bwx-secret-note "$@" ;;
+                show)           bwx-secret "$@" ;;
+                tags)           bwx-secret-release-tags "$@" ;;
+                value)          bwx-secret-value "$@" ;;
                 set)
                     local subcmd="${1:-}"
                     shift 2>/dev/null || true
                     case "${subcmd}" in
-                        filename) bws-secret-set-filename "$@" ;;
-                        key)      bws-secret-set-key "$@" ;;
-                        note)     bws-secret-set-note "$@" ;;
-                        value)    bws-secret-set-value "$@" ;;
+                        filename) bwx-secret-set-filename "$@" ;;
+                        key)      bwx-secret-set-key "$@" ;;
+                        note)     bwx-secret-set-note "$@" ;;
+                        value)    bwx-secret-set-value "$@" ;;
                         *)        _bwx_usage_error "secret set" "${subcmd}" \
                                       "filename key note value" ;;
                     esac
@@ -87,29 +87,29 @@ _bwx_dispatch() {
                     local subcmd="${1:-}"
                     shift 2>/dev/null || true
                     case "${subcmd}" in
-                        id)   bws-default-project-id "$@" ;;
-                        name) bws-default-project-name "$@" ;;
+                        id)   bwx-default-project-id "$@" ;;
+                        name) bwx-default-project-name "$@" ;;
                         *)    _bwx_usage_error "project default" "${subcmd}" \
                                   "id name" ;;
                     esac
                     ;;
-                id)             bws-project-id "$@" ;;
-                list)           bws-project-list "$@" ;;
-                ls)             bws-projects "$@" ;;
-                name)           bws-project-name "$@" ;;
-                show)           bws-project "$@" ;;
+                id)             bwx-project-id "$@" ;;
+                list)           bwx-project-list "$@" ;;
+                ls)             bwx-projects "$@" ;;
+                name)           bwx-project-name "$@" ;;
+                show)           bwx-project "$@" ;;
                 *)  _bwx_usage_error "project" "${cmd}" \
                         "default id list ls name show" ;;
             esac
             ;;
         tag)
             case "${cmd}" in
-                add)            bws-secret-add-release-tag "$@" ;;
-                list)           bws-release-tags "$@" ;;
-                project)        bws-tag-project "$@" ;;
-                remove)         bws-secret-remove-release-tag "$@" ;;
-                secrets)        bws-release-tag-secrets "$@" ;;
-                unproject)      bws-untag-project "$@" ;;
+                add)            bwx-secret-add-release-tag "$@" ;;
+                list)           bwx-release-tags "$@" ;;
+                project)        bwx-tag-project "$@" ;;
+                remove)         bwx-secret-remove-release-tag "$@" ;;
+                secrets)        bwx-release-tag-secrets "$@" ;;
+                unproject)      bwx-untag-project "$@" ;;
                 *)  _bwx_usage_error "tag" "${cmd}" \
                         "add list project remove secrets unproject" ;;
             esac
@@ -265,7 +265,7 @@ Options:
 
 Environment:
     BWS_ACCESS_TOKEN             Bitwarden Secrets Manager access token (required)
-    BWS_DEFAULT_PROJECT          Default project name
+    BWX_DEFAULT_PROJECT          Default project name
     BWS_SERVER_BASE_URL          Bitwarden server URL
 EOF
 }

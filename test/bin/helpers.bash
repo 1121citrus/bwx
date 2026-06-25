@@ -18,14 +18,14 @@ bwx_test_setup() {
 
     export PATH="${TEST_TMPDIR}/stub-bin:${PATH}"
     export BWS_ACCESS_TOKEN="test-token"
-    export BWS_DEFAULT_PROJECT="test-project"
+    export BWX_DEFAULT_PROJECT="test-project"
 
     # Tell lib/bws to preserve the mock bws function instead of
     # redefining it with the Docker wrapper and token validation.
     export CITRUS_ENABLE_MOCK_COMMANDS=true
 
     # Disable caching to avoid cross-test contamination
-    export BWS_SECRET_LIST_CACHE_TTL_SECONDS=0
+    export BWX_SECRET_LIST_CACHE_TTL_SECONDS=0
 
     # Skip functional tests if jq is not available (e.g., direct
     # bats invocation without test/run-all which installs jq)

@@ -6,7 +6,7 @@
 # This software and associated documentation files may not be copied,
 # modified, or distributed without express written permission.
 
-bws-default-project-id() {
+bwx-default-project-id() {
     set -o errexit -o errtrace -o nounset -o pipefail
     local _debug="${DEBUG:-false}"
     [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
@@ -21,8 +21,8 @@ Usage: bwx project default id [options]
 Return the UUID of the default default Bitwarden Secrets Manager project.
 
 Environment variables:
-    BWS_DEFAULT_PROJECT_ID  Cached UUID value to reuse between calls
-    BWS_DEFAULT_PROJECT     Cached name (consumed by bws-default-project-name)
+    BWX_DEFAULT_PROJECT_ID  Cached UUID value to reuse between calls
+    BWX_DEFAULT_PROJECT     Cached name (consumed by bwx-default-project-name)
 
 Options:
     -h, --help     Display this help message
@@ -69,32 +69,32 @@ EOF
     [[ $# -gt 0 ]] && error "${EXIT_USAGE:-2}" "Too many arguments"
 
     if [[ "${refresh}" == true ]]; then
-        unset BWS_DEFAULT_PROJECT_ID
+        unset BWX_DEFAULT_PROJECT_ID
     fi
 
-    if [[ -z "${BWS_DEFAULT_PROJECT_ID:-}" ]]; then
-        for cmd in bws-default-project-name bws-project-list ; do
+    if [[ -z "${BWX_DEFAULT_PROJECT_ID:-}" ]]; then
+        for cmd in bwx-default-project-name bwx-project-list ; do
             declare -F "${cmd}" >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/${cmd}"
         done
 
         local project=
-        project="$(bws-default-project-name)"
-        trace bws-project-id "${project}"
+        project="$(bwx-default-project-name)"
+        trace bwx-project-id "${project}"
 
-        # Optimization: Call bws-project-list directly and filter with jq to avoid
-        # intermediate script overheads (bws-project-id -> bws-project -> bws-project-list).
-        if ! BWS_DEFAULT_PROJECT_ID=$(bws-project-list | jq -r --arg name "${project}" '.[] | select(.name == $name or .id == $name) | .id'); then
+        # Optimization: Call bwx-project-list directly and filter with jq to avoid
+        # intermediate script overheads (bwx-project-id -> bws-project -> bwx-project-list).
+        if ! BWX_DEFAULT_PROJECT_ID=$(bwx-project-list | jq -r --arg name "${project}" '.[] | select(.name == $name or .id == $name) | .id'); then
              fatal "${EXIT_ERROR:-1}" "Failed to lookup project '${project}'"
         fi
 
-        [[ -z "${BWS_DEFAULT_PROJECT_ID}" ]] && fatal "${EXIT_NOTFOUND}" "BWS Default project '${project}' not found"
-        export BWS_DEFAULT_PROJECT_ID
-        trace "Exported BWS_DEFAULT_PROJECT_ID=${BWS_DEFAULT_PROJECT_ID}"
+        [[ -z "${BWX_DEFAULT_PROJECT_ID}" ]] && fatal "${EXIT_NOTFOUND}" "BWS Default project '${project}' not found"
+        export BWX_DEFAULT_PROJECT_ID
+        trace "Exported BWX_DEFAULT_PROJECT_ID=${BWX_DEFAULT_PROJECT_ID}"
     fi
 
-    echo "${BWS_DEFAULT_PROJECT_ID}"
+    echo "${BWX_DEFAULT_PROJECT_ID}"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    bws-default-project-id "$@"
+    bwx-default-project-id "$@"
 fi

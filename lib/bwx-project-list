@@ -6,13 +6,13 @@
 # This software and associated documentation files may not be copied,
 # modified, or distributed without express written permission.
 
-bws-project-list() {
+bwx-project-list() {
     set -o errexit -o errtrace -o nounset -o pipefail # Ensure robust error handling
     local _debug="${DEBUG:-false}"
     [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace # Enable debug output if DEBUG is set
 
     declare -F error trace >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
-    declare -F bws-cache-dir >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/../include/bws-cache"
+    declare -F bwx-cache-dir >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/../include/bwx-cache"
 
     local export_project_list=
     local refresh_requested=
@@ -48,7 +48,7 @@ Usage: bwx project list [options]
 Prints the Bitwarden Secrets Manager project list as JSON.
 
 Options:
-  -e, --export   Print an expression to set BWS_PROJECT_LIST environment variable in the current shell
+  -e, --export   Print an expression to set BWX_PROJECT_LIST environment variable in the current shell
   -N, --names    Print project names, one per line
   -n, --name     Resolve a project UUID or name to its canonical name
   -i, --id       Resolve a project UUID or name to its canonical id
@@ -61,8 +61,8 @@ EOF
                 ;;
             -R|--refresh)
                 refresh_requested="true"
-                unset "BWS_PROJECT_LIST"
-                export "BWS_PROJECT_LIST="
+                unset "BWX_PROJECT_LIST"
+                export "BWX_PROJECT_LIST="
                 shift
                 ;;
             -l|--log-level)
@@ -87,39 +87,39 @@ EOF
         esac
     done
 
-    local cache_ttl="${BWS_PROJECT_LIST_CACHE_TTL_SECONDS:-300}"
+    local cache_ttl="${BWX_PROJECT_LIST_CACHE_TTL_SECONDS:-300}"
     local cache_key="${BWS_SERVER_BASE_URL:-https://vault.bitwarden.com}|${BWS_ACCESS_TOKEN:-}"
     local cache_file=
-    cache_file=$(bws-cache-file "project-list" "${cache_key}" "json" 2>/dev/null || :)
-    [[ -n "${refresh_requested}" && -n "${cache_file}" ]] && bws-cache-delete "${cache_file}"
+    cache_file=$(bwx-cache-file "project-list" "${cache_key}" "json" 2>/dev/null || :)
+    [[ -n "${refresh_requested}" && -n "${cache_file}" ]] && bwx-cache-delete "${cache_file}"
 
     # Optimization: Use raw JSON directly from process or file cache if available.
-    local project_list="${BWS_PROJECT_LIST:-}"
+    local project_list="${BWX_PROJECT_LIST:-}"
 
     if [[ -n "${project_list}" ]]; then
         if ! printf '%s' "${project_list}" | jq -e '.' >/dev/null 2>&1; then
             warn "Cached project list is invalid; refreshing"
-            export BWS_PROJECT_LIST=""
+            export BWX_PROJECT_LIST=""
             project_list=""
-            [[ -n "${cache_file}" ]] && bws-cache-delete "${cache_file}"
+            [[ -n "${cache_file}" ]] && bwx-cache-delete "${cache_file}"
         fi
     fi
 
     if [[ -z "${project_list}" && -n "${cache_file}" ]]; then
-        project_list=$(bws-cache-read "${cache_file}" "${cache_ttl}" 2>/dev/null || :)
+        project_list=$(bwx-cache-read "${cache_file}" "${cache_ttl}" 2>/dev/null || :)
     fi
 
     if [[ -n "${project_list}" ]]; then
         if ! printf '%s' "${project_list}" | jq -e '.' >/dev/null 2>&1; then
             warn "Project list file cache is invalid; refreshing"
-            export BWS_PROJECT_LIST=""
+            export BWX_PROJECT_LIST=""
             project_list=""
-            [[ -n "${cache_file}" ]] && bws-cache-delete "${cache_file}"
+            [[ -n "${cache_file}" ]] && bwx-cache-delete "${cache_file}"
         fi
     fi
 
     if [[ -z "${project_list}" ]]; then
-        for cmd in bws ; do
+        for cmd in ; do
             declare -F "${cmd}" >/dev/null 2>&1 || source "$(dirname "${BASH_SOURCE[0]}")/${cmd}"
         done
 
@@ -130,18 +130,18 @@ EOF
 
         [[ -z "${project_list}" ]] && error "${EXIT_NOTFOUND}" "No projects found in Bitwarden Secrets Manager account"
 
-        export BWS_PROJECT_LIST="${project_list}"
-        [[ -n "${cache_file}" ]] && bws-cache-write "${cache_file}" "${project_list}"
-    elif [[ "${BWS_PROJECT_LIST:-}" != "${project_list}" ]]; then
-        export BWS_PROJECT_LIST="${project_list}"
+        export BWX_PROJECT_LIST="${project_list}"
+        [[ -n "${cache_file}" ]] && bwx-cache-write "${cache_file}" "${project_list}"
+    elif [[ "${BWX_PROJECT_LIST:-}" != "${project_list}" ]]; then
+        export BWX_PROJECT_LIST="${project_list}"
     fi
 
-    local summary_length="${BWS_PROJECT_LIST_SUMMARY_LENGTH:-50}"
+    local summary_length="${BWX_PROJECT_LIST_SUMMARY_LENGTH:-50}"
     debug "Project list (prefix): ${project_list:0:${summary_length}}..."
 
     if [[ -n "${export_project_list}" ]]; then
         # Safely quote the JSON for evaluation
-        printf "export BWS_PROJECT_LIST=%q\n" "${project_list}"
+        printf "export BWX_PROJECT_LIST=%q\n" "${project_list}"
     else
         if [[ -n "${output_names}" ]]; then
             printf '%s' "${project_list}" | jq -r '.[] | .name // empty' | LC_ALL='C' sort -u
@@ -166,5 +166,5 @@ EOF
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    bws-project-list "$@"
+    bwx-project-list "$@"
 fi

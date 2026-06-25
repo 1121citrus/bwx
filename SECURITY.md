@@ -92,13 +92,13 @@ via environment variable.  This means:
 ## Cache file security
 
 `bwx secret list` and `bwx project list` cache API responses in
-temporary files under `${BWS_CACHE_DIR:-${TMPDIR:-/tmp}}`.  Cache
+temporary files under `${BWX_CACHE_DIR:-${TMPDIR:-/tmp}}`.  Cache
 files:
 
 - Are readable only by the owning user (mode 0600).
 - Contain secret metadata (keys, notes, UUIDs) but **not** secret
   values (values are fetched individually and not cached).
-- Expire after `BWS_SECRET_LIST_CACHE_TTL_SECONDS` (default: 300).
+- Expire after `BWX_SECRET_LIST_CACHE_TTL_SECONDS` (default: 300).
 - Are overwritten on `--refresh`.
 
 On multi-user systems, verify that `TMPDIR` points to a

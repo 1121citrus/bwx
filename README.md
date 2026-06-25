@@ -131,7 +131,7 @@ release-tag: 2026.07.01.01
 
 `bwx secret list` and `bwx project list` cache API responses locally
 with a configurable TTL (default: 300 seconds).  Use `--refresh` to
-force a fresh fetch, or set `BWS_SECRET_LIST_CACHE_TTL_SECONDS=0` to
+force a fresh fetch, or set `BWX_SECRET_LIST_CACHE_TTL_SECONDS=0` to
 disable caching.
 
 ## Environment variables
@@ -139,9 +139,9 @@ disable caching.
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
 | `BWS_ACCESS_TOKEN` | (required) | Bitwarden Secrets Manager access token |
-| `BWS_DEFAULT_PROJECT` | (none) | Default project name for all commands |
+| `BWX_DEFAULT_PROJECT` | (none) | Default project name for all commands |
 | `BWS_SERVER_BASE_URL` | `https://vault.bitwarden.com` | Bitwarden server URL |
-| `BWS_SECRET_LIST_CACHE_TTL_SECONDS` | `300` | Cache TTL for secret/project lists |
+| `BWX_SECRET_LIST_CACHE_TTL_SECONDS` | `300` | Cache TTL for secret/project lists |
 | `BWX_JQ_IMAGE` | `apteno/alpine-jq` | Docker image for jq wrapper |
 | `BWX_BWS_IMAGE` | `bitwarden/bws:latest` | Docker image for bws wrapper |
 
