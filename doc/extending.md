@@ -208,6 +208,85 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 fi
 ```
 
+## Adding a rotation provider
+
+Rotation providers live in `lib/providers/<name>`.  Each provider is
+a bash script that exports one function: `bwx-provider-<name>()`.
+
+### Provider contract
+
+The function receives two arguments and sets three global variables:
+
+```bash
+# Args:
+#   $1 — BWS secret key (e.g., tailscale_server_authkey_v1)
+#   $2 — secrets directory (e.g., .secrets/)
+# Sets:
+#   PROVIDER_VALUE    — the new credential value
+#   PROVIDER_EXPIRES  — expiry in days from now
+#   PROVIDER_NOTE     — human-readable note for the BWS note field
+# Returns:
+#   0 on success; non-zero to abort rotation
+bwx-provider-<name>() {
+    ...
+}
+```
+
+The rotation framework (`bwx-rotate`) handles all BWS mechanics
+after the provider returns: updating the value, setting the
+`expires:` date, and preserving release-tag and file metadata.
+
+### Provider resolution
+
+`bwx rotate SECRET` reads the `provider:` field from the secret's
+BWS note:
+
+```yaml
+provider: tailscale-oauth
+```
+
+When no `provider:` field is set, the `prompt` driver is used as a
+generic fallback.
+
+### Adding a provider: step by step
+
+1. Create `lib/providers/<name>` with function `bwx-provider-<name>()`
+2. Add `# shellcheck shell=bash` and `# shellcheck disable=SC2034`
+   (the `PROVIDER_*` variables are used by the caller, not the provider)
+3. Set `PROVIDER_VALUE`, `PROVIDER_EXPIRES`, `PROVIDER_NOTE` before
+   returning
+4. Add `provider: <name>` to the BWS note of each secret that uses it
+5. No dispatch table or completion changes needed — providers are
+   discovered by filename
+
+### Example: AWS IAM key provider
+
+```bash
+# lib/providers/aws-iam
+# shellcheck shell=bash
+# shellcheck disable=SC2034
+
+bwx-provider-aws-iam() {
+    local secret="${1}"
+
+    info "Rotating AWS IAM access key..."
+    local old_key_id new_creds
+    old_key_id=$(aws iam list-access-keys \
+        --query 'AccessKeyMetadata[0].AccessKeyId' --output text)
+    new_creds=$(aws iam create-access-key --output json)
+
+    PROVIDER_VALUE=$(printf '%s' "${new_creds}" \
+        | jq -r '.AccessKey.SecretAccessKey')
+    PROVIDER_EXPIRES=365
+    PROVIDER_NOTE="note: AWS IAM access key (rotated $(date +%Y-%m-%d))"
+
+    aws iam update-access-key \
+        --access-key-id "${old_key_id}" --status Inactive
+}
+```
+
+---
+
 ## Adding a new note property
 
 ### The property contract

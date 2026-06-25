@@ -97,6 +97,15 @@ bwx tag project TAG          Tag all secrets in the project
 bwx tag unproject TAG        Remove tag from all secrets
 ```
 
+### Lifecycle commands
+
+```text
+bwx import TAG DIR [PROJECT]              Export secrets by release tag
+bwx check expiry [--exit-on-expiring]     Check for expiring secrets
+bwx rotate SECRET [PROJECT]               Rotate via provider driver
+bwx rotate --all [PROJECT]                Rotate all expiring secrets
+```
+
 ### Other commands
 
 ```text
@@ -116,14 +125,17 @@ is a single line in YAML-like format:
 file: docker-compose-secret-filename
 note: Human-readable description
 expires: 2026-09-20
+provider: tailscale-oauth
 release-tag: 2026.06.24.01
 release-tag: 2026.07.01.01
 ```
 
 - **`file:`** — maps the BWS secret to a local filename (used by
-  deployment tools like `import-secrets`)
+  `bwx import`)
 - **`expires:`** — optional expiration date for time-limited
-  credentials (Tailscale keys, GitHub PATs)
+  credentials; checked by `bwx check expiry`
+- **`provider:`** — rotation provider driver name (used by
+  `bwx rotate`); falls back to `prompt` if not set
 - **`release-tag:`** — one or more release tags binding the secret
   to specific deployments; multi-value (one per line)
 

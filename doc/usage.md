@@ -42,6 +42,12 @@ Complete reference for `bwx` 1.0.0, a Bitwarden Secrets Manager extended CLI.
       - [`bwx tag remove`](#bwx-tag-remove)
       - [`bwx tag project`](#bwx-tag-project)
       - [`bwx tag unproject`](#bwx-tag-unproject)
+    - [`import` family](#import-family)
+      - [`bwx import`](#bwx-import)
+    - [`check` family](#check-family)
+      - [`bwx check expiry`](#bwx-check-expiry)
+    - [`rotate` family](#rotate-family)
+      - [`bwx rotate`](#bwx-rotate)
     - [`raw`](#raw)
     - [`completion`](#completion)
   - [Structured note metadata](#structured-note-metadata)
@@ -1073,6 +1079,125 @@ $ bwx tag unproject tag-b secret_key_6
 
 ---
 
+### `import` family
+
+#### `bwx import`
+
+```text
+bwx import [options] TAG OUTPUT_DIR [PROJECT]
+```
+
+Export all secrets tagged with TAG from a Bitwarden Secrets Manager
+project into OUTPUT_DIR.  Each secret with a matching `release-tag:`
+note entry is written as a file named by its `file:` property, with
+values stored in `.by-uuid/<id>` and symlinks from the file names.
+
+**Arguments:**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `TAG` | Yes | Release tag to match (or `all` for every secret) |
+| `OUTPUT_DIR` | Yes | Target directory for exported files |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
+
+**Example:**
+
+```console
+$ bwx import 2026.06.24.01 .secrets
+[INFO] Importing secrets from project 'my-project' [uuid] release '2026.06.24.01' to '.secrets'
+[INFO] Exported 'tailscale_authkey_v1' to '.secrets/tailscale-authkey'
+[INFO] Export completed
+```
+
+[**↑ Contents**](#bwx-subcommand-reference)
+
+---
+
+### `check` family
+
+#### `bwx check expiry`
+
+```text
+bwx check expiry [options]
+```
+
+Check for secrets with upcoming or past expiration dates.  Reads the
+`expires: YYYY-MM-DD` field from each secret's note.  Secrets without
+an `expires:` field are silently skipped.
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--exit-on-expiring` | Exit 1 if any expired or soon-expiring secrets found |
+| `--warn-days DAYS` | Warning window in days (default: 14) |
+
+**Example:**
+
+```console
+$ bwx check expiry
+[INFO] tailscale_server_authkey_v1: expires 2026-09-20 (87 days)
+[INFO] github_token_v1: expires 2027-06-01 (344 days)
+[INFO] No secrets expiring within 14 days. Safe to tag.
+```
+
+[**↑ Contents**](#bwx-subcommand-reference)
+
+---
+
+### `rotate` family
+
+#### `bwx rotate`
+
+```text
+bwx rotate [options] SECRET [PROJECT]
+bwx rotate --all [PROJECT]
+```
+
+Rotate a time-limited secret using its provider driver.  The provider
+is determined by the `provider:` field in the secret's BWS note.
+When no provider is set, the generic `prompt` driver asks the operator
+to paste a new value.
+
+**Arguments:**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `SECRET` | Yes (unless `--all`) | Secret name or UUID |
+| `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--all` | Rotate all secrets with an `expires:` field |
+| `--dry-run` | Show what would be done without making changes |
+
+**Built-in providers:**
+
+| Provider | Automation | Description |
+|----------|------------|-------------|
+| `tailscale-oauth` | Fully automated | OAuth client credentials |
+| `tailscale-manual` | Operator-prompted | Paste key from admin console |
+| `github-pat` | Operator-prompted | Paste token from developer settings |
+| `prompt` | Operator-prompted | Generic paste-a-value (default fallback) |
+
+**Example:**
+
+```console
+$ bwx rotate tailscale_sidecar_authkey_v1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[INFO] Rotating tailscale_sidecar_authkey_v1 (provider: tailscale-oauth)
+[INFO] Authenticating with Tailscale OAuth...
+[INFO] Creating new tagged pre-auth key...
+[INFO] Updating BWS secret tailscale_sidecar_authkey_v1
+[INFO] tailscale_sidecar_authkey_v1 rotated successfully (expires 2026-09-24)
+```
+
+[**↑ Contents**](#bwx-subcommand-reference)
+
+---
+
 ### `raw`
 
 ```text
@@ -1136,9 +1261,10 @@ pattern `key: value`.
 
 | Property | Cardinality | Description |
 |----------|-------------|-------------|
-| `file:` | Single-value | Maps the secret to a deployment filename. Used by tools like `import-secrets` to write the secret value to disk at the given path. |
+| `file:` | Single-value | Maps the secret to a deployment filename. Used by `bwx import` to write the secret value to disk at the given path. |
 | `note:` | Single-value | Human-readable description of the secret's purpose. |
-| `expires:` | Single-value | Expiration date for time-limited credentials (ISO 8601 date, for example `2026-09-20`). Used by pre-release gates to block deployments when a credential is nearing expiry. |
+| `expires:` | Single-value | Expiration date for time-limited credentials (ISO 8601 date, for example `2026-09-20`). Used by `bwx check expiry` to detect upcoming expirations. |
+| `provider:` | Single-value | Rotation provider driver name (e.g., `tailscale-oauth`, `github-pat`). Used by `bwx rotate` to determine how to generate a new credential. Falls back to `prompt` if not set. |
 | `release-tag:` | Multi-value | One or more release identifiers binding the secret to specific deployments. Each tag is a separate `release-tag:` line. |
 
 ### Example note
@@ -1147,6 +1273,7 @@ pattern `key: value`.
 file: mosquitto-password
 note: MQTT broker authentication credential
 expires: 2026-09-20
+provider: prompt
 release-tag: 2026.06.01.01
 release-tag: 2026.06.24.01
 ```
