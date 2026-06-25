@@ -422,7 +422,7 @@ create a fake `bws` script in a temporary directory and prepend it to
 
 ```bash
 setup() {
-    BWX_ROOT="$(realpath "$(dirname "${BATS_TEST_FILENAME}")/../..")"
+    BWX_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
     BWX="${BWX_ROOT}/bin/bwx"
 
     # Create a stub bws that returns canned JSON
@@ -480,7 +480,7 @@ teardown() {
 # Tests for bwx secret owner.
 
 setup() {
-    BWX_ROOT="$(realpath "$(dirname "${BATS_TEST_FILENAME}")/../..")"
+    BWX_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
     BWX="${BWX_ROOT}/bin/bwx"
     # ... stub setup as shown above ...
 }

@@ -26,7 +26,7 @@ class Bwx < Formula
     # dirname(bin/bwx)/.. which works for a git clone but not for
     # Homebrew's split layout (bin/ in one place, lib/ in another).
     inreplace bin/"bwx",
-      'BWX_ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"',
+      'BWX_ROOT="$(cd "${script_dir}/.." && pwd)"',
       "BWX_ROOT=\"#{share}/bwx\""
 
     # Symlink lib/ and bin/ into the share tree so the sourcing works

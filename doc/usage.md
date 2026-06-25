@@ -75,6 +75,22 @@ brew install bwx
 eval "$(bwx completion bash)"
 ```
 
+macOS ships Bash 3.2, which is too old for `bwx`. Install an updated bash and put it first in `PATH`:
+
+```bash
+brew install bash
+export PATH="$(brew --prefix)/bin:${PATH}"
+```
+
+If you prefer pkgsrc/pkgin, use:
+
+```bash
+pkgin install bash
+export PATH="/opt/pkg/bin:${PATH}"
+```
+
+Then make sure `bash --version` reports Bash 4 or newer before running `bwx`.
+
 Or install from a local clone:
 
 ```bash

@@ -177,6 +177,26 @@ brew tap 1121citrus/bwx https://github.com/1121citrus/bwx
 brew install bwx
 ```
 
+On macOS the system shell is Bash 3.2. If installed via Homebrew, ensure the Homebrew bash is first in your `PATH`:
+
+```bash
+brew install bash
+export PATH="$(brew --prefix)/bin:${PATH}"
+```
+
+If you use pkgsrc/pkgin instead of Homebrew, install Bash with:
+
+```bash
+pkgin install bash
+export PATH="/opt/pkg/bin:${PATH}"
+```
+
+Then verify the shell version:
+
+```bash
+bash --version
+```
+
 ### Vendor dependency
 
 ```bash
@@ -186,7 +206,7 @@ export PATH="${PWD}/vendor/bwx/bin:${PATH}"
 
 ### Prerequisites
 
-- **Bash 4.0+** (macOS ships 3.2 — `brew install bash`)
+- **Bash 4.0+** (macOS ships 3.2 — install a newer shell with Homebrew or pkgin)
 - **Docker** — only when `jq` or `bws` are not natively installed
 
 ## Documentation

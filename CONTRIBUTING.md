@@ -2,8 +2,9 @@
 
 ## Prerequisites
 
-- Bash 4.0+ (macOS ships 3.2 — install via [Homebrew](https://brew.sh/):
-  `brew install bash`)
+- Bash 4.0+ (macOS ships 3.2 — install via Homebrew or pkgin)
+  - Homebrew: `brew install bash`
+  - pkgsrc/pkgin: `pkgin install bash`
 - Docker (used to run `jq`, `bws`, and other wrapped tools — no local
   installation of these tools is required)
 
