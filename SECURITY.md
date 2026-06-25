@@ -51,17 +51,17 @@ export BWX_CURL_IMAGE="curlimages/curl:8.11.1"
 
 ### Scanning
 
-The `./build --advise coverage,metrics` stages do not include CVE
-scanning (there is no Docker image to scan).  To scan the fallback
-images for vulnerabilities:
+Stage 4 of the build scans all dependency images for HIGH and
+CRITICAL CVEs using Trivy:
 
 ```bash
-trivy image apteno/alpine-jq
-trivy image bitwarden/bws:latest
-trivy image curlimages/curl
+./build                    # includes dependency image scan
+./build --dry-run          # shows which images would be scanned
 ```
 
-When a CVE is found in a fallback image, update the default pin in
+The scan is advisory (does not block the build) because the
+vulnerabilities are in third-party images that `bwx` cannot patch
+directly.  When a CVE is found, update the default pin in
 `include/tools` or `include/http`, or override via the environment
 variables above.
 

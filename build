@@ -555,6 +555,74 @@ if [[ "${RUN_STAGING}" == "true" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Stage 4: Scan dependency images (advisory — does not block the build)
+# ---------------------------------------------------------------------------
+if [[ "${SCAN}" == "true" ]]; then
+    echo "==> Stage 4: Scan dependency images" >&2
+    _dep_scan_failed=0
+
+    echo "    scanning apteno/alpine-jq" >&2
+    if [[ "${DRY_RUN}" == "true" ]]; then
+        echo "[DRY RUN] trivy image apteno/alpine-jq" >&2
+    else
+        run docker run --rm \
+            -v "${TRIVY_CACHE_VOLUME}:/root/.cache/trivy" \
+            "${TRIVY_IMAGE}:${TRIVY_TAG}" image \
+                --quiet \
+                --no-progress \
+                --ignore-unfixed \
+                --severity HIGH,CRITICAL \
+                --timeout 5m \
+                "apteno/alpine-jq" || {
+            echo "    WARN: apteno/alpine-jq has HIGH/CRITICAL CVEs" >&2
+            _dep_scan_failed=1
+        }
+    fi
+
+    echo "    scanning bitwarden/bws:latest" >&2
+    if [[ "${DRY_RUN}" == "true" ]]; then
+        echo "[DRY RUN] trivy image bitwarden/bws:latest" >&2
+    else
+        run docker run --rm \
+            -v "${TRIVY_CACHE_VOLUME}:/root/.cache/trivy" \
+            "${TRIVY_IMAGE}:${TRIVY_TAG}" image \
+                --quiet \
+                --no-progress \
+                --ignore-unfixed \
+                --severity HIGH,CRITICAL \
+                --timeout 5m \
+                "bitwarden/bws:latest" || {
+            echo "    WARN: bitwarden/bws:latest has HIGH/CRITICAL CVEs" >&2
+            _dep_scan_failed=1
+        }
+    fi
+
+    echo "    scanning curlimages/curl" >&2
+    if [[ "${DRY_RUN}" == "true" ]]; then
+        echo "[DRY RUN] trivy image curlimages/curl" >&2
+    else
+        run docker run --rm \
+            -v "${TRIVY_CACHE_VOLUME}:/root/.cache/trivy" \
+            "${TRIVY_IMAGE}:${TRIVY_TAG}" image \
+                --quiet \
+                --no-progress \
+                --ignore-unfixed \
+                --severity HIGH,CRITICAL \
+                --timeout 5m \
+                "curlimages/curl" || {
+            echo "    WARN: curlimages/curl has HIGH/CRITICAL CVEs" >&2
+            _dep_scan_failed=1
+        }
+    fi
+
+    if [[ "${_dep_scan_failed}" -ne 0 ]]; then
+        echo "    One or more dependency images have CVEs (advisory only)" >&2
+    else
+        echo "    All dependency images clean" >&2
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # Stage 5d: Coverage (kcov — advisory, never blocks)
 #
 # Reruns the bats suite through kcov to produce a per-file line-coverage
