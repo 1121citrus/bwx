@@ -5,6 +5,32 @@
 A developer guide for adding subcommands and note properties to the `bwx`
 CLI.
 
+- [Extending the bwx CLI](#extending-the-bwx-cli)
+  - [Architecture overview](#architecture-overview)
+  - [Adding a new subcommand](#adding-a-new-subcommand)
+    - [1. Create the library file](#1-create-the-library-file)
+    - [2. Add the dispatch table entry](#2-add-the-dispatch-table-entry)
+    - [3. Completion (automatic)](#3-completion-automatic)
+    - [4. Add usage text](#4-add-usage-text)
+    - [5. Add tests](#5-add-tests)
+    - [6. Document](#6-document)
+    - [Complete example: `bwx secret owner`](#complete-example-bwx-secret-owner)
+  - [Adding a rotation provider](#adding-a-rotation-provider)
+    - [Provider contract](#provider-contract)
+    - [Provider resolution](#provider-resolution)
+    - [Adding a provider: step by step](#adding-a-provider-step-by-step)
+    - [Example: AWS IAM key provider](#example-aws-iam-key-provider)
+  - [Adding a new note property](#adding-a-new-note-property)
+    - [The property contract](#the-property-contract)
+    - [Parsing pattern](#parsing-pattern)
+    - [Adding a property to the unified get/set](#adding-a-property-to-the-unified-getset)
+  - [Testing patterns](#testing-patterns)
+    - [Test file location and naming](#test-file-location-and-naming)
+    - [Stubbing the bws binary](#stubbing-the-bws-binary)
+    - [Test template](#test-template)
+    - [What the dispatch tests cover](#what-the-dispatch-tests-cover)
+  - [Code conventions](#code-conventions)
+
 ## Architecture overview
 
 `bin/bwx` is the single entry point. On startup it sources three include
@@ -70,7 +96,7 @@ declare -A _BWX_COMMANDS=(
 That's it.  Error messages and tab completion are derived from the
 table automatically — no word lists to edit, no case branches to add.
 
-### 3. Completion — automatic
+### 3. Completion (automatic)
 
 Tab completion derives from the dispatch table.  No manual editing
 needed.  Verify with:

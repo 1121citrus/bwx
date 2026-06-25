@@ -1,54 +1,88 @@
 # bwx — Bitwarden Secrets Manager eXtended CLI
 
-Extended command-line tooling for
-[Bitwarden Secrets Manager](https://bitwarden.com/products/secrets-manager/).
-The official `bws` CLI provides single-secret CRUD; `bwx` adds bulk
-operations, release-tag lifecycle management, structured note metadata,
-local caching, and secret cloning with automatic version increment.
+A bash CLI that extends the
+[Bitwarden Secrets Manager](https://bitwarden.com/products/secrets-manager/)
+`bws` binary with the tooling needed to manage secrets across a
+release lifecycle: bulk tagging, versioned cloning, structured
+metadata, expiry tracking, and provider-driven rotation.
 
-## Installation
+## Why bwx
 
-### Clone and add to PATH
+The official `bws` CLI provides single-secret CRUD.  `bwx` adds
+the operational layer on top:
 
-```bash
-git clone https://github.com/1121citrus/bwx.git ~/.local/lib/bwx
+- **Release tags** — bind secrets to deployment versions; tag or
+  untag an entire project in one command
+- **Structured metadata** — `file:`, `expires:`, `provider:`, and
+  `release-tag:` fields in the BWS note, parsed and validated by
+  `bwx` commands
+- **Import** — export all tagged secrets to a deployment directory
+  with symlinks and UUID-based storage
+- **Expiry checking** — pre-release gate that blocks deployments
+  when credentials are near expiration
+- **Rotation** — provider-driven rotation with built-in drivers for
+  Tailscale and GitHub, and a generic prompt fallback for anything
+  else
+- **Versioned cloning** — `clone` increments `_v1` → `_v2` for safe
+  key rotation with downgrade support
+- **Caching** — TTL-based local cache for API responses; one API
+  call per session, not per command
+- **Zero install dependencies** — bash + Docker; `jq` and `bws` are
+  wrapped via Docker containers when not natively installed
+
+## Intended workflow
+
+`bwx` is process-agnostic but tilted toward a specific operational
+pattern:
+
+```text
+develop → tag → import → deploy → rotate (on schedule)
+                  ↑                    |
+                  └────── check ───────┘
 ```
 
-Add to your shell profile (`~/.bashrc` or `~/.zshrc`):
+1. **Develop** — secrets are created and updated in BWS via `bwx
+   secret create`, `bwx secret set value`, etc.  Each secret's note
+   carries `file:` (deployment filename) and `release-tag:` entries.
 
-```bash
-export PATH="${HOME}/.local/lib/bwx/bin:${PATH}"
-eval "$(bwx completion bash)"    # tab completion (bash)
-# eval "$(bwx completion zsh)"   # tab completion (zsh)
-```
+2. **Tag** — before a release, `bwx tag project 2026.07.01.01` stamps
+   every secret in the project with the release tag.  Old tags are
+   preserved for downgrade.
 
-### As a vendor dependency
+3. **Import** — at deployment time, `bwx import 2026.07.01.01 .secrets`
+   exports exactly the secrets tagged for that release.  Each secret
+   becomes a file named by its `file:` property, with values stored
+   in `.by-uuid/` for deduplication.
 
-For projects that consume `bwx` as a library:
+4. **Deploy** — the application reads secrets from `.secrets/` (Docker
+   secrets, env files, mounted volumes — whatever the app expects).
 
-```bash
-git clone --branch v1.0.0 https://github.com/1121citrus/bwx.git vendor/bwx
-export PATH="${PWD}/vendor/bwx/bin:${PATH}"
-```
+5. **Check** — `bwx check expiry --exit-on-expiring` runs as a
+   pre-release gate.  Secrets with an `expires:` date within the
+   warning window (default: 14 days) block the release until rotated.
 
-### Prerequisites
+6. **Rotate** — `bwx rotate SECRET` reads the `provider:` field from
+   the secret's note and calls the matching driver.  Built-in
+   providers handle Tailscale OAuth, Tailscale manual, GitHub PATs,
+   and a generic paste-a-value prompt.  The framework updates the
+   BWS value, sets the new `expires:` date, and preserves all other
+   metadata.
 
-- **Bash 4.0+** (macOS ships 3.2 — install via
-  [Homebrew](https://brew.sh/): `brew install bash`)
-- **Docker** — required only when `jq` or `bws` are not natively
-  installed; `bwx` wraps them transparently via Docker containers
-
-No other tools need to be installed.
+Secrets that do not expire (database passwords, SSH keys, GPG
+passphrases) skip steps 5–6 entirely.  They are tagged and imported
+like any other secret but have no `expires:` or `provider:` metadata.
 
 ## Quick start
 
 ```bash
 export BWS_ACCESS_TOKEN="your-token-here"
 
-bwx secret list                       # list all secrets
-bwx secret value my_secret_v1         # get a value
-bwx tag project 2026.06.24.01         # tag all secrets for a release
-bwx secret clone my_secret_v1         # clone _v1 → _v2
+bwx secret get value my_secret_v1       # get a value
+bwx secret set value my_secret_v1 "pw"  # set a value
+bwx tag project 2026.07.01.01           # tag all secrets
+bwx import 2026.07.01.01 .secrets       # export to disk
+bwx check expiry                        # any expiring?
+bwx rotate --all                        # rotate what's due
 ```
 
 ## Commands
@@ -58,8 +92,8 @@ bwx secret clone my_secret_v1         # clone _v1 → _v2
 ```text
 bwx secret get PROP SECRET   Get a property (value, note, id, key, filename, tags, ...)
 bwx secret set PROP SECRET V Set a property (value, note, key, filename)
-bwx secret list              List all secrets in a project
-bwx secret show SECRET       Show full secret details
+bwx secret list              List all secrets in a project (JSON)
+bwx secret show SECRET       Show full secret details (JSON)
 bwx secret ls                List secrets (summary format)
 bwx secret create KEY VALUE  Create a new secret
 bwx secret clone SECRET      Clone with version increment (_v1 → _v2)
@@ -71,100 +105,98 @@ bwx secret delete SECRET     Delete a secret
 ```text
 bwx project list             List all projects
 bwx project show PROJECT     Show project details
-bwx project id PROJECT       Get a project's UUID
-bwx project name PROJECT     Get a project's name
-bwx project ls               List projects (summary format)
-bwx project default id       Get the default project UUID
-bwx project default name     Get the default project name
+bwx project id PROJECT       Resolve name to UUID
+bwx project name PROJECT     Resolve UUID to name
+bwx project ls               List projects (summary)
+bwx project default id       Default project UUID
+bwx project default name     Default project name
 ```
 
 ### Tag commands
 
 ```text
-bwx tag list                 List all release tags across secrets
-bwx tag secrets TAG          List secrets tagged with TAG
-bwx tag add SECRET TAG       Add a release tag to a secret
-bwx tag remove SECRET TAG    Remove a release tag from a secret
 bwx tag project TAG          Tag all secrets in the project
 bwx tag unproject TAG        Remove tag from all secrets
+bwx tag add SECRET TAG       Tag one secret
+bwx tag remove SECRET TAG    Untag one secret
+bwx tag list                 List all tags
+bwx tag secrets TAG          List secrets with TAG
 ```
 
 ### Lifecycle commands
 
 ```text
-bwx import TAG DIR [PROJECT]              Export secrets by release tag
-bwx check expiry [--exit-on-expiring]     Check for expiring secrets
-bwx rotate SECRET [PROJECT]               Rotate via provider driver
-bwx rotate --all [PROJECT]                Rotate all expiring secrets
+bwx import TAG DIR [PROJECT] Export tagged secrets to a directory
+bwx check expiry [--exit-on-expiring]  Pre-release expiry gate
+bwx rotate SECRET            Rotate via provider driver
+bwx rotate --all             Rotate all expiring secrets
 ```
 
 ### Other commands
 
 ```text
-bwx raw [bws-args...]        Pass-through to the upstream bws binary
-bwx completion bash          Print bash completion definition
-bwx completion zsh           Print zsh completion definition
-bwx --help                   Show help
-bwx --version                Show version
+bwx raw [bws-args...]        Pass-through to upstream bws
+bwx completion bash          Bash tab completion
+bwx completion zsh           Zsh tab completion
 ```
 
 ## Structured note metadata
 
-`bwx` uses the BWS note field for structured metadata.  Each property
-is a single line in YAML-like format:
+Each secret's BWS note carries structured properties:
 
 ```yaml
-file: docker-compose-secret-filename
-note: Human-readable description
+file: app-password
+note: Database credential for the web service
 expires: 2026-09-20
-provider: tailscale-oauth
+provider: prompt
 release-tag: 2026.06.24.01
 release-tag: 2026.07.01.01
 ```
 
-- **`file:`** — maps the BWS secret to a local filename (used by
-  `bwx import`)
-- **`expires:`** — optional expiration date for time-limited
-  credentials; checked by `bwx check expiry`
-- **`provider:`** — rotation provider driver name (used by
-  `bwx rotate`); falls back to `prompt` if not set
-- **`release-tag:`** — one or more release tags binding the secret
-  to specific deployments; multi-value (one per line)
+| Property | Purpose |
+| -------- | ------- |
+| `file:` | Deployment filename (used by `bwx import`) |
+| `expires:` | Expiration date (checked by `bwx check expiry`) |
+| `provider:` | Rotation driver (used by `bwx rotate`) |
+| `release-tag:` | One or more deployment version bindings |
 
-## Caching
+## Installation
 
-`bwx secret list` and `bwx project list` cache API responses locally
-with a configurable TTL (default: 300 seconds).  Use `--refresh` to
-force a fresh fetch, or set `BWX_SECRET_LIST_CACHE_TTL_SECONDS=0` to
-disable caching.
-
-## Environment variables
-
-| Variable | Default | Description |
-| -------- | ------- | ----------- |
-| `BWS_ACCESS_TOKEN` | (required) | Bitwarden Secrets Manager access token |
-| `BWX_DEFAULT_PROJECT` | (none) | Default project name for all commands |
-| `BWS_SERVER_BASE_URL` | `https://vault.bitwarden.com` | Bitwarden server URL |
-| `BWX_SECRET_LIST_CACHE_TTL_SECONDS` | `300` | Cache TTL for secret/project lists |
-| `BWX_JQ_IMAGE` | `apteno/alpine-jq` | Docker image for jq wrapper |
-| `BWX_BWS_IMAGE` | `bitwarden/bws:latest` | Docker image for bws wrapper |
-
-## Shell completion
+### Clone
 
 ```bash
-# Bash — add to ~/.bashrc
+git clone https://github.com/1121citrus/bwx.git ~/.local/lib/bwx
+export PATH="${HOME}/.local/lib/bwx/bin:${PATH}"
 eval "$(bwx completion bash)"
-
-# Zsh — add to ~/.zshrc
-eval "$(bwx completion zsh)"
 ```
+
+### Homebrew
+
+```bash
+brew tap 1121citrus/bwx https://github.com/1121citrus/bwx
+brew install bwx
+```
+
+### Vendor dependency
+
+```bash
+git clone --branch v1.0.0 https://github.com/1121citrus/bwx.git vendor/bwx
+export PATH="${PWD}/vendor/bwx/bin:${PATH}"
+```
+
+### Prerequisites
+
+- **Bash 4.0+** (macOS ships 3.2 — `brew install bash`)
+- **Docker** — only when `jq` or `bws` are not natively installed
 
 ## Documentation
 
-- [Full subcommand reference](doc/usage.md) — installation options,
-  detailed command docs, note metadata conventions, caching, env vars
-- [Extending bwx](doc/extending.md) — architecture, adding subcommands,
-  adding note properties, testing patterns, code conventions
+- [Full subcommand reference](doc/usage.md) — every command with
+  examples and expected output
+- [Extending bwx](doc/extending.md) — architecture, adding
+  subcommands, adding note properties, rotation providers
+- [Security policy](SECURITY.md) — attack surface, dependency
+  scanning, token handling
 
 ## License
 
