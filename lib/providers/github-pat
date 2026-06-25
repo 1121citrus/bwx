@@ -1,0 +1,34 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2034
+# GitHub PAT provider — operator pastes token from developer settings.
+# Fine-grained PATs cannot be created via API.
+
+bwx-provider-github-pat() {
+    local secret="${1}"
+
+    info "Generate a new fine-grained PAT in GitHub:"
+    info "  https://github.com/settings/personal-access-tokens/new"
+    info ""
+    info "Settings:"
+    info "  Token name:    (descriptive name for this credential)"
+    info "  Expiration:    1 year (or custom)"
+    info "  Repository:    (select the repo that needs access)"
+    info "  Permissions:   (minimum required scopes)"
+    info ""
+
+    local new_token
+    printf 'Paste the new token: ' >/dev/tty
+    IFS= read -r new_token </dev/tty
+    [[ -n "${new_token}" ]] || { error "${EXIT_ERROR}" "No token provided"; return 1; }
+    [[ "${new_token}" == ghp_* || "${new_token}" == github_pat_* ]] || \
+        warn "Token format not recognized (expected ghp_* or github_pat_*)"
+
+    local expiry_days
+    printf 'Token expiry in days [365]: ' >/dev/tty
+    IFS= read -r expiry_days </dev/tty
+    expiry_days="${expiry_days:-365}"
+
+    PROVIDER_VALUE="${new_token}"
+    PROVIDER_EXPIRES="${expiry_days}"
+    PROVIDER_NOTE="note: GitHub PAT"
+}

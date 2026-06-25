@@ -1,0 +1,29 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2034
+# Tailscale manual provider — operator pastes key from admin console.
+# Used for untagged keys (OAuth clients can only create tagged keys).
+
+bwx-provider-tailscale-manual() {
+    local secret="${1}"
+
+    info "Generate a new key in the Tailscale admin console:"
+    info "  https://login.tailscale.com/admin/settings/keys"
+    info ""
+    info "Settings:"
+    info "  Reusable:  yes"
+    info "  Ephemeral: no"
+    info "  Tags:      none (must be untagged for user-owned devices)"
+    info "  Expiry:    90 days"
+    info ""
+
+    local new_key
+    printf 'Paste the new key: ' >/dev/tty
+    IFS= read -r new_key </dev/tty
+    [[ -n "${new_key}" ]] || { error "${EXIT_ERROR}" "No key provided"; return 1; }
+    [[ "${new_key}" == tskey-auth-* ]] || \
+        { error "${EXIT_ERROR}" "Key must start with tskey-auth-"; return 1; }
+
+    PROVIDER_VALUE="${new_key}"
+    PROVIDER_EXPIRES=90
+    PROVIDER_NOTE="note: Untagged reusable key for server provisioning"
+}

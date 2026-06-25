@@ -1,0 +1,161 @@
+# shellcheck shell=bash
+# shellcheck disable=SC1090,SC1091
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+# Check for secrets with upcoming or past expiration dates.
+# Reads the expires: YYYY-MM-DD field from each secret's note.
+# Secrets without expires: are silently skipped.
+# Args:
+#   [--exit-on-expiring]  Exit 1 if any expired/expiring secrets found
+#   [--warn-days N]       Warning window in days (default: 14)
+# Returns:
+#   0 if no issues; EXIT_ERROR if expiring and --exit-on-expiring set
+bwx-check-expiry() {
+    set -o errexit -o errtrace -o nounset -o pipefail
+    local _debug="${DEBUG:-false}"
+    [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
+
+    local exit_on_expiring=false
+    local warn_days=14
+    local notes_cmd="${BWX_NOTES_CMD:-_bwx_default_secret_notes}"
+
+    while [[ $# -gt 0 ]]; do
+        case "${1}" in
+            --exit-on-expiring)
+                exit_on_expiring=true
+                shift
+                ;;
+            --warn-days)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--warn-days requires a number"
+                [[ "${2}" =~ ^[0-9]+$ ]] || \
+                    error "${EXIT_USAGE}" "--warn-days must be a non-negative integer"
+                warn_days="${2}"
+                shift 2
+                ;;
+            -l|--log-level)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--log-level requires a value"
+                LOG_LEVEL="${2}"
+                export LOG_LEVEL
+                shift 2
+                ;;
+            -h|--help)
+                cat <<EOF
+Usage: bwx check expiry [options]
+
+Check for secrets with upcoming or past expiration dates.
+
+Reads the \`expires: YYYY-MM-DD\` field from each secret's note.
+Secrets without an \`expires:\` field are silently skipped.
+
+Options:
+    --exit-on-expiring     Exit 1 if any expired or soon-expiring secrets
+    --warn-days DAYS       Warning window in days (default: 14)
+    -l, --log-level LEVEL  Set log level (default: info)
+    -h, --help             Show this help and exit
+
+Exit codes:
+    0  No expiring secrets (or found but --exit-on-expiring not set)
+    1  Expiring/expired secrets found and --exit-on-expiring was set
+    2  Usage error
+EOF
+                return "${EXIT_USAGE:-2}"
+                ;;
+            --)
+                shift; break ;;
+            -*)
+                error "${EXIT_USAGE}" "Unknown option: ${1}" ;;
+            *)
+                error "${EXIT_USAGE}" "Unexpected argument: ${1}" ;;
+        esac
+    done
+
+    local now_epoch warn_seconds
+    now_epoch="$(date -u +%s)"
+    warn_seconds=$(( warn_days * 86400 ))
+
+    local total_checked=0
+    local total_expiring=0
+    local key note expires_date expires_epoch days_remaining
+
+    while IFS= read -r -d '' key && IFS= read -r -d '' note; do
+        expires_date="$(printf '%s' "${note}" \
+            | grep -iE '^[[:space:]]*expires[[:space:]]*:' \
+            | sed -E 's/^[[:space:]]*expires[[:space:]]*:[[:space:]]*//' \
+            | sed -E 's/[[:space:]]*(#.*)?$//' \
+            | head -1)" || true
+
+        [[ -n "${expires_date}" ]] || continue
+
+        expires_epoch="$(_bwx_date_to_epoch "${expires_date}" 2>/dev/null)" || {
+            warn "${key}: unparseable expires date '${expires_date}'"
+            continue
+        }
+
+        days_remaining=$(( (expires_epoch - now_epoch) / 86400 ))
+        total_checked=$((total_checked + 1))
+
+        if [[ "${expires_epoch}" -le "${now_epoch}" ]]; then
+            warn "${key}: EXPIRED ${expires_date} (${days_remaining} days ago)"
+            total_expiring=$((total_expiring + 1))
+        elif [[ $(( expires_epoch - now_epoch )) -le "${warn_seconds}" ]]; then
+            warn "${key}: expires ${expires_date} (${days_remaining} days)"
+            total_expiring=$((total_expiring + 1))
+        else
+            info "${key}: expires ${expires_date} (${days_remaining} days)"
+        fi
+    done < <(${notes_cmd})
+
+    if [[ "${total_checked}" -eq 0 ]]; then
+        info "No secrets with expires: metadata found"
+        return "${EXIT_SUCCESS}"
+    fi
+
+    if [[ "${total_expiring}" -eq 0 ]]; then
+        info "No secrets expiring within ${warn_days} days. Safe to tag."
+        return "${EXIT_SUCCESS}"
+    fi
+
+    warn "Total: ${total_expiring} expired or soon-expiring secret(s)"
+    warn "Rotate these before tagging a release"
+
+    if is-true "${exit_on_expiring}"; then
+        return "${EXIT_ERROR}"
+    fi
+    return "${EXIT_SUCCESS}"
+}
+
+# Default notes fetcher — NUL-delimited key/note pairs from BWS.
+# Args:
+#   None
+# Returns:
+#   0; writes NUL-delimited pairs to stdout
+_bwx_default_secret_notes() {
+    bwx-secret-list \
+        | jq -j '.[] | .key, " ", .note, " "'
+}
+
+# Convert YYYY-MM-DD to epoch seconds (portable).
+# Args:
+#   $1 — date string
+# Returns:
+#   0; writes epoch to stdout
+_bwx_date_to_epoch() {
+    local datestr="${1:?date string required}"
+    if date -u -j -f "%Y-%m-%d" "${datestr}" +%s >/dev/null 2>&1; then
+        date -u -j -f "%Y-%m-%d" "${datestr}" +%s
+        return 0
+    fi
+    if date -u -d "${datestr}" +%s >/dev/null 2>&1; then
+        date -u -d "${datestr}" +%s
+        return 0
+    fi
+    date -u -D "%Y-%m-%d" -d "${datestr}" +%s 2>/dev/null
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bwx-check-expiry "$@"
+fi

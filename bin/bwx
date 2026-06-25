@@ -74,6 +74,10 @@ declare -A _BWX_COMMANDS=(
     [tag/remove]=bwx-secret-remove-release-tag
     [tag/secrets]=bwx-release-tag-secrets
     [tag/unproject]=bwx-untag-project
+    # lifecycle
+    [import]=bwx-import
+    [check/expiry]=bwx-check-expiry
+    [rotate]=bwx-rotate
     # special
     [raw]=bws
     [completion/bash]=_bwx_completion_bash
@@ -301,6 +305,9 @@ Commands:
     secret       Query and mutate secrets
     project      Query projects
     tag          Manage release tags
+    import       Export secrets by release tag to a directory
+    check        Check secret metadata (expiry dates)
+    rotate       Rotate time-limited secrets via provider drivers
     raw          Pass-through to the upstream bws binary
     completion   Generate shell completion (bash, zsh)
 
@@ -339,6 +346,12 @@ Tag commands:
     bwx tag remove SECRET TAG    Remove a release tag from a secret
     bwx tag project TAG          Tag all secrets in the project
     bwx tag unproject TAG        Remove tag from all secrets
+
+Lifecycle commands:
+    bwx import TAG DIR [PROJECT]     Export secrets by release tag
+    bwx check expiry [--exit-on-expiring]  Check for expiring secrets
+    bwx rotate SECRET [PROJECT]      Rotate a secret via its provider
+    bwx rotate --all [PROJECT]       Rotate all expiring secrets
 
 Completion:
     eval "\$(bwx completion bash)"   Add to .bashrc

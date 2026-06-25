@@ -1,0 +1,26 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2034
+# Generic prompt provider — asks the operator to paste a new value.
+# Used as the fallback when no provider: field is set in the note.
+
+bwx-provider-prompt() {
+    local secret="${1}"
+
+    info "Paste the new value for '${secret}'."
+    info "(The secret's current note and expiry are shown above.)"
+    info ""
+
+    local value
+    printf 'New value: ' >/dev/tty
+    IFS= read -r value </dev/tty
+    [[ -n "${value}" ]] || { error "${EXIT_ERROR}" "No value provided"; return 1; }
+
+    local days
+    printf 'Expiry in days [90]: ' >/dev/tty
+    IFS= read -r days </dev/tty
+    days="${days:-90}"
+
+    PROVIDER_VALUE="${value}"
+    PROVIDER_EXPIRES="${days}"
+    PROVIDER_NOTE=""
+}

@@ -1,0 +1,226 @@
+# shellcheck shell=bash
+# shellcheck disable=SC1090,SC1091
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+# Rotate a time-limited secret using its provider driver.
+#
+# Reads the provider: field from the secret's BWS note to determine
+# which driver to use.  Falls back to the "prompt" driver when no
+# provider: field is set.
+#
+# After the provider generates a new credential, this function
+# updates the BWS value, expires:, and note metadata automatically.
+#
+# Args:
+#   SECRET   Secret name or UUID (required)
+#   PROJECT  Project name or UUID (optional)
+# Returns:
+#   0 on success; non-zero on failure
+bwx-rotate() {
+    set -o errexit -o errtrace -o nounset -o pipefail
+    local _debug="${DEBUG:-false}"
+    [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
+
+    local dryrun=false
+    local rotate_all=false
+
+    while [[ $# -gt 0 && "${1}" == -* ]]; do
+        case "${1}" in
+            -h|--help)
+                cat <<EOF
+Usage: bwx rotate [options] SECRET [PROJECT]
+       bwx rotate --all [PROJECT]
+
+Rotate a time-limited secret using its provider driver.
+
+The provider is determined by the provider: field in the secret's
+BWS note.  When no provider is set, the generic "prompt" driver
+asks the operator to paste the new value.
+
+Arguments:
+  SECRET       Secret name or UUID
+  PROJECT      Project name or UUID (default: \${BWX_DEFAULT_PROJECT})
+
+Options:
+  --all                  Rotate all secrets with an expires: field
+  --dry-run              Show what would be done
+  -l, --log-level LEVEL  Set log level (default: info)
+  -h, --help             Show this help and exit
+
+Built-in providers:
+  tailscale-oauth        Fully automated via OAuth client credentials
+  tailscale-manual       Operator pastes key from Tailscale admin console
+  github-pat             Operator pastes token from GitHub developer settings
+  prompt                 Generic: asks for value and expiry days (default)
+EOF
+                return "${EXIT_USAGE:-2}"
+                ;;
+            --all)
+                rotate_all=true
+                shift
+                ;;
+            --dry-run)
+                dryrun=true
+                shift
+                ;;
+            -l|--log-level)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--log-level requires a value"
+                LOG_LEVEL="${2}"
+                export LOG_LEVEL
+                shift 2
+                ;;
+            --)
+                shift; break ;;
+            -*)
+                error "${EXIT_USAGE}" "Unknown option: ${1}" ;;
+        esac
+    done
+
+    local project="${2:-}"
+
+    if is-true "${rotate_all}"; then
+        _bwx_rotate_all "${project}" "${dryrun}"
+        return $?
+    fi
+
+    local secret="${1:-}"
+    [[ -n "${secret}" ]] || error "${EXIT_USAGE}" "SECRET required (or use --all)"
+
+    _bwx_rotate_one "${secret}" "${project}" "${dryrun}"
+}
+
+# Rotate a single secret.
+# Args:
+#   $1 — secret name or UUID
+#   $2 — project (may be empty for default)
+#   $3 — dryrun flag
+# Returns:
+#   0 on success
+_bwx_rotate_one() {
+    local secret="${1}" project="${2}" dryrun="${3}"
+
+    # Resolve the note to find the provider
+    local note provider
+    if [[ -n "${project}" ]]; then
+        note="$(bwx-secret-note "${secret}" "${project}" 2>/dev/null)" || note=""
+    else
+        note="$(bwx-secret-note "${secret}" 2>/dev/null)" || note=""
+    fi
+
+    provider="$(printf '%s' "${note}" \
+        | grep -iE '^[[:space:]]*provider[[:space:]]*:' \
+        | sed -E 's/^[[:space:]]*provider[[:space:]]*:[[:space:]]*//' \
+        | sed -E 's/[[:space:]]*(#.*)?$//' \
+        | head -1)" || true
+    provider="${provider:-prompt}"
+
+    info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    info "Rotating ${secret} (provider: ${provider})"
+
+    # Source the provider driver
+    local provider_file
+    provider_file="$(dirname "${BASH_SOURCE[0]}")/providers/${provider}"
+    if [[ ! -f "${provider_file}" ]]; then
+        error "${EXIT_ERROR}" "Unknown provider '${provider}' for secret '${secret}'"
+    fi
+    source "${provider_file}"
+
+    local provider_fn="bwx-provider-${provider}"
+    if ! declare -F "${provider_fn}" >/dev/null 2>&1; then
+        error "${EXIT_ERROR}" "Provider '${provider}' does not define ${provider_fn}()"
+    fi
+
+    if is-true "${dryrun}"; then
+        info "[dry-run] Would call ${provider_fn} for ${secret}"
+        return 0
+    fi
+
+    # Call the provider — it sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
+    PROVIDER_VALUE="" PROVIDER_EXPIRES="" PROVIDER_NOTE=""
+    "${provider_fn}" "${secret}" "${BWX_SECRETS_DIR:-.secrets}" || return $?
+
+    [[ -n "${PROVIDER_VALUE}" ]] || \
+        error "${EXIT_ERROR}" "Provider '${provider}' returned empty value"
+    [[ -n "${PROVIDER_EXPIRES}" ]] || \
+        error "${EXIT_ERROR}" "Provider '${provider}' returned empty expiry"
+
+    # Compute expires date
+    local expires_date
+    local target_epoch=$(( $(date -u +%s) + PROVIDER_EXPIRES * 86400 ))
+    expires_date="$(date -u -d "@${target_epoch}" +%Y-%m-%d 2>/dev/null \
+        || date -u -r "${target_epoch}" +%Y-%m-%d 2>/dev/null \
+        || date -u -j -f "%s" "${target_epoch}" +%Y-%m-%d)"
+
+    # Update BWS
+    info "Updating BWS secret ${secret}"
+    if [[ -n "${project}" ]]; then
+        bwx-secret-set-value "${secret}" "${PROVIDER_VALUE}" "${project}"
+    else
+        bwx-secret-set-value "${secret}" "${PROVIDER_VALUE}"
+    fi
+
+    # Rebuild the note: preserve existing fields, update expires:
+    local file_field note_field
+    file_field="$(printf '%s' "${note}" \
+        | grep -iE '^[[:space:]]*file[[:space:]]*:' | head -1)" || true
+    note_field="${PROVIDER_NOTE:-$(printf '%s' "${note}" \
+        | grep -iE '^[[:space:]]*note[[:space:]]*:' | head -1)}" || true
+
+    local new_note=""
+    [[ -n "${file_field}" ]] && new_note+="${file_field}"$'\n'
+    [[ -n "${note_field}" ]] && new_note+="${note_field}"$'\n'
+    new_note+="expires: ${expires_date}"
+
+    # Preserve release-tag lines
+    local tags
+    tags="$(printf '%s' "${note}" \
+        | grep -iE '^[[:space:]]*release-tag[[:space:]]*:' || true)"
+    [[ -n "${tags}" ]] && new_note+=$'\n'"${tags}"
+
+    # Preserve provider line
+    new_note+=$'\n'"provider: ${provider}"
+
+    if [[ -n "${project}" ]]; then
+        bwx-secret-set-note "${secret}" "${new_note}" "${project}"
+    else
+        bwx-secret-set-note "${secret}" "${new_note}"
+    fi
+
+    info "${secret} rotated successfully (expires ${expires_date})"
+}
+
+# Rotate all secrets with an expires: field.
+# Args:
+#   $1 — project (may be empty)
+#   $2 — dryrun flag
+# Returns:
+#   0 if all succeed
+_bwx_rotate_all() {
+    local project="${1}" dryrun="${2}"
+    local failed=0
+
+    local key note expires_date
+    while IFS= read -r -d '' key && IFS= read -r -d '' note; do
+        expires_date="$(printf '%s' "${note}" \
+            | grep -iE '^[[:space:]]*expires[[:space:]]*:' \
+            | sed -E 's/^[[:space:]]*expires[[:space:]]*:[[:space:]]*//' \
+            | head -1)" || true
+        [[ -n "${expires_date}" ]] || continue
+
+        _bwx_rotate_one "${key}" "${project}" "${dryrun}" || \
+            failed=$((failed + 1))
+    done < <(_bwx_default_secret_notes)
+
+    info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    if [[ "${failed}" -gt 0 ]]; then
+        error "${EXIT_ERROR}" "${failed} rotation(s) failed"
+    fi
+    info "All rotations complete"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bwx-rotate "$@"
+fi
