@@ -101,3 +101,15 @@ BWX="${BWX_ROOT}/bin/bwx"
     run bash -c "source '${BWX}'"
     [[ "${status}" -ne 0 ]]
 }
+
+@test "lib bwx-secret --help executes the script entrypoint" {
+    run bash "${BWX_ROOT}/lib/bwx-secret" --help
+    [[ "${status}" -eq 0 || "${status}" -eq 2 ]]
+    [[ "${output}" == *"bwx secret show"* ]]
+}
+
+@test "lib bwx-project --help executes the script entrypoint" {
+    run bash "${BWX_ROOT}/lib/bwx-project" --help
+    [[ "${status}" -eq 0 || "${status}" -eq 2 ]]
+    [[ "${output}" == *"bwx project show"* ]]
+}

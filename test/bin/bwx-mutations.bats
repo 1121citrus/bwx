@@ -109,9 +109,12 @@ teardown() { bwx_test_teardown; }
 # -- secret clone --
 
 @test "secret clone clones a versioned secret" {
-    # Clone requires _vN suffix for version increment
-    # secret_key_1 doesn't have it; mock has no _vN secrets,
-    # so test the error path and the valid-name acceptance
+    run "${BWX}" secret clone app_password_v1 "rotated-value"
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"app_password_v2"* ]]
+}
+
+@test "secret clone rejects non-versioned secret names" {
     run "${BWX}" secret clone secret_key_1
     [[ "${status}" -ne 0 ]]
     [[ "${output}" == *"_vN"* ]]

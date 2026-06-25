@@ -1,8 +1,13 @@
 #!/usr/bin/env bats
 # Tests for lifecycle subcommands: import, check expiry, rotate.
 
+load helpers
+
 BWX_ROOT="$(realpath "$(dirname "${BATS_TEST_FILENAME}")/../..")"
 BWX="${BWX_ROOT}/bin/bwx"
+
+setup()    { bwx_test_setup; }
+teardown() { bwx_test_teardown; }
 
 # -- import --
 
@@ -16,6 +21,19 @@ BWX="${BWX_ROOT}/bin/bwx"
 @test "import requires TAG and OUTPUT_DIR" {
     run "${BWX}" import
     [[ "${status}" -ne 0 ]]
+}
+
+@test "import exports tagged secrets as files and symlinks" {
+    local out_dir="${TEST_TMPDIR}/import-output"
+
+    run "${BWX}" import test-tag-1 "${out_dir}" test-project
+    [[ "${status}" -eq 0 ]]
+    [[ -f "${out_dir}/RELEASE_TAG" ]]
+    [[ "$(<"${out_dir}/RELEASE_TAG")" == "test-tag-1" ]]
+
+    [[ -f "${out_dir}/.by-uuid/iiii-jjjj-kkkk-llll" ]]
+    [[ -L "${out_dir}/test-secret-1" ]]
+    [[ "$(readlink "${out_dir}/test-secret-1")" == ".by-uuid/iiii-jjjj-kkkk-llll" ]]
 }
 
 @test "import is in the dispatch table" {
@@ -36,6 +54,19 @@ BWX="${BWX_ROOT}/bin/bwx"
     run "${BWX}" check bogus
     [[ "${status}" -eq 2 ]]
     [[ "${output}" == *"expiry"* ]]
+}
+
+@test "check expiry reports expired metadata entries" {
+    run "${BWX}" check expiry
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"secret_expiring_v1"* ]]
+    [[ "${output}" == *"EXPIRED"* ]]
+}
+
+@test "check expiry --exit-on-expiring fails on expired metadata entries" {
+    run "${BWX}" check expiry --exit-on-expiring
+    [[ "${status}" -eq 1 ]]
+    [[ "${output}" == *"secret_expiring_v1"* ]]
 }
 
 # -- rotate --
@@ -63,6 +94,13 @@ BWX="${BWX_ROOT}/bin/bwx"
 @test "rotate is in the dispatch table" {
     run "${BWX}" bogus-rotate
     [[ "${output}" == *"rotate"* ]]
+}
+
+@test "rotate --all --dry-run iterates expiring secrets" {
+    run "${BWX}" rotate --all --dry-run
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"Rotating secret_expiring_v1 (provider: prompt)"* ]]
+    [[ "${output}" == *"[dry-run] Would call bwx-provider-prompt for secret_expiring_v1"* ]]
 }
 
 # -- completion includes new families --

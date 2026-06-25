@@ -76,5 +76,5 @@ EOF
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    bws-project "$@"
+    bwx-project "$@"
 fi

@@ -101,6 +101,26 @@ get_mock_secrets() {
     "revisionDate": "2023-01-01T00:00:00Z"
   },
   {
+    "id": "2222-3333-4444-5555",
+    "organizationId": "org-1",
+    "projectId": "${project_id}",
+    "key": "app_password_v1",
+    "value": "secret_value_clone_source",
+    "note": "file: app-password\nnote: clone source secret",
+    "creationDate": "2023-01-01T00:00:00Z",
+    "revisionDate": "2023-01-01T00:00:00Z"
+  },
+  {
+    "id": "3333-4444-5555-6666",
+    "organizationId": "org-1",
+    "projectId": "${project_id}",
+    "key": "secret_expiring_v1",
+    "value": "secret_value_expiring",
+    "note": "file: expiring-secret\nnote: expiring test secret\nexpires: 2000-01-01\nprovider: prompt\nrelease-tag: test-tag-1",
+    "creationDate": "2023-01-01T00:00:00Z",
+    "revisionDate": "2023-01-01T00:00:00Z"
+  },
+  {
     "id": "yyyy-zzzz-0000-1111",
     "organizationId": "org-1",
     "projectId": "${project_id}",

@@ -135,7 +135,7 @@ EOF
 #   0; writes NUL-delimited pairs to stdout
 _bwx_default_secret_notes() {
     bwx-secret-list \
-        | jq -j '.[] | .key, " ", .note, " "'
+        | jq -j '.[] | .key, "\u0000", .note, "\u0000"'
 }
 
 # Convert YYYY-MM-DD to epoch seconds (portable).
