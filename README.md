@@ -6,6 +6,25 @@ A bash CLI that extends the
 release lifecycle: bulk tagging, versioned cloning, structured
 metadata, expiry tracking, and provider-driven rotation.
 
+- [bwx — Bitwarden Secrets Manager eXtended CLI](#bwx—-bitwarden-secrets-manager-extended-cli)
+  - [Why bwx](#why-bwx)
+  - [Intended workflow](#intended-workflow)
+  - [Quick start](#quick-start)
+  - [Commands](#commands)
+    - [Secret commands](#secret-commands)
+    - [Project commands](#project-commands)
+    - [Tag commands](#tag-commands)
+    - [Lifecycle commands](#lifecycle-commands)
+    - [Other commands](#other-commands)
+  - [Structured note metadata](#structured-note-metadata)
+  - [Installation](#installation)
+    - [Clone](#clone)
+    - [Homebrew](#homebrew)
+    - [Vendor dependency](#vendor-dependency)
+    - [Prerequisites](#prerequisites)
+  - [Documentation](#documentation)
+  - [License](#license)
+
 ## Why bwx
 
 The official `bws` CLI provides single-secret CRUD.  `bwx` adds
