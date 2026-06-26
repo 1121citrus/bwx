@@ -1,0 +1,230 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+
+# Centralized parser for BWS structured note metadata.
+#
+# Structured notes use a simple key: value format, one field per line.
+# This module provides the single authoritative grammar for parsing,
+# validating, and mutating note fields. All command modules should use
+# these functions instead of inline grep/sed/jq pipelines.
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+# -- Field-type registry ---------------------------------------------------
+#
+# Each known field has: cardinality (single|multi), value type for
+# validation, and whether it is optional. Unknown fields are preserved
+# verbatim by mutation functions.
+#
+# | Field       | Cardinality | Value type  |
+# |-------------|-------------|-------------|
+# | file        | single      | path        |
+# | note        | single      | freeform    |
+# | expires     | single      | date        |
+# | provider    | single      | identifier  |
+# | release-tag | multi       | identifier  |
+
+# -- Canonical grammar -----------------------------------------------------
+#
+# Field line: ^[[:space:]]*FIELD[[:space:]]*:[[:space:]]*VALUE[[:space:]]*(#.*)?$
+# - Case-insensitive match on field name
+# - Leading/trailing whitespace and inline comments are stripped from value
+
+# _bwx_note_field_re — build a grep-compatible ERE for a field name.
+# Args:
+#   $1 — field name
+# Returns:
+#   0; writes ERE pattern to stdout
+_bwx_note_field_re() {
+    printf '^[[:space:]]*%s[[:space:]]*:' "${1}"
+}
+
+# _bwx_note_extract_value — extract the value portion from a matched line.
+# Strips the field name, colon, surrounding whitespace, and inline comments.
+# Args:
+#   $1 — field name
+# Returns:
+#   Reads from stdin, writes extracted value to stdout
+_bwx_note_extract_value() {
+    local field="${1}"
+    sed -E "s/^[[:space:]]*${field}[[:space:]]*:[[:space:]]*//" \
+        | sed -E 's/[[:space:]]*(#.*)?$//'
+}
+
+# _bwx_note_validate_path — reject path values with traversal characters.
+# Args:
+#   $1 — value to validate
+# Returns:
+#   0 if safe; 1 if unsafe
+_bwx_note_validate_path() {
+    local val="${1}"
+    case "${val}" in
+        *..*)   return 1 ;;
+        */*)    return 1 ;;
+        -*)     return 1 ;;
+        '')     return 1 ;;
+        *)      return 0 ;;
+    esac
+}
+
+# _bwx_note_validate_date — check YYYY-MM-DD format.
+# Args:
+#   $1 — value to validate
+# Returns:
+#   0 if valid format; 1 otherwise
+_bwx_note_validate_date() {
+    [[ "${1}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]
+}
+
+# _bwx_note_validate_identifier — check safe identifier characters.
+# Args:
+#   $1 — value to validate
+# Returns:
+#   0 if valid; 1 otherwise
+_bwx_note_validate_identifier() {
+    [[ "${1}" =~ ^[A-Za-z0-9._-]+$ ]]
+}
+
+# _bwx_note_validate_field — validate a value against its field type.
+# Args:
+#   $1 — field name
+#   $2 — value
+# Returns:
+#   0 if valid (or field type is freeform/unknown); 1 if invalid
+_bwx_note_validate_field() {
+    local field="${1,,}" val="${2}"
+    case "${field}" in
+        file)        _bwx_note_validate_path "${val}" ;;
+        expires)     _bwx_note_validate_date "${val}" ;;
+        provider)    _bwx_note_validate_identifier "${val}" ;;
+        release-tag) _bwx_note_validate_identifier "${val}" ;;
+        *)           return 0 ;;
+    esac
+}
+
+# bwx-note-get-field — extract a single-value field from a note.
+# Returns 0 with empty stdout when the field is absent (optional).
+# Args:
+#   $1 — field name
+#   $2 — note text
+# Returns:
+#   0; writes field value to stdout (empty if absent)
+bwx-note-get-field() {
+    local field="${1}" note="${2}"
+    local re
+    re="$(_bwx_note_field_re "${field}")"
+    local result
+    result="$(printf '%s' "${note}" \
+        | grep -iE "${re}" \
+        | _bwx_note_extract_value "${field}" \
+        | head -1)" || true
+    printf '%s' "${result}"
+}
+
+# bwx-note-get-multi-field — extract all values for a multi-value field.
+# Returns 0 with empty stdout when no matching lines exist.
+# Args:
+#   $1 — field name
+#   $2 — note text
+# Returns:
+#   0; writes one value per line to stdout
+bwx-note-get-multi-field() {
+    local field="${1}" note="${2}"
+    local re
+    re="$(_bwx_note_field_re "${field}")"
+    printf '%s' "${note}" \
+        | grep -iE "${re}" \
+        | _bwx_note_extract_value "${field}" \
+        || true
+}
+
+# bwx-note-set-field — replace or append a field in a note.
+# For single-value fields, replaces the first match. For multi-value
+# fields, appends a new line. Validates the value against the field
+# type before writing.
+# Args:
+#   $1 — field name
+#   $2 — new value
+#   $3 — note text
+# Returns:
+#   0; writes updated note to stdout. Returns 1 if validation fails.
+bwx-note-set-field() {
+    local field="${1}" value="${2}" note="${3}"
+
+    if ! _bwx_note_validate_field "${field}" "${value}"; then
+        return 1
+    fi
+
+    local re
+    re="$(_bwx_note_field_re "${field}")"
+    local cardinality
+    case "${field,,}" in
+        release-tag) cardinality=multi ;;
+        *)           cardinality=single ;;
+    esac
+
+    if [[ "${cardinality}" == "multi" ]]; then
+        if [[ -n "${note}" ]]; then
+            printf '%s\n%s: %s' "${note}" "${field}" "${value}"
+        else
+            printf '%s: %s' "${field}" "${value}"
+        fi
+        return 0
+    fi
+
+    if printf '%s' "${note}" | grep -qiE "${re}"; then
+        local first_replaced=false
+        while IFS= read -r line; do
+            if [[ "${first_replaced}" == "false" ]] && \
+                printf '%s' "${line}" | grep -qiE "${re}"; then
+                printf '%s\n' "${field}: ${value}"
+                first_replaced=true
+            else
+                printf '%s\n' "${line}"
+            fi
+        done <<< "${note}"
+        # Remove trailing newline added by here-string
+        return 0
+    else
+        if [[ -n "${note}" ]]; then
+            printf '%s\n%s: %s' "${note}" "${field}" "${value}"
+        else
+            printf '%s: %s' "${field}" "${value}"
+        fi
+    fi
+}
+
+# bwx-note-remove-field — remove field lines from a note.
+# For multi-value fields, VALUE selects the specific line to remove.
+# Omitting VALUE removes all lines for that field.
+# Args:
+#   $1 — field name
+#   $2 — value to match (optional; empty = remove all)
+#   $3 — note text
+# Returns:
+#   0; writes updated note to stdout
+bwx-note-remove-field() {
+    local field="${1}" match_value="${2:-}" note="${3}"
+    local re
+    re="$(_bwx_note_field_re "${field}")"
+
+    local output="" line line_value
+    while IFS= read -r line; do
+        if printf '%s' "${line}" | grep -qiE "${re}"; then
+            if [[ -z "${match_value}" ]]; then
+                continue
+            fi
+            line_value="$(printf '%s' "${line}" \
+                | _bwx_note_extract_value "${field}")"
+            if [[ "${line_value}" == "${match_value}" ]]; then
+                continue
+            fi
+        fi
+        if [[ -n "${output}" ]]; then
+            output+=$'\n'
+        fi
+        output+="${line}"
+    done <<< "${note}"
+    printf '%s' "${output}"
+}
