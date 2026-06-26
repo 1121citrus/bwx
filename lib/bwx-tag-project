@@ -183,7 +183,7 @@ EOF
             bwx-secret-add-release-tag "${secret}" "${release_tag}" "${project_id}"; then
             info "Added tag '${release_tag}' to secret '${secret}'" || :
         else
-            error "${RETURN_ERROR}" "Failed to add tag '${release_tag}' to secret '${secret}'" || :
+            warn "Failed to add tag '${release_tag}' to secret '${secret}'"
             ((failed++)) || :
         fi
         ((processed++)) || :
