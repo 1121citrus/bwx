@@ -30,10 +30,9 @@ BWX="${BWX_ROOT}/bin/bwx"
 
 @test "raw subcommand is recognized" {
     # raw delegates to bws which won't be available in test,
-    # but the dispatch should reach bws (not exit with unknown command)
-    run "${BWX}" raw --help
-    # Either bws prints help (status 0/2) or bws not found (127)
-    # but NOT bwx's "unknown command" (status 2 with "unknown" in output)
+    # but the dispatch should reach bws (not exit with unknown command).
+    # Allow 0 (help shown), 2 (usage), or 127 (bws not found).
+    run -0 -2 -127 -- "${BWX}" raw --help
     if [[ "${status}" -eq 2 ]]; then
         [[ "${output}" != *"unknown command"* ]]
     fi
