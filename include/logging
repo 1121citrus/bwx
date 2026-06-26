@@ -124,6 +124,11 @@ function error() {
         # First argument is a valid status, so remove it so that only the message remains
         exit_status="${1:-}" && shift
     fi
+    # RETURN_* codes propagate via return; EXIT_* codes terminate via exit
+    if [[ "${exit_status}" -ge "${RETURN_ERROR_FLOOR}" ]]; then
+        (set -o noglob; log-and-exit ERROR "${exit_status}" "$@")
+        return $?
+    fi
     (set -o noglob; log-and-exit ERROR "${exit_status:-${EXIT_ERROR}}" "$@") || exit $?
 }
 
@@ -160,6 +165,11 @@ function fatal() {
     if validate-exit-status "${1:-}" >/dev/null; then
         # First argument is a valid status, so remove it so that only the message remains
         exit_status="${1:-}" && shift
+    fi
+    # RETURN_* codes propagate via return; EXIT_* codes terminate via exit
+    if [[ "${exit_status}" -ge "${RETURN_ERROR_FLOOR}" ]]; then
+        (set -o noglob; log-and-exit FATAL "${exit_status}" "$@")
+        return $?
     fi
     (set -o noglob; log-and-exit FATAL "${exit_status:-${EXIT_FATAL}}" "$@") || exit $?
 }
