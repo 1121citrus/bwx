@@ -203,6 +203,16 @@ _bwx_rotate_all() {
     local project="${1}" dryrun="${2}"
     local failed=0
 
+    local candidates_file
+    candidates_file="$(mktemp)" || \
+        error "${EXIT_ERROR}" "Cannot create temp file for candidate list"
+    # shellcheck disable=SC2064
+    trap "rm -f '${candidates_file}'" RETURN
+
+    if ! _bwx_default_secret_notes "${project}" > "${candidates_file}"; then
+        error "${EXIT_ERROR}" "Failed to fetch secret list for rotation"
+    fi
+
     local key note expires_date
     while IFS= read -r -d '' key && IFS= read -r -d '' note; do
         expires_date="$(printf '%s' "${note}" \
@@ -213,7 +223,7 @@ _bwx_rotate_all() {
 
         _bwx_rotate_one "${key}" "${project}" "${dryrun}" || \
             failed=$((failed + 1))
-    done < <(_bwx_default_secret_notes "${project}")
+    done < "${candidates_file}"
 
     info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     if [[ "${failed}" -gt 0 ]]; then
