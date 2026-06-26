@@ -35,6 +35,9 @@ class Bwx < Formula
 
     # Install version.txt for --version
     (share/"bwx").install "version.txt"
+
+    # Install man page
+    man1.install "man/man1/bwx.1"
   end
 
   def caveats

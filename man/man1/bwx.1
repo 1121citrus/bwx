@@ -1,0 +1,698 @@
+.\" bwx.1 — Bitwarden Secrets Manager eXtended CLI
+.\" Copyright (C) 2026 James Hanlon
+.\" Licensed under AGPL-3.0-or-later
+.\"
+.TH BWX 1 "2026-06-26" "bwx 1.0.0" "User Commands"
+.\"
+.SH NAME
+bwx \- Bitwarden Secrets Manager eXtended CLI
+.\"
+.SH SYNOPSIS
+.B bwx
+.I command
+.RI [ subcommand ]
+.RI [ options ]
+.RI [ args... ]
+.br
+.B bwx
+.BR \-h | \-\-help
+.br
+.B bwx
+.BR \-v | \-\-version
+.\"
+.SH DESCRIPTION
+.B bwx
+extends the official Bitwarden Secrets Manager CLI
+.RB ( bws )
+with operational lifecycle management for secrets.
+Features include bulk release tagging, versioned cloning, structured
+metadata in secret notes, expiry tracking, and provider-driven credential
+rotation.
+.PP
+Commands are organized into families:
+.BR secret ,
+.BR project ,
+.BR tag ,
+.BR import ,
+.BR check ,
+.BR rotate ,
+.BR raw ,
+and
+.BR completion .
+The dispatch layer accepts up to three positional words to resolve a
+subcommand (for example,
+.BR "bwx project default id" ).
+.PP
+.B bwx
+requires Bash 4.0 or newer.
+macOS ships Bash 3.2; install an updated version via Homebrew or pkgsrc.
+.PP
+When
+.BR jq (1)
+or
+.B bws
+are not installed natively,
+.B bwx
+falls back to Docker-wrapped equivalents automatically.
+.\"
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print usage summary and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version number and exit.
+.\"
+.SS "Common per-command options"
+Most subcommands accept the following options before positional arguments:
+.TP
+.BR \-R ", " \-\-refresh
+Bypass the cache and force a fresh API fetch.
+.TP
+.BR \-l ", " \-\-log\-level " " \fILEVEL\fR
+Override the logging verbosity for this invocation.
+Valid levels:
+.BR error ", " warn ", " info ", " debug ", " trace ", " diag .
+.\"
+.SH COMMANDS
+.\"
+.SS "secret family"
+Commands for querying and mutating individual secrets.
+Every command that accepts a
+.I SECRET
+argument resolves it by key name or UUID.
+Every command that accepts an optional
+.I PROJECT
+argument defaults to the value of
+.BR BWX_DEFAULT_PROJECT .
+.\"
+.TP
+.BI "bwx secret list " "[--refresh] [PROJECT]"
+List all secrets in a project as compact JSON.
+Pipe through
+.BR jq (1)
+to pretty-print.
+.\"
+.TP
+.BI "bwx secret show " "SECRET [PROJECT]"
+Print the full JSON metadata for a single secret, including key, value,
+note, id, and timestamps.
+.\"
+.TP
+.BI "bwx secret get " "[--refresh] PROPERTY SECRET [PROJECT]"
+Get a single property of a secret.
+.I PROPERTY
+is one of:
+.BR value ,
+.BR note ,
+.BR id ,
+.BR key ,
+.BR name ,
+.BR filename ,
+.BR tags ,
+.BR expires ,
+.BR provider .
+The
+.B tags
+property prints one tag per line.
+See
+.B STRUCTURED NOTE METADATA
+for details on note-derived properties.
+.\"
+.TP
+.BI "bwx secret set " "[--from-file FILE] [--force] PROPERTY SECRET VALUE [PROJECT]"
+Set a property of a secret.
+Settable properties:
+.BR value ,
+.BR note ,
+.BR key ,
+.BR filename .
+Use
+.B \-\-from\-file
+to read the new value from a file (useful for multi-line content).
+Use
+.B \-\-force
+to allow setting an empty value.
+.\"
+.TP
+.BI "bwx secret ls " "[--refresh] [PROJECT]"
+Print secret key names only, one per line, sorted.
+A compact alternative to
+.BR "bwx secret list" .
+.\"
+.TP
+\fBbwx secret create\fR [\fB\-n\fR \fINOTE\fR] [\fB\-\-note\-from\-file\fR \fIFILE\fR] [\fB\-f\fR \fIFILE\fR] [\fB\-\-from\-file\fR \fIFILE\fR] [\fB\-\-release\-tag\fR \fITAG\fR]... \fIKEY\fR [\fIVALUE\fR] [\fIPROJECT\fR]
+Create a new secret.
+The value can be given as a positional argument or read from a file with
+.BR \-\-from\-file .
+Options:
+.RS
+.TP
+.BR \-n ", " \-\-note " " \fINOTE\fR
+Set the
+.B note:
+field in the structured note.
+.TP
+.B \-\-note\-from\-file " " \fIFILE\fR
+Read the note from a file.
+.TP
+.BR \-f ", " \-\-file " " \fIFILE\fR
+Set the
+.B file:
+field in the structured note (deployment filename).
+.TP
+.B \-\-from\-file " " \fIFILE\fR
+Read the secret value from a file.
+.TP
+.B \-\-release\-tag " " \fITAG\fR
+Add a
+.B release\-tag:
+entry to the note.
+Repeatable.
+.RE
+.\"
+.TP
+.BI "bwx secret clone " "SECRET [VALUE] [PROJECT]"
+Deep-copy a secret and increment the version suffix.
+The source secret name must end in
+.B _vN
+(for example,
+.BR api_key_v1 ).
+The clone is created as
+.BR _v(N+1) .
+All note metadata is preserved except release tags, which are stripped.
+An optional new
+.I VALUE
+replaces the original.
+.\"
+.TP
+.BI "bwx secret delete " "SECRET [PROJECT]"
+Delete a secret by name or UUID.
+.\"
+.SS "project family"
+Commands for querying Bitwarden Secrets Manager projects.
+.\"
+.TP
+.BI "bwx project list " "[--refresh]"
+List all projects as compact JSON.
+.\"
+.TP
+.BI "bwx project show " "[PROJECT]"
+Print the full JSON metadata for a single project.
+.\"
+.TP
+.BI "bwx project id " "[PROJECT]"
+Resolve a project name to its UUID.
+.\"
+.TP
+.BI "bwx project name " "[PROJECT]"
+Resolve a project UUID to its human-readable name.
+.\"
+.TP
+.BI "bwx project ls " "[--refresh]"
+Print project names only, one per line, sorted.
+.\"
+.TP
+.B bwx project default id
+Print the UUID of the default project (resolved from
+.BR BWX_DEFAULT_PROJECT ).
+.\"
+.TP
+.B bwx project default name
+Print the name of the default project.
+.\"
+.SS "tag family"
+Commands for managing release tags.
+Release tags are stored as
+.B release\-tag:
+lines in each secret's note field.
+They bind secrets to specific deployment releases.
+.\"
+.TP
+.BI "bwx tag list " "[--refresh] [PROJECT]"
+List all distinct release tags across all secrets in a project, one per
+line, sorted.
+.\"
+.TP
+.BI "bwx tag secrets " "[--refresh] [TAG] [PROJECT]"
+List secrets grouped by release tag.
+If
+.I TAG
+is specified, only secrets with that tag are shown.
+Output format is
+.BR "TAG: secret1 secret2 ..." .
+.\"
+.TP
+.BI "bwx tag add " "SECRET TAG [PROJECT]"
+Add a release tag to a single secret.
+Idempotent; if the tag already exists, the note is unchanged.
+.\"
+.TP
+.BI "bwx tag remove " "SECRET TAG [PROJECT]"
+Remove a release tag from a single secret.
+.\"
+.TP
+\fBbwx tag project\fR [\fB\-p\fR \fIPROJECT\fR] [\fB\-s\fR \fITAG\fR]... [\fB\-R\fR] \fITAG\fR [\fISECRETS\fR...]
+Add a release tag to multiple secrets in bulk.
+Without explicit
+.I SECRETS
+or
+.BR \-\-select\-tag ,
+tags all secrets in the project.
+.RS
+.TP
+.BR \-p ", " \-\-project " " \fIPROJECT\fR
+Project name or UUID.
+.TP
+.BR \-s ", " \-\-select\-tag " " \fITAG\fR
+Select secrets that already have this tag.
+Repeatable.
+Supplements any positional
+.IR SECRETS .
+.RE
+.\"
+.TP
+\fBbwx tag unproject\fR [\fB\-p\fR \fIPROJECT\fR] [\fB\-s\fR \fITAG\fR]... [\fB\-R\fR] \fITAG\fR [\fISECRETS\fR...]
+Remove a release tag from multiple secrets in bulk.
+Without explicit
+.I SECRETS
+or
+.BR \-\-select\-tag ,
+removes the tag from all secrets in the project that have it.
+Options are the same as
+.BR "bwx tag project" .
+.\"
+.SS "import"
+.TP
+.BI "bwx import " "TAG OUTPUT_DIR [PROJECT]"
+Export all secrets tagged with
+.I TAG
+from a project into
+.IR OUTPUT_DIR .
+Each secret with a matching
+.B release\-tag:
+note entry is written as a file named by its
+.B file:
+property.
+Values are stored in
+.IB OUTPUT_DIR /.by\-uuid/ id
+with symlinks from the deployment filenames.
+.IP
+The special tag
+.B all
+exports every secret regardless of tagging.
+.\"
+.SS "check"
+.TP
+\fBbwx check expiry\fR [\fB\-\-exit\-on\-expiring\fR] [\fB\-\-warn\-days\fR \fIDAYS\fR]
+Check for secrets with upcoming or past expiration dates.
+Reads the
+.B expires:
+field from each secret's note.
+Secrets without an
+.B expires:
+field are silently skipped.
+.RS
+.TP
+.B \-\-exit\-on\-expiring
+Exit with status 1 if any expired or soon-expiring secrets are found.
+Useful as a pre-release gate.
+.TP
+.BR \-\-warn\-days " " \fIDAYS\fR
+Warning window in days.
+Default: 14.
+.RE
+.\"
+.SS "rotate"
+.TP
+\fBbwx rotate\fR [\fB\-\-dry\-run\fR] \fISECRET\fR [\fIPROJECT\fR]
+.TQ
+\fBbwx rotate \-\-all\fR [\fIPROJECT\fR]
+Rotate a time-limited secret using its provider driver.
+The provider is determined by the
+.B provider:
+field in the secret's note.
+When no provider is set, the generic
+.B prompt
+driver asks the operator to paste a new value.
+.RS
+.TP
+.B \-\-all
+Rotate all secrets that have an
+.B expires:
+field.
+.TP
+.B \-\-dry\-run
+Show what would be done without making changes.
+.RE
+.\"
+.SS "raw"
+.TP
+.BI "bwx raw " "[bws-args...]"
+Pass-through to the upstream
+.BR bws (1)
+binary (or Docker-wrapped equivalent).
+All arguments are forwarded without modification.
+.\"
+.SS "completion"
+.TP
+.B bwx completion bash
+Print bash completion definitions to stdout.
+.TP
+.B bwx completion zsh
+Print zsh completion definitions to stdout.
+.IP
+Setup:
+.RS
+.nf
+# Bash (add to ~/.bashrc)
+eval "$(bwx completion bash)"
+
+# Zsh (add to ~/.zshrc)
+eval "$(bwx completion zsh)"
+.fi
+.RE
+.\"
+.SH STRUCTURED NOTE METADATA
+.B bwx
+stores structured metadata in the Bitwarden Secrets Manager note field
+using a line-oriented
+.IB key ": " value
+format.
+.SS Properties
+.TP
+.B file:
+Maps the secret to a deployment filename.
+Used by
+.B bwx import
+to write the secret value to disk.
+Single-value.
+.TP
+.B note:
+Human-readable description of the secret's purpose.
+Single-value.
+.TP
+.B expires:
+Expiration date in ISO 8601 format (e.g.,
+.BR 2026-09-20 ).
+Used by
+.B bwx check expiry
+to detect upcoming expirations.
+Single-value.
+.TP
+.B provider:
+Rotation provider driver name (e.g.,
+.BR tailscale-oauth ,
+.BR github-pat ).
+Used by
+.B bwx rotate
+to determine how to generate a new credential.
+Falls back to
+.B prompt
+if not set.
+Single-value.
+.TP
+.B release\-tag:
+Release identifier binding the secret to a specific deployment.
+Multi-value; each tag is a separate line.
+Managed by
+.B bwx tag add
+and
+.BR "bwx tag remove" .
+.\"
+.SS "Example note"
+.PP
+.nf
+file: mosquitto-password
+note: MQTT broker authentication credential
+expires: 2026-09-20
+provider: prompt
+release-tag: 2026.06.01.01
+release-tag: 2026.06.24.01
+.fi
+.\"
+.SH ROTATION PROVIDERS
+Providers live in
+.I lib/providers/<name>
+and export a function
+.BI bwx-provider- name ().
+Each provider sets
+.BR PROVIDER_VALUE ,
+.BR PROVIDER_EXPIRES ,
+and
+.B PROVIDER_NOTE
+before returning.
+.\"
+.TP
+.B prompt
+Generic operator-prompted value paste.
+Default fallback when no
+.B provider:
+field is set.
+Asks for a new value and expiry in days (default: 90).
+.\"
+.TP
+.B tailscale-oauth
+Fully automated OAuth client credential rotation via the Tailscale API.
+Requires
+.B tailscale-oauth-client-id
+and
+.B tailscale-oauth-client-secret
+files in
+.BR $BWX_SECRETS_DIR .
+Creates a tagged pre-auth key with 90-day expiry.
+.\"
+.TP
+.B tailscale-manual
+Operator-prompted; pastes a key from the Tailscale admin console.
+Supports custom expiry entry.
+.\"
+.TP
+.B github-pat
+Operator-prompted; pastes a GitHub Personal Access Token.
+Validates token format
+.RB ( ghp_ *
+or
+.BR github_pat_ *).
+Default: 365-day expiry.
+.\"
+.SH ENVIRONMENT
+.TP
+.B BWS_ACCESS_TOKEN
+(Required.)
+Bitwarden Secrets Manager machine-account access token.
+Validated on first API call; the result is cached for
+.B BWX_VALIDATE_ACCESS_TTL_SECONDS
+seconds.
+.TP
+.B BWX_DEFAULT_PROJECT
+Default project name for all commands.
+When set, the
+.RI [ PROJECT ]
+argument can be omitted from every subcommand.
+.TP
+.B BWS_SERVER_BASE_URL
+Bitwarden server URL.
+Default:
+.BR https://vault.bitwarden.com .
+Override for self-hosted instances.
+.TP
+.B BWX_SECRET_LIST_CACHE_TTL_SECONDS
+TTL in seconds for secret-list and project-list file caches.
+Default: 300 (5 minutes).
+Set to 0 to disable file caching.
+.TP
+.B BWX_VALIDATE_ACCESS_TTL_SECONDS
+TTL in seconds for caching access-token validation results.
+Default: 300.
+.TP
+.B BWX_CACHE_DIR
+Override the cache directory location.
+Default:
+.BR $XDG_CACHE_HOME/1121-citrus/bws
+(or
+.BR $HOME/.cache/1121-citrus/bws ).
+.TP
+.B BWX_JQ_IMAGE
+Docker image for
+.BR jq (1)
+when not natively installed.
+Default:
+.BR apteno/alpine-jq .
+.TP
+.B BWX_BWS_IMAGE
+Docker image for
+.B bws
+when not natively installed.
+Default:
+.BR bitwarden/bws:latest .
+.TP
+.B BWS_CONFIG_FILE
+Path to a
+.B bws
+config file.
+If unset, a temporary config is generated from
+.BR BWS_SERVER_BASE_URL .
+.TP
+.B DEBUG
+Enable verbose and xtrace output.
+Accepted values:
+.BR true ", " 1 ", " yes ", " on ", " t ", " y .
+.TP
+.B LOG_LEVEL
+Logging verbosity.
+Default:
+.BR info .
+Available levels:
+.BR error ", " warn ", " info ", " debug ", " trace ", " diag .
+.\"
+.SH EXIT STATUS
+.TP
+.B 0
+Successful completion.
+.TP
+.B 1
+General error.
+.TP
+.B 2
+Command-line usage error.
+.TP
+.B 3
+Configuration error (missing or invalid environment variables).
+.TP
+.B 4
+Resource not found (secret, project, or provider does not exist).
+.TP
+.B 5
+Fatal error (unrecoverable).
+.\"
+.SH CACHING
+.B bwx
+caches Bitwarden API responses in two layers to reduce API calls.
+.\"
+.SS "Layer 1: environment variables"
+Secret lists are stored in shell variables named
+.BI BWS_PROJECT_SECRET_LIST_ PROJECT
+(project name uppercased, non-alphanumeric characters replaced with
+underscores).
+This cache lives for the duration of the shell session.
+.\"
+.SS "Layer 2: file cache"
+JSON responses are persisted to
+.B $BWX_CACHE_DIR
+(default:
+.BR $HOME/.cache/1121-citrus/bws/ ).
+Files are keyed by a SHA-256 hash of the server URL, access token, and
+project identifier.
+Cache files are created with mode
+.B 0600
+inside a directory with mode
+.BR 0700 .
+.\"
+.SS "TTL"
+Both cache layers use the same TTL, controlled by
+.B BWX_SECRET_LIST_CACHE_TTL_SECONDS
+(default: 300 seconds).
+.\"
+.SS "Forced refresh"
+Pass
+.B \-\-refresh
+(or
+.BR \-R )
+to any
+.B list
+command to bypass both cache layers.
+Mutating commands automatically refresh the cache after a successful
+update.
+.\"
+.SH FILES
+.TP
+.I $BWX_CACHE_DIR/
+File-based cache for API responses.
+.TP
+.I $BWX_SECRETS_DIR/
+Directory for rotation provider files (default:
+.BR .secrets ).
+.\"
+.SH EXAMPLES
+List all secret names in the default project:
+.PP
+.nf
+$ bwx secret ls
+api_key_v1
+db_password_v3
+mqtt_broker_password_v1
+.fi
+.PP
+Get the value of a secret:
+.PP
+.nf
+$ bwx secret get value mqtt_broker_password_v1
+s3cret
+.fi
+.PP
+Create a secret with metadata:
+.PP
+.nf
+$ bwx secret create mqtt_broker_password_v1 "s3cret" \e
+    --file mosquitto-password \e
+    --note "MQTT broker authentication" \e
+    --release-tag 2026.06.24.01
+.fi
+.PP
+Tag all secrets in a project for a release:
+.PP
+.nf
+$ bwx tag project 2026.06.24.01
+.fi
+.PP
+Export tagged secrets to a directory:
+.PP
+.nf
+$ bwx import 2026.06.24.01 .secrets
+.fi
+.PP
+Check for expiring secrets (CI gate):
+.PP
+.nf
+$ bwx check expiry --exit-on-expiring --warn-days 30
+.fi
+.PP
+Rotate a secret using its provider:
+.PP
+.nf
+$ bwx rotate tailscale_sidecar_authkey_v1
+.fi
+.PP
+Rotate all expiring secrets (dry run):
+.PP
+.nf
+$ bwx rotate --all --dry-run
+.fi
+.PP
+Pass-through to upstream bws:
+.PP
+.nf
+$ bwx raw secret get aaaa-bbbb-cccc-dddd --output json
+.fi
+.\"
+.SH SEE ALSO
+.BR bws (1),
+.BR jq (1),
+.BR docker (1)
+.PP
+Project documentation:
+.I doc/usage.md
+(subcommand reference),
+.I doc/extending.md
+(architecture and extension guide).
+.\"
+.SH AUTHORS
+James Hanlon
+.RI < jim@hanlonsoftware.com >
+.\"
+.SH LICENSE
+AGPL-3.0-or-later.
+See
+.I LICENSE
+in the project repository.
