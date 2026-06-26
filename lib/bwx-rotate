@@ -163,25 +163,16 @@ _bwx_rotate_one() {
         bwx-secret-set value "${secret}" "${PROVIDER_VALUE}"
     fi
 
-    # Rebuild the note: preserve existing fields, update expires:
-    local file_field note_field
-    file_field="$(printf '%s' "${note}" \
-        | grep -iE '^[[:space:]]*file[[:space:]]*:' | head -1)" || true
-    note_field="${PROVIDER_NOTE:-$(printf '%s' "${note}" \
-        | grep -iE '^[[:space:]]*note[[:space:]]*:' | head -1)}" || true
-
-    local new_note=""
-    [[ -n "${file_field}" ]] && new_note+="${file_field}"$'\n'
-    [[ -n "${note_field}" ]] && new_note+="${note_field}"$'\n'
-    new_note+="expires: ${expires_date}"
-
-    # Preserve release-tag lines
-    local tags
-    tags="$(printf '%s' "${note}" \
-        | grep -iE '^[[:space:]]*release-tag[[:space:]]*:' || true)"
-    [[ -n "${tags}" ]] && new_note+=$'\n'"${tags}"
-
-    # Preserve provider line
+    # Update the note: remove rotation-owned fields, then append new values.
+    # All other fields (including unknown future fields) are preserved.
+    local new_note="${note}"
+    new_note="$(bwx-note-remove-field expires "" "${new_note}")"
+    new_note="$(bwx-note-remove-field provider "" "${new_note}")"
+    if [[ -n "${PROVIDER_NOTE}" ]]; then
+        new_note="$(bwx-note-remove-field note "" "${new_note}")"
+        new_note+=$'\n'"${PROVIDER_NOTE}"
+    fi
+    new_note+=$'\n'"expires: ${expires_date}"
     new_note+=$'\n'"provider: ${provider}"
 
     if [[ -n "${project}" ]]; then
