@@ -439,6 +439,50 @@ MOCK
     grep -q 'XDG_CACHE_HOME.*bwx' "${BWX_ROOT}/include/bwx-cache"
 }
 
+@test "5C: public docs use bwx cache namespace" {
+    grep -q 'XDG_CACHE_HOME.*bwx' "${BWX_ROOT}/doc/usage.md"
+    grep -q 'XDG_CACHE_HOME.*bwx' "${BWX_ROOT}/man/man1/bwx.1"
+    run grep -R '1121-citrus/bws' \
+        "${BWX_ROOT}/doc" "${BWX_ROOT}/man/man1"
+    [[ "${status}" -ne 0 ]]
+}
+
+@test "5C: import raw archive contract is documented" {
+    grep -q 'raw secret JSON' "${BWX_ROOT}/doc/usage.md"
+    grep -q 'MANIFEST' "${BWX_ROOT}/doc/usage.md"
+    grep -q 'UUID' "${BWX_ROOT}/doc/usage.md"
+}
+
+@test "5C: extension docs do not teach xtrace debug pattern" {
+    run grep -E 'set -o (verbose|xtrace)|set -x' \
+        "${BWX_ROOT}/doc/extending.md"
+    [[ "${status}" -ne 0 ]]
+    grep -q 'LOG_LEVEL=debug' "${BWX_ROOT}/doc/extending.md"
+}
+
+@test "5C: Homebrew formula has no placeholder release checksum" {
+    local formula="${BWX_ROOT}/install/homebrew/Formula/bwx.rb"
+    run grep -q 'sha256 "0000000000000000000000000000000000000000000000000000000000000000"' \
+        "${formula}"
+    [[ "${status}" -ne 0 ]]
+    grep -q 'head "https://github.com/1121citrus/bwx.git"' "${formula}"
+    grep -q -- '--HEAD' "${BWX_ROOT}/doc/usage.md"
+}
+
+@test "5C: tag commands use centralized note parser" {
+    local command_file
+    for command_file in \
+        "${BWX_ROOT}/lib/bwx-release-tags" \
+        "${BWX_ROOT}/lib/bwx-release-tag-secrets" \
+        "${BWX_ROOT}/lib/bwx-tag-project" \
+        "${BWX_ROOT}/lib/bwx-untag-project"; do
+        grep -q 'include/note-parser' "${command_file}"
+        run grep -E 'startswith\("release-tag: ?"\)|contains\("release-tag:"\)' \
+            "${command_file}"
+        [[ "${status}" -ne 0 ]]
+    done
+}
+
 # =========================================================================
 # Phase 5D: CHANGELOG has no private repo references
 # =========================================================================

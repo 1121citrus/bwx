@@ -1,6 +1,8 @@
 #!/usr/bin/env bats
 # Tests for miscellaneous bwx behaviors: version, raw, log-level.
 
+bats_require_minimum_version 1.5.0
+
 BWX_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
 BWX="${BWX_ROOT}/bin/bwx"
 

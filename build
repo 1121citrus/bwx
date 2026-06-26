@@ -460,16 +460,20 @@ if [[ "${LINT}" == "true" ]]; then
     _sc_targets=()
     while IFS= read -r -d "" _f; do
         _sc_targets+=("/src/${_f}")
-    done < <(cd "${script_dir}" && find bin/ include/ lib/ \
-        -type f \( -name "*.sh" -o -name "*.bash" -o ! -name "*.*" \) \
-        -print0 2>/dev/null)
+    done < <(cd "${script_dir}" && {
+        find bin/ include/ lib/ \
+            -type f \( -name "*.sh" -o -name "*.bash" -o -name "note-parser" -o ! -name "*.*" \) \
+            -print0 2>/dev/null
+        find lib/providers/ \
+            -type f \( -name "*.sh" -o -name "*.bash" -o ! -name "*.*" \) \
+            -print0 2>/dev/null
+    })
     if [[ ${#_sc_targets[@]} -gt 0 ]]; then
         (cd "${script_dir}" && run docker run --rm \
             -v "${script_dir}:/src:ro" \
             --workdir /src \
             "${SHELLCHECK_IMAGE}:${SHELLCHECK_TAG}" \
                 -S warning \
- \
                 "${_sc_targets[@]}")
     fi
 
