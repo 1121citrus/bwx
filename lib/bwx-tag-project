@@ -102,6 +102,8 @@ EOF
     for cmd in bwx-default-project-name bwx-project-id bwx-secret-add-release-tag bwx-secret-list ; do
         declare -F "${cmd}" >/dev/null 2>&1 || source "${bindir}/${cmd}"
     done
+    declare -F bwx-note-release-tag-jq-filter >/dev/null 2>&1 || \
+        source "${bindir}/../include/note-parser"
 
     local uuid_regex='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
     if [[ -z "${project}" ]]; then
@@ -129,11 +131,13 @@ EOF
     local sanitized_project
     sanitized_project=$(LC_ALL='en_US.UTF-8' awk '{print toupper($0)}' <<<"${project_id//[^[:alnum:]]/_}")
     local secret_list_var="BWX_PROJECT_SECRET_LIST_${sanitized_project}"
+    local release_tag_filter
+    release_tag_filter="$(bwx-note-release-tag-jq-filter)"
 
     secrets_for_tag() {
         local tag="$1"
         printf '%s' "${!secret_list_var}" | \
-            jq -r --arg tag "${tag}" '.[] | select((.note // "") | split("\n") | map(select(startswith("release-tag: "))) | map(sub("^release-tag: "; "")) | index($tag)) | .key' || :
+            jq -r --arg tag "${tag}" "${release_tag_filter}"'.[] | select((.note | bwx_note_release_tags) | index($tag)) | .key' || :
     }
 
     list_all_secrets() {

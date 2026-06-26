@@ -139,6 +139,29 @@ bwx-note-get-multi-field() {
         || true
 }
 
+# bwx-note-release-tag-jq-filter — print the jq release-tag parser.
+# Args:
+#   None
+# Returns:
+#   0; writes jq function definitions to stdout
+bwx-note-release-tag-jq-filter() {
+    cat <<'JQ'
+def bwx_note_trim:
+    gsub("^[[:space:]]+"; "") | gsub("[[:space:]]+$"; "");
+
+def bwx_note_release_tags:
+    (. // "")
+    | split("\n")
+    | map(
+        capture("(?i)^[[:space:]]*release-tag[[:space:]]*:[[:space:]]*(?<value>[^#]*)")?
+        // empty
+        | .value
+        | bwx_note_trim
+    )
+    | map(select(. != ""));
+JQ
+}
+
 # bwx-note-set-field — replace or append a field in a note.
 # For single-value fields, replaces the first match. For multi-value
 # fields, appends a new line. Validates the value against the field

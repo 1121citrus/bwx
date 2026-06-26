@@ -55,6 +55,8 @@ EOF
     done
 
     declare -F warn >/dev/null 2>&1 || source "${bindir}/../include/logging"
+    declare -F bwx-note-release-tag-jq-filter >/dev/null 2>&1 || \
+        source "${bindir}/../include/note-parser"
 
     for cmd in bwx-default-project-name bwx-secret-list ; do
         declare -F "${cmd}" >/dev/null 2>&1 || source "${bindir}/${cmd}"
@@ -84,8 +86,10 @@ EOF
     fi
 
     local tags
+    local release_tag_filter
+    release_tag_filter="$(bwx-note-release-tag-jq-filter)"
     tags=$(bwx-secret-list ${refresh_flag} "${project_key}" | \
-        jq -r '.[].note | split("\n") | .[] | select(startswith("release-tag:")) | sub("release-tag: "; "")' | \
+        jq -r "${release_tag_filter}"'.[].note | bwx_note_release_tags[]' | \
         sort -u || :)
 
     export "${tag_cache_var}=${tags}"
