@@ -5,9 +5,6 @@
 
 # Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
 
-# This software and associated documentation files may not be copied,
-# modified, or distributed without express written permission.
-
 {
     declare -F error && declare -F fatal && declare -F trace; } >/dev/null 2>&1 || {
     source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"

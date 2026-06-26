@@ -501,16 +501,23 @@ echo "Version:   ${VERSION}" >&2
 if [[ "${LINT}" == "true" ]]; then
     echo "==> Stage 1: Lint" >&2
     echo "    shellcheck bash scripts" >&2
+    # ShellCheck all shell files under bin/, include/, lib/, and providers.
+    # shellcheck disable=SC2046
     (cd "${script_dir}" && run docker run --rm \
         -v "${script_dir}:/src:ro" \
         --workdir /src \
         "${SHELLCHECK_IMAGE}:${SHELLCHECK_TAG}" \
             -S warning \
- \
             /src/bin/bwx \
             /src/include/logging \
             /src/include/bwx-cache \
-            /src/include/tools)
+            /src/include/tools \
+            /src/include/http \
+            /src/include/note-parser \
+            $(find lib/ -maxdepth 1 -type f -name 'bwx*' \
+                | sort | sed 's|^|/src/|') \
+            $(find lib/providers/ -type f \
+                | sort | sed 's|^|/src/|'))
 
     echo "    markdownlint **/*.md" >&2
     run docker run --rm \

@@ -5,9 +5,6 @@
 
 # Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
 
-# This software and associated documentation files may not be copied,
-# modified, or distributed without express written permission.
-
 # Only define constants if they aren't already present
 
 # Exit codes
