@@ -217,7 +217,7 @@ export PATH="${PWD}/vendor/bwx/bin:${PATH}"
   subcommands, adding note properties, rotation providers
 - [Include modules](include/README.md) — shared runtime modules used by
   `bin/bwx`
-- [Logging configuration](include/logging.md) — log levels, prolog
+- [Logging configuration](doc/logging.md) — log levels, prolog
   controls, and status constants
 - [Security policy](SECURITY.md) — attack surface, dependency
   scanning, token handling

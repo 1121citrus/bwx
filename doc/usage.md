@@ -1170,5 +1170,5 @@ Cache files are created with mode `0600` inside a directory with mode
 | `LOGGING_INCLUDE_LOCATION_FILE` | `false` | When location is enabled, include filename in the location field. |
 | `LOG_DATE_FORMAT` | `%Y%m%dT%H%M%S` | Timestamp format used when timestamp output is enabled. |
 
-See [include/logging.md](../include/logging.md) for a complete logging
+See [logging.md](logging.md) for a complete logging
 library reference.

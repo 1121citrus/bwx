@@ -45,7 +45,7 @@ bin/bwx
 ```
 
 Logging configuration details are documented in
-[`include/logging.md`](../include/logging.md).
+[`logging.md`](logging.md).
 
 Dispatch is table-driven.  The associative array `_BWX_COMMANDS` maps
 slash-delimited subcommand paths to function names:
