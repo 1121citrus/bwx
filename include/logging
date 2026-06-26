@@ -584,6 +584,23 @@ function validate-exit-status() {
     [[ "${status}" =~ ^[0-9]+$ ]] && (( status >= 0 && status <= 127 ))
 }
 
+function error-return() {
+    # Log at ERROR level and return non-zero. Does NOT exit the
+    # process. Use this instead of error() when the caller must
+    # continue executing (e.g., pipeline utilities, bulk loops).
+    # Usage:
+    #   error-return [RETURN_CODE [MESSAGE...]]
+    # Arguments:
+    #   RETURN_CODE: Numeric return code (optional; default: 1)
+    #   MESSAGE: Log message (optional; if omitted, reads from stdin)
+    local return_code=1
+    if validate-exit-status "${1:-}" >/dev/null; then
+        return_code="${1:-}" && shift
+    fi
+    (set -o noglob; log ERROR "$@")
+    return "${return_code}"
+}
+
 function warn() {
     # Log a warning-level message. This logging is level is more
     # severe than 'info' but less severe than 'error'.
