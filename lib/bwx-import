@@ -123,6 +123,11 @@ EOF
             trace "file: '${file}'"
 
             if [[ -n "${file}" ]]; then
+                if ! _bwx_note_validate_path "${file}"; then
+                    error "${EXIT_ERROR}" \
+                        "Refusing to export '${key}' outside '${output_dir}': '${file}'"
+                fi
+
                 local local_file="${file#./}"
                 local file_dir link_prefix='' link_target="${DOT_BY_UUID}/${id}"
                 local path_segment

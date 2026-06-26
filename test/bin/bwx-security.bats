@@ -140,6 +140,35 @@ teardown() { bwx_test_teardown; }
     [[ "${status}" -eq 0 ]]
 }
 
+@test "security: import rejects secret file metadata with path traversal" {
+    local outdir="${TEST_TMPDIR}/import-path-traversal"
+    rm -f "${TEST_TMPDIR}/stub-bin/bws"
+    cat > "${TEST_TMPDIR}/stub-bin/bws" <<'MOCK'
+#!/usr/bin/env bash
+if [[ -n "${MOCK_BWS_CALL_LOG:-}" ]]; then
+    printf '%s\n' "$*" >> "${MOCK_BWS_CALL_LOG}"
+fi
+if [[ "$1" == "project" && "$2" == "list" ]]; then
+    echo '[{"id":"11111111-1111-1111-1111-111111111111","name":"test-project","organizationId":"org-1","createdAt":"2023-01-01T00:00:00Z","updatedAt":"2023-01-01T00:00:00Z"}]'
+    exit 0
+fi
+if [[ "$1" == "secret" && "$2" == "list" ]]; then
+    cat <<'JSON'
+[{"id":"malicious-uuid","organizationId":"org-1","projectId":"11111111-1111-1111-1111-111111111111","key":"evil_secret","value":"val","note":"file: ../escape\nnote: bad\nrelease-tag: test-tag-1","creationDate":"2023-01-01T00:00:00Z","revisionDate":"2023-01-01T00:00:00Z"}]
+JSON
+    exit 0
+fi
+
+echo "Mock bws: Unknown command $*" >&2
+exit 1
+MOCK
+    chmod +x "${TEST_TMPDIR}/stub-bin/bws"
+
+    run "${BWX}" import test-tag-1 "${outdir}"
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"Refusing to export"* ]]
+}
+
 # =========================================================================
 # M5: temp config file has restrictive permissions
 # =========================================================================

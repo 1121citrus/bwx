@@ -60,11 +60,8 @@ _bwx_note_extract_value() {
 _bwx_note_validate_path() {
     local val="${1}"
     case "${val}" in
-        *..*)   return 1 ;;
-        */*)    return 1 ;;
-        -*)     return 1 ;;
-        '')     return 1 ;;
-        *)      return 0 ;;
+        ''|-*|/*|*..*|*/*) return 1 ;;
+        *)               return 0 ;;
     esac
 }
 
