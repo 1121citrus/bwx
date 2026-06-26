@@ -43,12 +43,14 @@ resolve_script_dir() {
 }
 
 script_dir="$(resolve_script_dir)"
-source "${script_dir}/../include/path"
 
 BWX_ROOT="$(cd "${script_dir}/.." && pwd)"
 readonly BWX_ROOT
 
-# Source includes: logging, caching, tool wrappers, path helpers
+# Source includes via BWX_ROOT so a single relocation point (the value
+# patched by the Homebrew formula) controls every lookup, including the
+# path helpers that were previously sourced relative to script_dir.
+source "${BWX_ROOT}/include/path"
 source "${BWX_ROOT}/include/logging"
 source "${BWX_ROOT}/include/bwx-cache"
 source "${BWX_ROOT}/include/tools"
