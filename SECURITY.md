@@ -92,7 +92,7 @@ via environment variable.  This means:
 ## Cache file security
 
 `bwx secret list` and `bwx project list` cache API responses in
-temporary files under `${BWX_CACHE_DIR:-${TMPDIR:-/tmp}}`.  Cache
+temporary files under `${BWX_CACHE_DIR:-${XDG_CACHE_HOME:-${HOME}/.cache}/bwx}`.  Cache
 files:
 
 - Are readable only by the owning user (mode 0600).

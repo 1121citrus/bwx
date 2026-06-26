@@ -11,7 +11,7 @@ declare -F bwx-cache-dir >/dev/null 2>&1 || {
             return 1
         fi
 
-        local cache_dir="${BWX_CACHE_DIR:-${XDG_CACHE_HOME:-${HOME}/.cache}/1121-citrus/bws}"
+        local cache_dir="${BWX_CACHE_DIR:-${XDG_CACHE_HOME:-${HOME}/.cache}/bwx}"
         mkdir -p "${cache_dir}" || return 1
         chmod 700 "${cache_dir}" 2>/dev/null || :
         printf '%s\n' "${cache_dir}"

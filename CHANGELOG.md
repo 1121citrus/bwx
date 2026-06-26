@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Initial release: 30 subcommands extracted from 1121-citrus private repo
+- Initial release with 30 subcommands
 - Single `bwx` entry point with subcommand dispatch
 - Bash completion via `bwx completion bash`
 - Structured note metadata: `file:`, `expires:`, `release-tag:`
