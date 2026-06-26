@@ -44,12 +44,15 @@ bwx-check-expiry() {
                 ;;
             -h|--help)
                 cat <<EOF
-Usage: bwx check expiry [options]
+Usage: bwx check expiry [options] [PROJECT]
 
 Check for secrets with upcoming or past expiration dates.
 
 Reads the \`expires: YYYY-MM-DD\` field from each secret's note.
 Secrets without an \`expires:\` field are silently skipped.
+
+Arguments:
+    PROJECT                Project name or UUID (default: \${BWX_DEFAULT_PROJECT})
 
 Options:
     --exit-on-expiring     Exit 1 if any expired or soon-expiring secrets
@@ -69,9 +72,11 @@ EOF
             -*)
                 error "${EXIT_USAGE}" "Unknown option: ${1}" ;;
             *)
-                error "${EXIT_USAGE}" "Unexpected argument: ${1}" ;;
+                break ;;
         esac
     done
+
+    local project="${1:-}"
 
     local now_epoch warn_seconds
     now_epoch="$(date -u +%s)"
@@ -107,7 +112,7 @@ EOF
         else
             info "${key}: expires ${expires_date} (${days_remaining} days)"
         fi
-    done < <(${notes_cmd})
+    done < <(${notes_cmd} "${project}")
 
     if [[ "${total_checked}" -eq 0 ]]; then
         info "No secrets with expires: metadata found"
@@ -130,11 +135,12 @@ EOF
 
 # Default notes fetcher — NUL-delimited key/note pairs from BWS.
 # Args:
-#   None
+#   $1 — project name or UUID (optional)
 # Returns:
 #   0; writes NUL-delimited pairs to stdout
 _bwx_default_secret_notes() {
-    bwx-secret-list \
+    local project="${1:-}"
+    bwx-secret-list ${project:+"${project}"} \
         | jq -j '.[] | .key, "\u0000", .note, "\u0000"'
 }
 

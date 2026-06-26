@@ -213,7 +213,7 @@ _bwx_rotate_all() {
 
         _bwx_rotate_one "${key}" "${project}" "${dryrun}" || \
             failed=$((failed + 1))
-    done < <(_bwx_default_secret_notes)
+    done < <(_bwx_default_secret_notes "${project}")
 
     info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     if [[ "${failed}" -gt 0 ]]; then
