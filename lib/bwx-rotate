@@ -79,14 +79,14 @@ EOF
         esac
     done
 
-    local project="${2:-}"
-
     if is-true "${rotate_all}"; then
+        local project="${1:-}"
         _bwx_rotate_all "${project}" "${dryrun}"
         return $?
     fi
 
     local secret="${1:-}"
+    local project="${2:-}"
     [[ -n "${secret}" ]] || error "${EXIT_USAGE}" "SECRET required (or use --all)"
 
     _bwx_rotate_one "${secret}" "${project}" "${dryrun}"
