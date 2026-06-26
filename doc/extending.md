@@ -40,7 +40,7 @@ files and then every `lib/bwx-*` file:
 bin/bwx
   source include/logging        # exit codes, log functions (error, trace, ...)
   source include/bwx-cache      # file-backed TTL cache helpers
-  source include/tools          # docker-wrapped jq and bws fallbacks
+  source include/tools          # docker-wrapped jq fallback
   source lib/bwx-*              # all library functions (glob)
 ```
 
@@ -146,8 +146,10 @@ Library file `lib/bwx-secret-owner`:
 #   0 and writes the owner value to stdout, or empty if no owner is set
 bwx-secret-owner() {
     set -o errexit -o errtrace -o nounset -o pipefail
-    local _debug="${DEBUG:-false}"
-    [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
+    # DEBUG xtrace intentionally omitted — secret values flow through
+    # this function and would leak via xtrace. For verbose diagnostics
+    # use LOG_LEVEL=debug or LOG_LEVEL=trace with the structured
+    # trace/debug helpers instead.
 
     local refresh_flag=""
     while [[ $# -gt 0 ]]; do
@@ -563,12 +565,13 @@ the "all ... subcommands are recognized" tests so the new name is verified.
     set -o errexit -o errtrace -o nounset -o pipefail
     ```
 
-- **Debug toggle** via `DEBUG` environment variable:
+- **No shell xtrace** in secret-handling functions — secret values would
+  leak into the trace stream. Omit `set -o xtrace`/`set -o verbose` and
+  rely on the structured `trace`/`debug` helpers driven by `LOG_LEVEL`:
 
     ```bash
-    local _debug="${DEBUG:-false}"
-    [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && \
-        set -o verbose -o xtrace
+    # DEBUG xtrace intentionally omitted — secret values flow through.
+    # For verbose diagnostics: LOG_LEVEL=trace bwx ...
     ```
 
 - **Lazy sourcing** of dependencies with the `declare -F` guard:

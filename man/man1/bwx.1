@@ -509,9 +509,9 @@ Default: 300.
 .B BWX_CACHE_DIR
 Override the cache directory location.
 Default:
-.BR $XDG_CACHE_HOME/1121-citrus/bws
+.BR $XDG_CACHE_HOME/bwx
 (or
-.BR $HOME/.cache/1121-citrus/bws ).
+.BR $HOME/.cache/bwx ).
 .TP
 .B BWX_JQ_IMAGE
 Docker image for
@@ -535,9 +535,13 @@ If unset, a temporary config is generated from
 .BR BWS_SERVER_BASE_URL .
 .TP
 .B DEBUG
-Enable verbose and xtrace output.
-Accepted values:
-.BR true ", " 1 ", " yes ", " on ", " t ", " y .
+Retained for compatibility; it does not enable shell xtrace.
+Secret-handling commands deliberately avoid xtrace so secret values are
+never written to the trace stream.
+For verbose diagnostics set
+.B LOG_LEVEL
+to
+.BR debug " or " trace .
 .TP
 .B LOG_LEVEL
 Logging verbosity.
@@ -581,7 +585,7 @@ This cache lives for the duration of the shell session.
 JSON responses are persisted to
 .B $BWX_CACHE_DIR
 (default:
-.BR $HOME/.cache/1121-citrus/bws/ ).
+.BR $HOME/.cache/bwx/ ).
 Files are keyed by a SHA-256 hash of the server URL, access token, and
 project identifier.
 Cache files are created with mode

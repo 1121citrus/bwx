@@ -1116,7 +1116,7 @@ improve performance.
 
 2. **File cache** -- JSON responses are persisted to disk at
    `${BWX_CACHE_DIR}` (default:
-   `${XDG_CACHE_HOME:-$HOME/.cache}/1121-citrus/bws/`). Files are
+   `${XDG_CACHE_HOME:-$HOME/.cache}/bwx/`). Files are
    keyed by a SHA-256 hash of the server URL, access token, and
    project identifier.
 
@@ -1155,13 +1155,13 @@ Cache files are created with mode `0600` inside a directory with mode
 | `BWS_SERVER_BASE_URL` | `https://vault.bitwarden.com` | Bitwarden server URL. Override for self-hosted instances. |
 | `BWX_SECRET_LIST_CACHE_TTL_SECONDS` | `300` | TTL in seconds for secret-list and project-list file caches. Set to `0` to disable file caching. |
 | `BWX_VALIDATE_ACCESS_TTL_SECONDS` | `300` | TTL in seconds for caching access-token validation results. |
-| `BWX_CACHE_DIR` | `${XDG_CACHE_HOME:-$HOME/.cache}/1121-citrus/bws` | Override the cache directory location. |
+| `BWX_CACHE_DIR` | `${XDG_CACHE_HOME:-$HOME/.cache}/bwx` | Override the cache directory location. |
 | `BWX_JQ_IMAGE` | `apteno/alpine-jq` | Docker image used for `jq` when `jq` is not natively installed. |
 | `BWX_BWS_IMAGE` | `bitwarden/bws:latest` | Docker image used for `bws` when `bws` is not natively installed. |
 | `BWS_IMAGE` | `bitwarden/bws` | Docker image name used by the internal `bws` wrapper (without tag). |
 | `BWS_IMAGE_TAG` | `latest` | Docker image tag used by the internal `bws` wrapper. |
 | `BWS_CONFIG_FILE` | (auto-generated) | Path to a `bws` config file. If unset, a temporary config is generated from `BWS_SERVER_BASE_URL`. |
-| `DEBUG` | `false` | Enable verbose and xtrace output for all commands. Accepts `true`, `1`, `yes`, `on`, `t`, `y`. |
+| `DEBUG` | (unused) | Retained for compatibility; does not enable shell xtrace. Secret-handling commands deliberately avoid xtrace. Use `LOG_LEVEL=debug` or `LOG_LEVEL=trace` for verbose diagnostics. |
 | `LOG_LEVEL` | `info` | Logging verbosity. Available levels: `error`, `warn`, `info`, `debug`, `trace`, `diag`. Can also be set per-command with `--log-level`. |
 | `LOGGING_INCLUDE_ALL` | `false` | Include timestamp, command name, and caller location in each log line. |
 | `LOGGING_INCLUDE_TIMESTAMP` | `false` | Include timestamp in each log line prolog. |
