@@ -427,14 +427,15 @@ Set a property of a secret.
 |----------|----------|-------------|
 | `PROPERTY` | Yes | Property to set |
 | `SECRET` | Yes | Secret name or UUID |
-| `VALUE` | Yes (unless `--from-file`) | New value |
+| `VALUE` | Yes (unless `--from-file` or `--force`) | New value |
 | `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `--from-file FILE` | Read the new value from FILE |
+| Option             | Description                    |
+|--------------------|--------------------------------|
+| `--from-file FILE` | Read the new value from FILE   |
+| `--force`          | Allow setting an empty value   |
 
 **Example:**
 
@@ -444,6 +445,9 @@ $ bwx secret set value secret_key_1 "new_password"
 
 $ bwx secret set filename secret_key_3 "new-config.env"
 [INFO] Updated filename for 'secret_key_3' to 'new-config.env'
+
+$ bwx secret set --force note secret_key_1 ""
+[INFO] Updated note for 'secret_key_1'
 ```
 
 [**↑ Contents**](#bwx-subcommand-reference)

@@ -60,6 +60,59 @@ teardown() { bwx_test_teardown; }
     [[ "${status}" -ne 0 ]]
 }
 
+# -- secret set empty value guard --
+
+@test "secret set value rejects empty argument" {
+    run "${BWX}" secret set value secret_key_1 ""
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"VALUE is empty"* ]]
+}
+
+@test "secret set value rejects missing argument" {
+    run "${BWX}" secret set value secret_key_1
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"VALUE is empty"* ]]
+}
+
+@test "secret set note rejects empty argument" {
+    run "${BWX}" secret set note secret_key_1 ""
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"VALUE is empty"* ]]
+}
+
+@test "secret set --from-file rejects empty file" {
+    local empty_file="${TEST_TMPDIR}/empty-value"
+    : > "${empty_file}"
+    run "${BWX}" secret set --from-file "${empty_file}" value secret_key_1
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"VALUE is empty"* ]]
+}
+
+@test "secret set --force allows empty argument" {
+    run "${BWX}" secret set --force value secret_key_1 ""
+    [[ "${status}" -eq 0 ]]
+}
+
+@test "secret set --force --from-file allows empty file" {
+    local empty_file="${TEST_TMPDIR}/empty-value"
+    : > "${empty_file}"
+    run "${BWX}" secret set --force --from-file "${empty_file}" value secret_key_1
+    [[ "${status}" -eq 0 ]]
+}
+
+@test "secret set --from-file with non-empty file succeeds" {
+    local val_file="${TEST_TMPDIR}/value-file"
+    printf '%s' "file-sourced-value" > "${val_file}"
+    run "${BWX}" secret set --from-file "${val_file}" value secret_key_1
+    [[ "${status}" -eq 0 ]]
+}
+
+@test "secret set --help mentions --force" {
+    run "${BWX}" secret set --help
+    [[ "${output}" == *"--force"* ]]
+    [[ "${output}" == *"empty"* ]]
+}
+
 # -- secret delete --
 
 @test "secret delete deletes a secret by name" {
