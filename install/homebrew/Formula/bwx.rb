@@ -53,7 +53,7 @@ class Bwx < Formula
   end
 
   test do
-    assert_match version.to_s, shell_output("#{bin}/bwx --version").strip
+    assert_match(/^\d+\.\d+\.\d+$/, shell_output("#{bin}/bwx --version").strip)
     assert_match "bwx", shell_output("#{bin}/bwx --help")
     assert_match "secret", shell_output("#{bin}/bwx --help")
     assert_match "complete -F", shell_output("#{bin}/bwx completion bash")

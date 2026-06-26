@@ -469,6 +469,13 @@ MOCK
     grep -q -- '--HEAD' "${BWX_ROOT}/doc/usage.md"
 }
 
+@test "5C: Homebrew test does not compare CLI version to HEAD version" {
+    local formula="${BWX_ROOT}/install/homebrew/Formula/bwx.rb"
+    run grep -q 'version.to_s' "${formula}"
+    [[ "${status}" -ne 0 ]]
+    grep -q 'assert_match.*\\d+\\.\\d+\\.\\d+' "${formula}"
+}
+
 @test "5C: tag commands use centralized note parser" {
     local command_file
     for command_file in \
