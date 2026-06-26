@@ -44,6 +44,9 @@ bin/bwx
   source lib/bwx-*              # all library functions (glob)
 ```
 
+Logging configuration details are documented in
+[`include/logging.md`](../include/logging.md).
+
 Dispatch is table-driven.  The associative array `_BWX_COMMANDS` maps
 slash-delimited subcommand paths to function names:
 

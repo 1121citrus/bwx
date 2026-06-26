@@ -1163,3 +1163,12 @@ Cache files are created with mode `0600` inside a directory with mode
 | `BWS_CONFIG_FILE` | (auto-generated) | Path to a `bws` config file. If unset, a temporary config is generated from `BWS_SERVER_BASE_URL`. |
 | `DEBUG` | `false` | Enable verbose and xtrace output for all commands. Accepts `true`, `1`, `yes`, `on`, `t`, `y`. |
 | `LOG_LEVEL` | `info` | Logging verbosity. Available levels: `error`, `warn`, `info`, `debug`, `trace`, `diag`. Can also be set per-command with `--log-level`. |
+| `LOGGING_INCLUDE_ALL` | `false` | Include timestamp, command name, and caller location in each log line. |
+| `LOGGING_INCLUDE_TIMESTAMP` | `false` | Include timestamp in each log line prolog. |
+| `LOGGING_INCLUDE_COMMAND` | `false` | Include command name in each log line prolog. |
+| `LOGGING_INCLUDE_LOCATION` | `false` | Include caller function and line in each log line prolog. |
+| `LOGGING_INCLUDE_LOCATION_FILE` | `false` | When location is enabled, include filename in the location field. |
+| `LOG_DATE_FORMAT` | `%Y%m%dT%H%M%S` | Timestamp format used when timestamp output is enabled. |
+
+See [include/logging.md](../include/logging.md) for a complete logging
+library reference.
