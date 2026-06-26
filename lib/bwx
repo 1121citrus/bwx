@@ -22,6 +22,12 @@ if [[ "${CITRUS_ENABLE_MOCK_COMMANDS:-false}" == "true" ]]; then
     return "${RETURN_SUCCESS}" 2>/dev/null || exit "${EXIT_SUCCESS}"
 fi
 
+# Native bws takes precedence over the Docker wrapper.
+if command -v bws >/dev/null 2>&1; then
+    # shellcheck disable=SC2317
+    return "${RETURN_SUCCESS:-0}" 2>/dev/null || exit "${EXIT_SUCCESS:-0}"
+fi
+
 bws() {
     # Pre-parse --log-level before forwarding remaining args to _bws or Docker.
     local _bws_args=()
@@ -65,8 +71,9 @@ bws() {
         declare -F error fatal trace >/dev/null 2>&1 ||
             source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
 
-        local image="${BWS_IMAGE:=bitwarden/bws}"
-        local tag="${BWS_IMAGE_TAG:-latest}"
+        local image_ref="${BWX_BWS_IMAGE:-bitwarden/bws:latest}"
+        local image="${image_ref%%:*}"
+        local tag="${image_ref#*:}"
         local server_base="${BWS_SERVER_BASE_URL:-"https://vault.bitwarden.com"}"
         local config_file="${BWS_CONFIG_FILE:-}"
         if [[ -n "${config_file}" && ! -r "${config_file}" ]]; then
