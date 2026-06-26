@@ -109,7 +109,7 @@ function die() {
     #   die [EXIT_STATUS [MESSAGE...]]
     # Arguments:
     #   MESSAGE: Log message (optional; if omitted, reads from stdin)
-    (set -o noglob; fatal "$@") || exit $?
+    fatal "$@"
 }
 
 function error() {
