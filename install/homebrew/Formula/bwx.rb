@@ -2,15 +2,13 @@
 #
 # Installation:
 #   brew tap 1121citrus/bwx https://github.com/1121citrus/bwx
-#   brew install bwx
+#   brew install --HEAD bwx
 #
 # Or install directly from a local clone:
-#   brew install --formula ./install/homebrew/Formula/bwx.rb
+#   brew install --HEAD --formula ./install/homebrew/Formula/bwx.rb
 class Bwx < Formula
   desc "Bitwarden Secrets Manager eXtended CLI"
   homepage "https://github.com/1121citrus/bwx"
-  url "https://github.com/1121citrus/bwx/archive/refs/tags/v1.0.0.tar.gz"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   license "AGPL-3.0-or-later"
   head "https://github.com/1121citrus/bwx.git", branch: "main"
 

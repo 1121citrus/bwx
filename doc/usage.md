@@ -71,9 +71,13 @@ to make them permanent.
 
 ```bash
 brew tap 1121citrus/bwx https://github.com/1121citrus/bwx
-brew install bwx
+brew install --HEAD bwx
 eval "$(bwx completion bash)"
 ```
+
+The Homebrew formula is currently a HEAD install until a versioned source
+archive is published. After a tagged release exists, the formula can be
+updated with the release archive URL and SHA-256 checksum.
 
 macOS ships Bash 3.2, which is too old for `bwx`. Install an updated bash and put it first in `PATH`:
 
@@ -94,7 +98,7 @@ Then make sure `bash --version` reports Bash 4 or newer before running `bwx`.
 Or install from a local clone:
 
 ```bash
-brew install --formula ./install/homebrew/Formula/bwx.rb
+brew install --HEAD --formula ./install/homebrew/Formula/bwx.rb
 ```
 
 ### Vendor dependency
@@ -881,6 +885,11 @@ Export all secrets tagged with TAG from a Bitwarden Secrets Manager
 project into OUTPUT_DIR.  Each secret with a matching `release-tag:`
 note entry is written as a file named by its `file:` property, with
 values stored in `.by-uuid/<id>` and symlinks from the file names.
+
+The `.raw/` directory stores the raw secret JSON for each exported secret,
+using the secret UUID as the filename. `.raw/MANIFEST` maps each UUID back
+to the original secret key so path-like keys cannot escape the output tree
+and users can still inspect or consume the raw archive.
 
 **Arguments:**
 

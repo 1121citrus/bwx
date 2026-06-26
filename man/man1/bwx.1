@@ -298,6 +298,12 @@ Values are stored in
 .IB OUTPUT_DIR /.by\-uuid/ id
 with symlinks from the deployment filenames.
 .IP
+Raw secret JSON is stored in
+.IB OUTPUT_DIR /.raw/ id
+using the secret UUID as the filename.
+.IB OUTPUT_DIR /.raw/MANIFEST
+maps each UUID back to the original secret key.
+.IP
 The special tag
 .B all
 exports every secret regardless of tagging.

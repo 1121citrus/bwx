@@ -146,9 +146,9 @@ Library file `lib/bwx-secret-owner`:
 #   0 and writes the owner value to stdout, or empty if no owner is set
 bwx-secret-owner() {
     set -o errexit -o errtrace -o nounset -o pipefail
-    # DEBUG xtrace intentionally omitted — secret values flow through
-    # this function and would leak via xtrace. For verbose diagnostics
-    # use LOG_LEVEL=debug or LOG_LEVEL=trace with the structured
+    # Shell tracing intentionally omitted because secret values flow
+    # through this function. For verbose diagnostics, use
+    # LOG_LEVEL=debug or LOG_LEVEL=trace with the structured
     # trace/debug helpers instead.
 
     local refresh_flag=""
@@ -565,12 +565,12 @@ the "all ... subcommands are recognized" tests so the new name is verified.
     set -o errexit -o errtrace -o nounset -o pipefail
     ```
 
-- **No shell xtrace** in secret-handling functions — secret values would
-  leak into the trace stream. Omit `set -o xtrace`/`set -o verbose` and
-  rely on the structured `trace`/`debug` helpers driven by `LOG_LEVEL`:
+- **No shell tracing** in secret-handling functions — secret values would
+    leak into the trace stream. Omit shell trace and verbose modes, then rely
+    on the structured `trace`/`debug` helpers driven by `LOG_LEVEL`:
 
     ```bash
-    # DEBUG xtrace intentionally omitted — secret values flow through.
+        # Shell tracing intentionally omitted because secret values flow through.
     # For verbose diagnostics: LOG_LEVEL=trace bwx ...
     ```
 
