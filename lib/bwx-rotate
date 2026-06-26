@@ -147,6 +147,10 @@ _bwx_rotate_one() {
         error "${EXIT_ERROR}" "Provider '${provider}' returned empty value"
     [[ -n "${PROVIDER_EXPIRES}" ]] || \
         error "${EXIT_ERROR}" "Provider '${provider}' returned empty expiry"
+    [[ "${PROVIDER_EXPIRES}" =~ ^[0-9]+$ ]] || \
+        error "${EXIT_ERROR}" "Provider '${provider}' returned non-numeric expiry: '${PROVIDER_EXPIRES}'"
+    [[ "${PROVIDER_EXPIRES}" -gt 0 ]] || \
+        error "${EXIT_ERROR}" "Provider '${provider}' returned zero-day expiry"
 
     # Compute expires date
     local expires_date

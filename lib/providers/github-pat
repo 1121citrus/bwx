@@ -27,6 +27,8 @@ bwx-provider-github-pat() {
     printf 'Token expiry in days [365]: ' >/dev/tty
     IFS= read -r expiry_days </dev/tty
     expiry_days="${expiry_days:-365}"
+    [[ "${expiry_days}" =~ ^[0-9]+$ && "${expiry_days}" -gt 0 ]] || \
+        { error "${EXIT_ERROR}" "Expiry must be a positive integer"; return 1; }
 
     PROVIDER_VALUE="${new_token}"
     PROVIDER_EXPIRES="${expiry_days}"

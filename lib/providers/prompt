@@ -19,6 +19,8 @@ bwx-provider-prompt() {
     printf 'Expiry in days [90]: ' >/dev/tty
     IFS= read -r days </dev/tty
     days="${days:-90}"
+    [[ "${days}" =~ ^[0-9]+$ && "${days}" -gt 0 ]] || \
+        { error "${EXIT_ERROR}" "Expiry must be a positive integer"; return 1; }
 
     PROVIDER_VALUE="${value}"
     PROVIDER_EXPIRES="${days}"
