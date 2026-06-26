@@ -6,7 +6,7 @@ A bash CLI that extends the
 release lifecycle: bulk tagging, versioned cloning, structured
 metadata, expiry tracking, and provider-driven rotation.
 
-- [bwx — Bitwarden Secrets Manager eXtended CLI](#bwx—-bitwarden-secrets-manager-extended-cli)
+- [bwx — Bitwarden Secrets Manager eXtended CLI](#bwx--bitwarden-secrets-manager-extended-cli)
   - [Why bwx](#why-bwx)
   - [Intended workflow](#intended-workflow)
   - [Quick start](#quick-start)
