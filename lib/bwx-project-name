@@ -91,7 +91,7 @@ EOF
         error "${EXIT_NOTFOUND:-1}" "Project '${project}' not found: unable to resolve to a name"
     fi
     if [[ "${project}" =~ ${uuid_regex} ]]; then
-        BWX_PROJECT_NAME_CACHE+="${project}\t${name}"$'\n'
+        BWX_PROJECT_NAME_CACHE+="${project}"$'\t'"${name}"$'\n'
         export BWX_PROJECT_NAME_CACHE
     fi
     trace "project '${project}' name='${name}'"

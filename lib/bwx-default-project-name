@@ -50,7 +50,7 @@ EOF
         esac
     done
 
-    echo "${BWX_DEFAULT_PROJECT:-${BWX_DEFAULT_PROJECT:-}}"
+    echo "${BWX_DEFAULT_PROJECT:-}"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
