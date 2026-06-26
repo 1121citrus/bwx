@@ -105,18 +105,21 @@ EOF
         trace "id: '${id}' key: '${key}'"
         debug "note: '${note}'"
 
-        local re
-        re='^[[:space:]]*release[_-]tag[[:space:]]*:[[:space:]]*'${tag}'[[:space:]]*(#.*)?$'
-        if printf '%s' "${note}" | grep -iEq "${re}" || [[ "${tag}" == "all" ]]; then
+        local matched=false
+        if [[ "${tag}" == "all" ]]; then
+            matched=true
+        else
+            local _release_tag
+            while IFS= read -r _release_tag; do
+                [[ "${_release_tag}" == "${tag}" ]] && { matched=true; break; }
+            done < <(bwx-note-get-multi-field release-tag "${note}")
+        fi
+        if [[ "${matched}" == "true" ]]; then
             debug "ACCEPT secret '${key}' ['${id}'] with release tag '${tag}'"
 
             local file
-            file=$(printf '%s' "${note}" | \
-                   grep -iE '^[[:space:]]*file[[:space:]]*:[[:space:]]*' | \
-                   sed -E 's/^[[:space:]]*file[[:space:]]*:[[:space:]]*//' | \
-                   sed -E 's/[[:space:]]*(#.*)?$//' || \
-                       echo "${key}"
-                   )
+            file=$(bwx-note-get-field file "${note}")
+            [[ -n "${file}" ]] || file="${key}"
             trace "file: '${file}'"
 
             if [[ -n "${file}" ]]; then

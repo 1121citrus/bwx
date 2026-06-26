@@ -86,11 +86,7 @@ EOF
     local key note expires_date expires_epoch days_remaining
 
     while IFS= read -r -d '' key && IFS= read -r -d '' note; do
-        expires_date="$(printf '%s' "${note}" \
-            | grep -iE '^[[:space:]]*expires[[:space:]]*:' \
-            | sed -E 's/^[[:space:]]*expires[[:space:]]*:[[:space:]]*//' \
-            | sed -E 's/[[:space:]]*(#.*)?$//' \
-            | head -1)" || true
+        expires_date="$(bwx-note-get-field expires "${note}")"
 
         [[ -n "${expires_date}" ]] || continue
 
@@ -140,7 +136,7 @@ EOF
 _bwx_default_secret_notes() {
     local project="${1:-}"
     bwx-secret-list ${project:+"${project}"} \
-        | jq -j '.[] | .key, "\u0000", .note, "\u0000"'
+        | jq -j '.[] | .key, "\u0000", (.note // ""), "\u0000"'
 }
 
 # Convert YYYY-MM-DD to epoch seconds (portable).

@@ -111,11 +111,7 @@ _bwx_rotate_one() {
         note="$(bwx-secret-get note "${secret}" 2>/dev/null)" || note=""
     fi
 
-    provider="$(printf '%s' "${note}" \
-        | grep -iE '^[[:space:]]*provider[[:space:]]*:' \
-        | sed -E 's/^[[:space:]]*provider[[:space:]]*:[[:space:]]*//' \
-        | sed -E 's/[[:space:]]*(#.*)?$//' \
-        | head -1)" || true
+    provider="$(bwx-note-get-field provider "${note}")"
     provider="${provider:-prompt}"
 
     info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -213,10 +209,7 @@ _bwx_rotate_all() {
 
     local key note expires_date
     while IFS= read -r -d '' key && IFS= read -r -d '' note; do
-        expires_date="$(printf '%s' "${note}" \
-            | grep -iE '^[[:space:]]*expires[[:space:]]*:' \
-            | sed -E 's/^[[:space:]]*expires[[:space:]]*:[[:space:]]*//' \
-            | head -1)" || true
+        expires_date="$(bwx-note-get-field expires "${note}")"
         [[ -n "${expires_date}" ]] || continue
 
         _bwx_rotate_one "${key}" "${project}" "${dryrun}" || \
