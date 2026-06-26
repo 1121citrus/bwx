@@ -15,8 +15,9 @@
 #   0 on success; non-zero on failure
 bwx-import() {
     set -o errexit -o errtrace -o nounset -o pipefail
-    local _debug="${DEBUG:-false}"
-    [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
+    # DEBUG xtrace intentionally omitted — secret values from the API
+    # flow through this function and would leak via xtrace. Use
+    # structured trace/debug calls for debugging.
 
     while [[ $# -gt 0 && "${1}" == -* ]]; do
         case "${1}" in
@@ -83,6 +84,7 @@ EOF
 
     mkdir -p "${output_dir}" "${uuid_dir}" "${raw_dir}"
     chmod 700 "${output_dir}" "${uuid_dir}" "${raw_dir}"
+    : > "${raw_dir}/MANIFEST"
 
     info "Importing secrets from project '${project_name}' [${project_id}] release '${tag}' to '${output_dir}'"
 
@@ -133,7 +135,8 @@ EOF
                 esac
 
                 printf '%s' "${value}" > "${uuid_dir}/${id}"
-                printf '%s' "${secret}" > "${raw_dir}/${key}"
+                printf '%s' "${secret}" > "${raw_dir}/${id}"
+                printf '%s\t%s\n' "${id}" "${key}" >> "${raw_dir}/MANIFEST"
 
                 file_dir=$(dirname "${local_file}")
                 if [[ "${file_dir}" != '.' ]]; then

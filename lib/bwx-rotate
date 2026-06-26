@@ -20,8 +20,9 @@
 #   0 on success; non-zero on failure
 bwx-rotate() {
     set -o errexit -o errtrace -o nounset -o pipefail
-    local _debug="${DEBUG:-false}"
-    [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
+    # DEBUG xtrace intentionally omitted — PROVIDER_VALUE and secret
+    # values flow through this function and would leak via xtrace.
+    # Use structured trace/debug calls for debugging.
 
     local dryrun=false
     local rotate_all=false

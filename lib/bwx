@@ -44,7 +44,7 @@ bws() {
 
     function _bws() {
         set -o errexit -o errtrace -o nounset -o pipefail
-        [[ "${DEBUG:-false,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
+        # DEBUG xtrace omitted — BWS_ACCESS_TOKEN leaks via xtrace
 
         command -v docker >/dev/null 2>&1 || {
             fatal "${EXIT_NOTFOUND}" "Docker command not found in PATH"
