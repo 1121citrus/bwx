@@ -121,7 +121,10 @@ _bwx_rotate_one() {
     info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     info "Rotating ${secret} (provider: ${provider})"
 
-    # Source the provider driver
+    # Validate provider name before constructing path (prevent traversal)
+    [[ "${provider}" =~ ^[a-zA-Z0-9_-]+$ ]] || \
+        error "${EXIT_ERROR}" "Invalid provider name '${provider}' for secret '${secret}'"
+
     local provider_file
     provider_file="$(dirname "${BASH_SOURCE[0]}")/providers/${provider}"
     if [[ ! -f "${provider_file}" ]]; then

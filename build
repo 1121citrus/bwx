@@ -6,9 +6,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
 # SYNOPSIS
-#   build [--push] [--version VERSION]
-#         [--platform PLATFORMS] [--registry REGISTRY]
-#         [--no-sbom] [--no-provenance]
+#   build [--version VERSION]
 #         [--no-lint] [--no-test]
 #         [--run-staging]
 #         [--no-scan]
@@ -17,19 +15,10 @@
 #         [--dry-run] [--help]
 #
 # OPTIONS
-#   --push              Push the image to the registry after a successful build.
-#                       Omitting this flag builds locally only (the default).
 #   --version VERSION   Tag the image with this version string, e.g. "1.2.3".
 #                       When omitted the image is tagged "dev-<git-short-sha>"
 #                       so that local builds are never confused with released
 #                       artifacts.
-#   --platform PLATFORMS
-#                       Comma-separated list of target platforms for --push.
-#                       Default: linux/amd64,linux/arm64
-#   --registry REGISTRY Docker Hub username / registry prefix.
-#                       Default: 1121citrus
-#   --no-sbom           Skip generating an SBOM attestation (push only).
-#   --no-provenance     Skip generating a provenance attestation (push only).
 #   --no-lint           Skip hadolint Dockerfile check and shellcheck.
 #   --no-test           Skip running the test suite.
 #   --run-staging       Run test/staging after Stage 3 test. Default: off.
@@ -61,7 +50,7 @@
 # ENVIRONMENT
 #   The following env-var overrides take precedence over the defaults above but
 #   are themselves overridden by the matching CLI flag:
-#     BUILD_VERSION, BUILD_PUSH, BUILD_PLATFORM, BUILD_REGISTRY
+#     BUILD_VERSION
 #     BUILD_LINT, BUILD_TEST, BUILD_SCAN, BUILD_SCAN_GRYPE, BUILD_SCAN_SCOUT
 #     BUILD_REPORT_JSON
 #     BUILD_TEST_SUMMARY_JSON
@@ -73,23 +62,15 @@
 #
 # PREREQUISITES
 #   • docker with the buildx plugin (≥ 0.10)
-#   • For --push: docker login <registry> must already be authenticated, plus
-#     QEMU binfmt helpers for cross-platform builds:
-#       docker run --rm --privileged tonistiigi/binfmt --install all
 #
 # STAGES (run in order; each can be skipped with --no-<stage>)
-#   1.  Lint      — hadolint (Dockerfile) + shellcheck + markdownlint
-#   2.  Build     — single-platform --load into local Docker daemon
+#   1.  Lint      — shellcheck + markdownlint
 #   3.  Test      — bats test suite
 #   3d. Staging   — optional integration harness (only with --run-staging)
-#   4.  Scan      — Trivy CRITICAL/HIGH image scan (gating)
-#   4b. Scan      — Grype full-severity scan (gating)
-#   4c. Scan      — Docker Scout CVE scan (gating)
+#   4.  Scan      — Trivy dependency image scan (gating)
 #   5.  Advise    — advisory scans (never block the build)
-#              a) Dive       — image layer analysis
 #              b) Coverage   — kcov line-coverage report
 #              f) Metrics    — scc code-metrics summary
-#   6.  Push      — multi-platform rebuild + push (only with --push)
 #
 # EXAMPLES
 #   # Local dev cycle — lint, build, test, scan
@@ -97,9 +78,6 @@
 #
 #   # Full scan including advisory
 #   ./build --advise all
-#
-#   # Release build — push version 1.2.3 and latest
-#   ./build --push --version 1.2.3
 #
 #   # Skip scanning during fast iteration
 #   ./build --no-scan
@@ -143,11 +121,6 @@ CACHE_SKIP_UPDATE_GRYPE=false
 DRY_RUN=false
 BUILD_REPORT_JSON=${BUILD_REPORT_JSON:-}
 LINT=${BUILD_LINT:-true}
-PLATFORMS=${BUILD_PLATFORM:-linux/amd64,linux/arm64}
-PROVENANCE=true
-PUSH=${BUILD_PUSH:-false}
-REGISTRY=${BUILD_REGISTRY:-1121citrus}
-SBOM=true
 TEST=${BUILD_TEST:-true}
 TEST_SUMMARY_JSON=${BUILD_TEST_SUMMARY_JSON:-}
 RUN_STAGING=${BUILD_RUN_STAGING:-false}
@@ -392,12 +365,7 @@ _require_value() {
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --push)             PUSH=true ;;
         --version)          _require_value "$1" "${2:-}"; VERSION="$2"; shift ;;
-        --platform)         _require_value "$1" "${2:-}"; PLATFORMS="$2"; shift ;;
-        --registry)         _require_value "$1" "${2:-}"; REGISTRY="$2"; shift ;;
-        --no-sbom)          SBOM=false ;;
-        --no-provenance)    PROVENANCE=false ;;
         --no-lint)          LINT=false ;;
         --no-test)          TEST=false ;;
         --run-staging)      RUN_STAGING=true ;;
@@ -476,22 +444,10 @@ if [[ -z "${VERSION}" ]]; then
     VERSION="dev-${sha}"
 fi
 
-# ---------------------------------------------------------------------------
-# Construct the tag list.
-# Dev builds are tagged as both dev-<commit> and dev-latest.
-# "latest" is only added for non-dev (release) builds that will be pushed.
-# ---------------------------------------------------------------------------
-full_image="${REGISTRY}/${IMAGE_NAME}"
-tags=("--tag" "${full_image}:${VERSION}")
-if [[ "${VERSION}" == dev-* ]]; then
-    tags+=("--tag" "${full_image}:dev-latest")
-fi
-if [[ "${PUSH}" == "true" && "${VERSION}" != dev-* ]]; then
-    tags+=("--tag" "${full_image}:latest")
-fi
+full_image="${IMAGE_NAME}"
 
 # Script directory for build context and relative paths.
-script_dir="$(cd "$(dirname "$0")" && pwd)"
+script_dir=$(dirname "$(readlink -f "$0")")
 
 echo "Version:   ${VERSION}" >&2
 
@@ -501,23 +457,21 @@ echo "Version:   ${VERSION}" >&2
 if [[ "${LINT}" == "true" ]]; then
     echo "==> Stage 1: Lint" >&2
     echo "    shellcheck bash scripts" >&2
-    # ShellCheck all shell files under bin/, include/, lib/, and providers.
-    # shellcheck disable=SC2046
-    (cd "${script_dir}" && run docker run --rm \
-        -v "${script_dir}:/src:ro" \
-        --workdir /src \
-        "${SHELLCHECK_IMAGE}:${SHELLCHECK_TAG}" \
-            -S warning \
-            /src/bin/bwx \
-            /src/include/logging \
-            /src/include/bwx-cache \
-            /src/include/tools \
-            /src/include/http \
-            /src/include/note-parser \
-            $(find lib/ -maxdepth 1 -type f -name 'bwx*' \
-                | sort | sed 's|^|/src/|') \
-            $(find lib/providers/ -type f \
-                | sort | sed 's|^|/src/|'))
+    _sc_targets=()
+    while IFS= read -r -d "" _f; do
+        _sc_targets+=("/src/${_f}")
+    done < <(cd "${script_dir}" && find bin/ include/ lib/ \
+        -type f \( -name "*.sh" -o -name "*.bash" -o ! -name "*.*" \) \
+        -print0 2>/dev/null)
+    if [[ ${#_sc_targets[@]} -gt 0 ]]; then
+        (cd "${script_dir}" && run docker run --rm \
+            -v "${script_dir}:/src:ro" \
+            --workdir /src \
+            "${SHELLCHECK_IMAGE}:${SHELLCHECK_TAG}" \
+                -S warning \
+ \
+                "${_sc_targets[@]}")
+    fi
 
     echo "    markdownlint **/*.md" >&2
     run docker run --rm \

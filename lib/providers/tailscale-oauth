@@ -30,7 +30,7 @@ bwx-provider-tailscale-oauth() {
     token_response="$(curl --fail --silent --show-error \
         --request POST \
         --url "${api}/oauth/token" \
-        --data "client_id=${client_id}&client_secret=${client_secret}&grant_type=client_credentials"
+        --data @- <<< "client_id=${client_id}&client_secret=${client_secret}&grant_type=client_credentials"
     )" || { error "${EXIT_ERROR}" "Tailscale OAuth token request failed"; return 1; }
 
     local token
@@ -59,9 +59,10 @@ bwx-provider-tailscale-oauth() {
     key_response="$(curl --fail --silent --show-error \
         --request POST \
         --url "${api}/tailnet/-/keys" \
-        --header "Authorization: Bearer ${token}" \
+        --header @- \
         --header "Content-Type: application/json" \
-        --data "${key_payload}"
+        --data "${key_payload}" \
+        <<< "Authorization: Bearer ${token}"
     )" || { error "${EXIT_ERROR}" "Tailscale key creation failed"; return 1; }
 
     PROVIDER_VALUE="$(printf '%s' "${key_response}" | jq -r '.key')"

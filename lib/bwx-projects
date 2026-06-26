@@ -5,8 +5,7 @@
 
 bwx-projects() {
     set -o errexit -o errtrace -o nounset -o pipefail
-    local _debug="${DEBUG:-false}"
-    [[ "${_debug,,}" =~ ^(1|on|true|t|yes|y)$ ]] && set -o verbose -o xtrace
+    # DEBUG xtrace omitted — secret values may flow through callee chain
 
     local refresh_flag=""
     while [[ $# -gt 0 ]]; do

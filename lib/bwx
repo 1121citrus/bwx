@@ -85,7 +85,7 @@ bws() {
 server_base = "${server_base}"
 state_opt_out = "true"
 EOF
-            chmod 644 "${config_file}"
+            chmod 600 "${config_file}"
         }
         trace "docker run --rm --interactive -v '${config_file}:/home/app/.config/bws/config' --env BWS_ACCESS_TOKEN '${image}:${tag}' $*"
         docker run --rm --interactive \
@@ -117,7 +117,7 @@ EOF
 
         # Validate against API
         local output
-        if ! output=$(_bws project list --access-token "${token}" 2>&1); then
+        if ! output=$(_bws project list 2>&1); then
             [[ -n "${validation_file}" ]] && bwx-cache-delete "${validation_file}"
             # shellcheck disable=SC2076
             if [[ "${output}" =~ "dns error" || "${output}" =~ "Temporary failure in name resolution" || "${output}" =~ "client error (Connect)" ]]; then
