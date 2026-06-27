@@ -2,6 +2,7 @@
 # Mock bws command for testing
 # Usage: bws [subcommand] [args...]
 
+# Append the invocation arguments to MOCK_BWS_CALL_LOG if set.
 log_mock_call() {
     if [[ -n "${MOCK_BWS_CALL_LOG:-}" ]]; then
         printf '%s\n' "$*" >> "${MOCK_BWS_CALL_LOG}"
@@ -32,6 +33,7 @@ JSON
     exit 0
 fi
 
+# Return the mock JSON secrets array for a given project UUID.
 get_mock_secrets() {
     local project_id="$1"
     # Using specific project ID or defaulting

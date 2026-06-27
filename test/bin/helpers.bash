@@ -5,8 +5,12 @@
 BWX_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BWX="${BWX_ROOT}/bin/bwx"
 
-# Set up the mock bws and required env vars.
-# Creates TEST_TMPDIR under the repo root (visible inside Docker).
+# Set up the mock bws, stub PATH, and required env vars.
+# Creates TEST_TMPDIR for per-test isolation. Skips if jq unavailable.
+# Args:
+#   None
+# Returns:
+#   0; may call skip() if jq is missing
 bwx_test_setup() {
     TEST_TMPDIR="$(mktemp -d)"
     mkdir -p "${TEST_TMPDIR}/stub-bin"
@@ -34,6 +38,7 @@ bwx_test_setup() {
     fi
 }
 
+# Remove the per-test temporary directory.
 bwx_test_teardown() {
     rm -rf "${TEST_TMPDIR}"
 }

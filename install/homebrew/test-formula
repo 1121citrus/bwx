@@ -21,6 +21,7 @@ BREW_IMAGE="homebrew/brew:latest"
 
 SKIP_INSTALL=false
 
+# Print a prefixed status message to stderr.
 log()  { printf "test-formula: %s\n" "$*" >&2; }
 pass() { printf "  PASS  %s\n" "$*" >&2; }
 fail() { printf "  FAIL  %s\n" "$*" >&2; }
