@@ -106,6 +106,8 @@ declare -A _BWX_COMMANDS=(
     [import]=bwx-import
     [check/expiry]=bwx-check-expiry
     [rotate]=bwx-rotate
+    # provider
+    [provider/info]=bwx-provider-info
     # special
     [raw]=bws
     [completion/bash]=_bwx_completion_bash
@@ -336,6 +338,7 @@ Commands:
     import       Export secrets by release tag to a directory
     check        Check secret metadata (expiry dates)
     rotate       Rotate time-limited secrets via provider drivers
+    provider     Provider introspection (info)
     raw          Pass-through to the upstream bws binary
     completion   Generate shell completion (bash, zsh)
 
@@ -373,6 +376,10 @@ Lifecycle commands:
     bwx check expiry [--exit-on-expiring]  Check for expiring secrets
     bwx rotate SECRET [PROJECT]      Rotate a secret via its provider
     bwx rotate --all [PROJECT]       Rotate all expiring secrets
+
+Provider commands:
+    bwx provider info NAME           Show expected config fields for a provider
+    bwx provider info --list         List all available providers
 
 Completion:
     eval "\$(bwx completion bash)"   Add to .bashrc

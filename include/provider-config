@@ -204,3 +204,54 @@ bwx-provider-config() {
             ;;
     esac
 }
+
+# Extract provider config field declarations from a provider source file.
+# Parses bwx-provider-config calls statically (no provider code executed).
+# Args:
+#   $1 — provider name (must match a file in lib/providers/)
+# Returns:
+#   0; writes tab-separated lines to stdout: FIELD\tDEFAULT\tTYPE
+#   Empty default means the field is required.
+#   Returns 1 if the provider file does not exist.
+_bwx_provider_fields() {
+    local provider="${1}"
+    local provider_dir
+    provider_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib/providers" && pwd)"
+    local provider_file="${provider_dir}/${provider}"
+
+    [[ -f "${provider_file}" ]] || return 1
+
+    awk '/\\$/ { sub(/\\$/, ""); buf = buf $0; next }
+         buf != "" { print buf $0; buf = ""; next }
+         { print }' "${provider_file}" \
+        | grep 'bwx-provider-config ' \
+        | sed 's/.*bwx-provider-config //' \
+        | sed 's/ *2>\/dev\/null//' \
+        | sed 's/).*//' \
+        | sed 's/"\${note}"[[:space:]]*//' \
+        | sed 's/^[[:space:]]*//' \
+        | sed 's/[[:space:]]*$//' \
+        | while IFS= read -r argline; do
+            local field="" default="" type_spec=""
+
+            field="${argline%% *}"
+            field="${field//\"/}"
+            argline="${argline#"${field}"}"
+            argline="${argline#"${argline%%[! ]*}"}"
+
+            if [[ "${argline}" =~ \"([^\"]*)\"[[:space:]]*$ ]]; then
+                type_spec="${BASH_REMATCH[1]}"
+                # shellcheck disable=SC2295
+                argline="${argline%\"${type_spec}\"*}"
+            fi
+
+            default="${argline//\"/}"
+            default="${default#"${default%%[! ]*}"}"
+            # trim trailing spaces
+            while [[ "${default}" == *" " ]]; do
+                default="${default% }"
+            done
+
+            printf '%s\x1f%s\x1f%s\n' "${field}" "${default}" "${type_spec}"
+        done || true
+}

@@ -1,0 +1,125 @@
+# shellcheck shell=bash
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+# Display expected config fields, types, and defaults for a rotation
+# provider. Parses provider source files statically — no provider
+# code is executed.
+#
+# Usage: bwx provider info NAME
+#        bwx provider info --list
+
+# Print the list of available provider names, one per line.
+# Args:
+#   None
+# Returns:
+#   0; writes provider names to stdout
+_bwx_provider_list() {
+    local provider_dir
+    provider_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/providers" && pwd)"
+    local f
+    for f in "${provider_dir}"/*; do
+        [[ -f "${f}" ]] && basename "${f}"
+    done
+}
+
+# Detect whether a provider requires interactive TTY input.
+# Args:
+#   $1 — path to provider source file
+# Returns:
+#   0 if interactive; 1 if automated
+_bwx_provider_is_interactive() {
+    grep -qE '/dev/tty|read -r.*</dev/tty|BWX_TTY_FD' "${1}"
+}
+
+# Display config field information for a single provider.
+# Args:
+#   $1 — provider name
+# Returns:
+#   0 on success; EXIT_USAGE on bad input; EXIT_NOTFOUND if unknown
+bwx-provider-info() {
+    shopt -s extglob
+
+    case "${1:-}" in
+        -h|--help)
+            cat <<'EOF'
+Usage: bwx provider info NAME
+       bwx provider info --list
+
+Display the expected note fields, types, and defaults for a
+rotation provider. Useful for authoring BWS notes before rotation.
+
+Arguments:
+  NAME        Provider name (e.g., password-generate, grafana-service-account)
+  --list      List all available provider names
+
+The output shows each config field that bwx-provider-config parses
+from the BWS note at rotation time. Fields marked (required) must
+be present in the note for rotation to succeed.
+EOF
+            return "${EXIT_USAGE:-2}"
+            ;;
+        --list)
+            _bwx_provider_list
+            return 0
+            ;;
+        "")
+            error "${EXIT_USAGE}" "provider name required (use --list to see all)"
+            ;;
+    esac
+
+    local provider="${1}"
+
+    [[ "${provider}" =~ ^[a-zA-Z0-9_-]+$ ]] \
+        || error "${EXIT_USAGE}" "invalid provider name: ${provider}"
+
+    local provider_dir
+    provider_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/providers" && pwd)"
+    local provider_file="${provider_dir}/${provider}"
+
+    [[ -f "${provider_file}" ]] \
+        || error "${EXIT_NOTFOUND:-4}" "unknown provider: ${provider}"
+
+    if ! declare -F _bwx_provider_fields >/dev/null 2>&1; then
+        # shellcheck source=../include/provider-config
+        source "$(dirname "${BASH_SOURCE[0]}")/../include/provider-config"
+    fi
+
+    local ptype="automated"
+    _bwx_provider_is_interactive "${provider_file}" && ptype="interactive"
+
+    printf 'Provider: %s\n' "${provider}"
+    printf 'Type: %s\n' "${ptype}"
+    printf '\n'
+
+    local fields
+    fields="$(_bwx_provider_fields "${provider}")"
+
+    if [[ -z "${fields}" ]]; then
+        printf 'No configurable note fields.\n'
+        return 0
+    fi
+
+    printf 'Config fields (set in BWS note):\n'
+    printf '  %-35s %-35s %s\n' "FIELD" "TYPE" "DEFAULT"
+    printf '  %-35s %-35s %s\n' \
+        "-----------------------------------" \
+        "-----------------------------------" \
+        "-------"
+
+    local field default type_spec default_display
+    while IFS=$'\x1f' read -r field default type_spec; do
+        if [[ -z "${default}" ]]; then
+            default_display="(required)"
+        else
+            default_display="${default}"
+        fi
+        printf '  %-35s %-35s %s\n' \
+            "${field}" "${type_spec}" "${default_display}"
+    done <<< "${fields}"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bwx-provider-info "$@"
+fi
