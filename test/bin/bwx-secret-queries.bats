@@ -169,3 +169,19 @@ teardown() { bwx_test_teardown; }
     [[ "${status}" -eq 0 ]]
     [[ "${output}" == *"secret_key_1"* ]]
 }
+
+@test "secret ls --help shows usage" {
+    run "${BWX}" secret ls --help
+    [[ "${output}" == *"Usage:"* ]]
+}
+
+@test "secret ls --refresh succeeds" {
+    run "${BWX}" secret ls --refresh
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"secret_key_1"* ]]
+}
+
+@test "secret ls --log-level debug succeeds" {
+    run "${BWX}" secret ls --log-level debug
+    [[ "${status}" -eq 0 ]]
+}

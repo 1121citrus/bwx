@@ -159,6 +159,41 @@ teardown() { bwx_test_teardown; }
     [[ "${status}" -ne 0 ]]
 }
 
+@test "secret create --help shows full usage" {
+    run "${BWX}" secret create --help
+    [[ "${output}" == *"Usage:"* ]]
+    [[ "${output}" == *"--description"* ]]
+}
+
+@test "secret create --release-tag attaches tag to note" {
+    run "${BWX}" secret create --release-tag "v1.0" new_tagged "val"
+    [[ "${status}" -eq 0 ]]
+}
+
+@test "secret create with --from-file reads value from file" {
+    echo "file-value" > "${TEST_TMPDIR}/secret-val.txt"
+    run "${BWX}" secret create --from-file "${TEST_TMPDIR}/secret-val.txt" \
+        new_from_file
+    [[ "${status}" -eq 0 ]]
+}
+
+@test "secret create --from-file with nonexistent file fails" {
+    run "${BWX}" secret create --from-file /nonexistent/path new_key
+    [[ "${status}" -ne 0 ]]
+}
+
+@test "secret create --log-level debug succeeds" {
+    run "${BWX}" secret create --log-level debug new_debug_key "val"
+    [[ "${status}" -eq 0 ]]
+}
+
+# -- secret delete option parsing --
+
+@test "secret delete --log-level debug succeeds" {
+    run "${BWX}" secret delete --log-level debug secret_key_1
+    [[ "${status}" -eq 0 ]]
+}
+
 # -- secret clone --
 
 @test "secret clone clones a versioned secret" {

@@ -92,3 +92,33 @@ teardown() { bwx_test_teardown; }
     run "${BWX}" tag unproject
     [[ "${status}" -ne 0 ]]
 }
+
+# -- tag list option parsing --
+
+@test "tag list --help shows usage" {
+    run "${BWX}" tag list --help
+    [[ "${output}" == *"Usage:"* ]]
+}
+
+@test "tag list --log-level debug succeeds" {
+    run "${BWX}" tag list --log-level debug
+    [[ "${status}" -eq 0 ]]
+}
+
+# -- tag secrets option parsing --
+
+@test "tag secrets --help shows usage" {
+    run "${BWX}" tag secrets --help
+    [[ "${output}" == *"Usage:"* ]]
+}
+
+@test "tag secrets --refresh succeeds" {
+    run "${BWX}" tag secrets --refresh test-tag-1
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"secret_key_3"* ]]
+}
+
+@test "tag secrets --log-level debug succeeds" {
+    run "${BWX}" tag secrets --log-level debug test-tag-1
+    [[ "${status}" -eq 0 ]]
+}
