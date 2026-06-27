@@ -33,8 +33,6 @@ bwx-scrub-config-value() {
     fi
 
     # Reject shell expansion: $, backtick, backslash
-    local pattern='[$`\]'
-    # shellcheck disable=SC2016
     if [[ "${val}" == *'$'* || "${val}" == *'`'* || "${val}" == *'\'* ]]; then
         warn "${field}: value contains shell metacharacter — rejected"
         return 1
