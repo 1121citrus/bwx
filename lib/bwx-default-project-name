@@ -3,6 +3,13 @@
 
 # Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
 
+# Return the name of the default project.
+# Uses BWX_DEFAULT_PROJECT if set, otherwise queries the BWS project
+# list and selects the first (or only) project.
+# Args:
+#   None
+# Returns:
+#   0 and writes project name to stdout; EXIT_CONFIG if undetermined
 bwx-default-project-name() {
     set -o errexit -o errtrace -o nounset -o pipefail
     # DEBUG xtrace omitted — secret values may flow through callee chain

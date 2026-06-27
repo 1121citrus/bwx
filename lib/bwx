@@ -25,8 +25,13 @@ if command -v bws >/dev/null 2>&1; then
     return "${RETURN_SUCCESS:-0}" 2>/dev/null || exit "${EXIT_SUCCESS:-0}"
 fi
 
+# Docker-wrapped bws command with log-level extraction and token
+# validation.  Strips --log-level before forwarding to the container.
+# Args:
+#   $@ — arguments forwarded to bws inside a Docker container
+# Returns:
+#   Exit code from the bws container
 bws() {
-    # Pre-parse --log-level before forwarding remaining args to _bws or Docker.
     local _bws_args=()
     while [[ $# -gt 0 ]]; do
         case "${1}" in
@@ -45,6 +50,7 @@ bws() {
     done
     set -- "${_bws_args[@]+"${_bws_args[@]}"}"
 
+    # Run bws inside a Docker container with config and token.
     function _bws() {
         set -o errexit -o errtrace -o nounset -o pipefail
         # DEBUG xtrace omitted — BWS_ACCESS_TOKEN leaks via xtrace
@@ -94,6 +100,8 @@ EOF
             "${image}:${tag}" "$@"
     }
 
+    # Validate BWS_ACCESS_TOKEN format and test API connectivity.
+    # Caches a successful validation for BWX_VALIDATE_ACCESS_TTL_SECONDS.
     function bwx-validate-access() {
         local token="${BWS_ACCESS_TOKEN:=}"
         [[ -z "${token}" ]] && \

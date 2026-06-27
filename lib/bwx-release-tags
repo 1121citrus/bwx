@@ -3,6 +3,12 @@
 
 # Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
 
+# List all distinct release tags across secrets in a project.
+# Parses release-tag: fields from each secret's note.
+# Args:
+#   $1 — project name or UUID (optional)
+# Returns:
+#   0 and writes one tag per line to stdout
 bwx-release-tags() {
     set -o errexit -o errtrace -o nounset -o pipefail # Ensure robust error handling
     # DEBUG xtrace omitted — secret values may flow through callee chain

@@ -3,6 +3,12 @@
 
 # Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
 
+# Resolve a project UUID to its human-readable name.
+# Accepts a name directly (validated and returned) or a UUID.
+# Args:
+#   $1 — project name or UUID (optional; defaults to BWX_DEFAULT_PROJECT)
+# Returns:
+#   0 and writes project name to stdout; EXIT_NOTFOUND if not found
 bwx-project-name() {
     set -o errexit -o errtrace -o nounset -o pipefail # Ensure robust error handling
     # DEBUG xtrace omitted — secret values may flow through callee chain

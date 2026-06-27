@@ -3,6 +3,13 @@
 
 # Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
 
+# Fetch and cache the full JSON project list from BWS.
+# Supports --export (eval-able output), --names (name list),
+# --name/--id (filter by name or UUID), and --refresh.
+# Args:
+#   None (project list is organization-wide)
+# Returns:
+#   0 and writes JSON array to stdout; non-zero on API failure
 bwx-project-list() {
     set -o errexit -o errtrace -o nounset -o pipefail # Ensure robust error handling
     # DEBUG xtrace omitted — secret values may flow through callee chain

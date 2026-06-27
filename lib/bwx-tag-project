@@ -3,6 +3,13 @@
 
 # Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
 
+# Add a release tag to all (or selected) secrets in a project.
+# Supports --select-tag to limit scope to secrets carrying a given tag.
+# Args:
+#   $1 — release tag to add
+#   $@ — optional secret names or --select-tag filters
+# Returns:
+#   0 if all updates succeed; 1 if any individual update fails
 bwx-tag-project() {
     set -o errexit -o errtrace -o nounset -o pipefail # Ensure robust error handling
     # DEBUG xtrace omitted — secret values may flow through callee chain
@@ -135,12 +142,14 @@ EOF
     local release_tag_filter
     release_tag_filter="$(bwx-note-release-tag-jq-filter)"
 
+    # Return secret keys that carry a specific release tag.
     secrets_for_tag() {
         local tag="$1"
         printf '%s' "${!secret_list_var}" | \
             jq -r --arg tag "${tag}" "${release_tag_filter}"'.[] | select((.note | bwx_note_release_tags) | index($tag)) | .key' || :
     }
 
+    # Return all secret keys in the project.
     list_all_secrets() {
         printf '%s' "${!secret_list_var}" | jq -r '.[].key' || :
     }

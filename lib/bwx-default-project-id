@@ -3,6 +3,13 @@
 
 # Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
 
+# Return the UUID of the default project.
+# Resolves BWX_DEFAULT_PROJECT via bwx-project-list; caches the
+# result in BWX_DEFAULT_PROJECT_ID for subsequent calls.
+# Args:
+#   None
+# Returns:
+#   0 and writes UUID to stdout; EXIT_CONFIG if no default is set
 bwx-default-project-id() {
     set -o errexit -o errtrace -o nounset -o pipefail
     # DEBUG xtrace omitted — secret values may flow through callee chain
