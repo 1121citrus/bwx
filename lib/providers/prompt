@@ -8,7 +8,7 @@ bwx-provider-prompt() {
 
     info "Paste the new value for '${secret}'."
     info "(The secret's current note and expiry are shown above.)"
-    info ""
+    printf '\n' >&2
 
     local value
     printf 'New value: ' >/dev/tty 2>/dev/null || true

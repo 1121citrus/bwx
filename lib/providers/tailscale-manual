@@ -8,13 +8,13 @@ bwx-provider-tailscale-manual() {
 
     info "Generate a new key in the Tailscale admin console:"
     info "  https://login.tailscale.com/admin/settings/keys"
-    info ""
+    printf '\n' >&2
     info "Settings:"
     info "  Reusable:  yes"
     info "  Ephemeral: no"
     info "  Tags:      none (must be untagged for user-owned devices)"
     info "  Expiry:    90 days"
-    info ""
+    printf '\n' >&2
 
     local new_key
     printf 'Paste the new key: ' >/dev/tty 2>/dev/null || true

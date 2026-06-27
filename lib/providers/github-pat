@@ -8,13 +8,13 @@ bwx-provider-github-pat() {
 
     info "Generate a new fine-grained PAT in GitHub:"
     info "  https://github.com/settings/personal-access-tokens/new"
-    info ""
+    printf '\n' >&2
     info "Settings:"
     info "  Token name:    (descriptive name for this credential)"
     info "  Expiration:    1 year (or custom)"
     info "  Repository:    (select the repo that needs access)"
     info "  Permissions:   (minimum required scopes)"
-    info ""
+    printf '\n' >&2
 
     local new_token
     printf 'Paste the new token: ' >/dev/tty 2>/dev/null || true
