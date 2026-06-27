@@ -976,10 +976,23 @@ to paste a new value.
 
 | Provider | Automation | Description |
 |----------|------------|-------------|
-| `tailscale-oauth` | Fully automated | OAuth client credentials |
-| `tailscale-manual` | Operator-prompted | Paste key from admin console |
-| `github-pat` | Operator-prompted | Paste token from developer settings |
 | `prompt` | Operator-prompted | Generic paste-a-value (default fallback) |
+| `anthropic-api-key` | Operator-prompted | Paste API key with `sk-ant-` prefix validation |
+| `aws-iam` | Fully automated | AWS IAM access key rotation via `aws` CLI |
+| `bitwarden-api-key` | Fully automated | Machine account token via Bitwarden API |
+| `docker-registry` | Fully automated | Docker Hub access token via Hub API |
+| `github-pat` | Operator-prompted | Paste token from developer settings |
+| `grafana-service-account` | Fully automated | Service account token via Grafana HTTP API |
+| `letsencrypt-manual` | Operator-prompted | Paste PEM certificate with format validation |
+| `mqtt-password` | Fully automated | Random alphanumeric MQTT broker password |
+| `openssl-selfsigned` | Fully automated | Self-signed TLS certificate/key via `openssl` |
+| `password-generate` | Fully automated | Random password with configurable length/charset |
+| `tailscale-manual` | Operator-prompted | Paste key from admin console |
+| `tailscale-oauth` | Fully automated | Tagged pre-auth key via OAuth client credentials |
+
+See [extending.md](extending.md) for provider note metadata fields,
+credential file requirements, and instructions for adding new
+providers.
 
 **Example:**
 
