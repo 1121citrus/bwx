@@ -21,6 +21,8 @@ teardown() {
 @test "password-generate: generates 32-char password by default" {
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/password-generate"
         bwx-provider-password-generate "test-secret" "'"${TEST_TMPDIR}"'"
         echo "VALUE_LEN=${#PROVIDER_VALUE}"
@@ -37,6 +39,8 @@ teardown() {
     local note="password-length: 64"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/password-generate"
         bwx-provider-password-generate "test-secret" "'"${TEST_TMPDIR}"'" "'"${note}"'"
         echo "VALUE_LEN=${#PROVIDER_VALUE}"
@@ -49,6 +53,8 @@ teardown() {
     local note="password-charset: alphanumeric"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/password-generate"
         bwx-provider-password-generate "test-secret" "'"${TEST_TMPDIR}"'" "'"${note}"'"
         echo "VALUE=${PROVIDER_VALUE}"
@@ -63,12 +69,14 @@ teardown() {
     local note="password-length: 4"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/password-generate"
         bwx-provider-password-generate "test-secret" "'"${TEST_TMPDIR}"'" "'"${note}"'"
         echo "VALUE_LEN=${#PROVIDER_VALUE}"
     '
     [[ "${status}" -eq 0 ]]
-    [[ "${output}" == *"Invalid password-length"* ]]
+    [[ "${output}" == *"outside range"* ]]
     [[ "${output}" == *"VALUE_LEN=32"* ]]
 }
 
@@ -76,12 +84,14 @@ teardown() {
     local note="password-length: 512"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/password-generate"
         bwx-provider-password-generate "test-secret" "'"${TEST_TMPDIR}"'" "'"${note}"'"
         echo "VALUE_LEN=${#PROVIDER_VALUE}"
     '
     [[ "${status}" -eq 0 ]]
-    [[ "${output}" == *"Invalid password-length"* ]]
+    [[ "${output}" == *"outside range"* ]]
     [[ "${output}" == *"VALUE_LEN=32"* ]]
 }
 
@@ -89,12 +99,14 @@ teardown() {
     local note="password-length: abc"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/password-generate"
         bwx-provider-password-generate "test-secret" "'"${TEST_TMPDIR}"'" "'"${note}"'"
         echo "VALUE_LEN=${#PROVIDER_VALUE}"
     '
     [[ "${status}" -eq 0 ]]
-    [[ "${output}" == *"Invalid password-length"* ]]
+    [[ "${output}" == *"expected integer"* ]]
     [[ "${output}" == *"VALUE_LEN=32"* ]]
 }
 
@@ -102,18 +114,22 @@ teardown() {
     local note="password-charset: hex"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/password-generate"
         bwx-provider-password-generate "test-secret" "'"${TEST_TMPDIR}"'" "'"${note}"'"
         echo "VALUE_LEN=${#PROVIDER_VALUE}"
     '
     [[ "${status}" -eq 0 ]]
-    [[ "${output}" == *"Unknown password-charset"* ]]
+    [[ "${output}" == *"expected one of"* ]]
     [[ "${output}" == *"VALUE_LEN=32"* ]]
 }
 
 @test "password-generate: no note uses all defaults" {
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/password-generate"
         bwx-provider-password-generate "test-secret"
         echo "VALUE_LEN=${#PROVIDER_VALUE}"
@@ -130,6 +146,8 @@ teardown() {
     run bash -c '
         export PATH="/nonexistent"
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/aws-iam"
         bwx-provider-aws-iam "test-secret"
     '
@@ -140,6 +158,8 @@ teardown() {
 @test "aws-iam: list-access-keys failure returns 1" {
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/aws-iam"
         aws() { echo "AccessDenied" >&2; return 1; }
         bwx-provider-aws-iam "test-secret"
@@ -153,6 +173,8 @@ teardown() {
     echo "0" > "${call_log}"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/aws-iam"
         call_log="'"${call_log}"'"
         aws() {
@@ -176,6 +198,8 @@ teardown() {
 @test "aws-iam: successful rotation sets globals" {
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/aws-iam"
         aws() {
             case "$*" in
@@ -205,6 +229,8 @@ teardown() {
 @test "aws-iam: handles no existing key gracefully" {
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/aws-iam"
         _call=0
         aws() {
@@ -233,6 +259,8 @@ teardown() {
     command -v openssl >/dev/null 2>&1 || skip "openssl required"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/openssl-selfsigned"
         bwx-provider-openssl-selfsigned "test-cert" "'"${TEST_TMPDIR}"'"
         echo "EXPIRES=${PROVIDER_EXPIRES}"
@@ -250,6 +278,8 @@ teardown() {
     local note="provider-role: cert"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/openssl-selfsigned"
         bwx-provider-openssl-selfsigned "test-cert" "'"${TEST_TMPDIR}"'" "'"${note}"'"
         [[ "${PROVIDER_VALUE}" == *"-----BEGIN CERTIFICATE-----"* ]]
@@ -264,6 +294,8 @@ teardown() {
     local note="provider-role: key"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/openssl-selfsigned"
         bwx-provider-openssl-selfsigned "test-key" "'"${TEST_TMPDIR}"'" "'"${note}"'"
         [[ "${PROVIDER_VALUE}" == *"-----BEGIN PRIVATE KEY-----"* ]]
@@ -278,6 +310,8 @@ teardown() {
     local note=$'cert-cn: mqtt.example.com\ncert-days: 30'
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/openssl-selfsigned"
         bwx-provider-openssl-selfsigned "test-cert" "'"${TEST_TMPDIR}"'" "'"${note}"'"
         echo "EXPIRES=${PROVIDER_EXPIRES}"
@@ -293,6 +327,8 @@ teardown() {
     local note="provider-role: ca"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/openssl-selfsigned"
         bwx-provider-openssl-selfsigned "test-cert" "'"${TEST_TMPDIR}"'" "'"${note}"'"
         echo "EXPIRES=${PROVIDER_EXPIRES}"
@@ -307,6 +343,8 @@ teardown() {
     local note="cert-days: -5"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/openssl-selfsigned"
         bwx-provider-openssl-selfsigned "test-cert" "'"${TEST_TMPDIR}"'" "'"${note}"'"
         echo "EXPIRES=${PROVIDER_EXPIRES}"
@@ -322,6 +360,8 @@ teardown() {
     run bash -c '
         unset BWS_ACCESS_TOKEN
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/bitwarden-api-key"
         bwx-provider-bitwarden-api-key "test-secret" "'"${TEST_TMPDIR}"'"
     '
@@ -333,6 +373,8 @@ teardown() {
     run bash -c '
         export BWS_ACCESS_TOKEN="test-token"
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/bitwarden-api-key"
         bwx-provider-bitwarden-api-key "test-secret" "'"${TEST_TMPDIR}"'"
     '
@@ -345,6 +387,8 @@ teardown() {
     run bash -c '
         export BWS_ACCESS_TOKEN="test-token"
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/bitwarden-api-key"
         bwx-provider-bitwarden-api-key "test-secret" "'"${TEST_TMPDIR}"'"
     '
@@ -358,6 +402,8 @@ teardown() {
     run bash -c '
         export BWS_ACCESS_TOKEN="test-token"
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/bitwarden-api-key"
         curl() { return 1; }
         jq() { command jq "$@"; }
@@ -374,6 +420,8 @@ teardown() {
     run bash -c '
         export BWS_ACCESS_TOKEN="test-token"
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/bitwarden-api-key"
         curl() {
             echo "{\"accessToken\":\"new-bws-token-abc123\"}"
@@ -395,6 +443,8 @@ teardown() {
 @test "mqtt-password: generates 32-char alphanumeric password" {
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/mqtt-password"
         bwx-provider-mqtt-password "test-secret"
         echo "VALUE_LEN=${#PROVIDER_VALUE}"
@@ -414,6 +464,8 @@ teardown() {
 @test "mqtt-password: generates different values on each call" {
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/mqtt-password"
         bwx-provider-mqtt-password "test-secret"
         val1="${PROVIDER_VALUE}"
@@ -430,29 +482,35 @@ teardown() {
 @test "grafana-service-account: missing sa-id returns 1" {
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/grafana-service-account"
-        bwx-provider-grafana-service-account "test-secret" "'"${TEST_TMPDIR}"'"
+        bwx-provider-grafana-service-account "test-secret" "'"${TEST_TMPDIR}"'" ""
     '
     [[ "${status}" -ne 0 ]]
-    [[ "${output}" == *"grafana-sa-id not set"* ]]
+    [[ "${output}" == *"required field missing"* ]]
 }
 
 @test "grafana-service-account: missing password file returns 1" {
     local note="grafana-sa-id: 42"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/grafana-service-account"
         bwx-provider-grafana-service-account "test-secret" "'"${TEST_TMPDIR}"'" "'"${note}"'"
     '
     [[ "${status}" -ne 0 ]]
-    [[ "${output}" == *"admin password not found"* ]]
+    [[ "${output}" == *"grafana-admin-password"* ]]
 }
 
 @test "grafana-service-account: API failure returns 1" {
-    local note="grafana-sa-id: 42"
+    local note=$'grafana-sa-id: 42\ngrafana-admin-password: '"${TEST_TMPDIR}/grafana-admin-password"
     echo "admin-pw" > "${TEST_TMPDIR}/grafana-admin-password"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/grafana-service-account"
         curl() { return 1; }
         jq() { command jq "$@"; }
@@ -464,10 +522,12 @@ teardown() {
 
 @test "grafana-service-account: successful rotation sets globals" {
     jq --version >/dev/null 2>&1 || skip "jq required"
-    local note="grafana-sa-id: 42"
+    local note=$'grafana-sa-id: 42\ngrafana-admin-password: '"${TEST_TMPDIR}/grafana-admin-password"
     echo "admin-pw" > "${TEST_TMPDIR}/grafana-admin-password"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/grafana-service-account"
         curl() {
             echo "{\"id\":99,\"name\":\"test\",\"key\":\"glsa_newtoken123\"}"
@@ -484,13 +544,14 @@ teardown() {
     [[ "${output}" == *"Grafana SA token"* ]]
 }
 
-@test "grafana-service-account: uses custom admin user file" {
+@test "grafana-service-account: uses custom admin user from note" {
     jq --version >/dev/null 2>&1 || skip "jq required"
-    local note="grafana-sa-id: 42"
+    local note=$'grafana-sa-id: 42\ngrafana-admin-user: superadmin\ngrafana-admin-password: '"${TEST_TMPDIR}/grafana-admin-password"
     echo "admin-pw" > "${TEST_TMPDIR}/grafana-admin-password"
-    echo "superadmin" > "${TEST_TMPDIR}/grafana-admin-user"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/grafana-service-account"
         curl() {
             echo "{\"key\":\"glsa_token\"}"
@@ -508,6 +569,8 @@ teardown() {
 @test "docker-registry: missing credential files returns 1" {
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/docker-registry"
         bwx-provider-docker-registry "test-secret" "'"${TEST_TMPDIR}"'"
     '
@@ -520,6 +583,8 @@ teardown() {
     echo "mypass" > "${TEST_TMPDIR}/docker-hub-password"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/docker-registry"
         curl() { return 1; }
         jq() { command jq "$@"; }
@@ -537,6 +602,8 @@ teardown() {
     echo "0" > "${call_log}"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/docker-registry"
         call_log="'"${call_log}"'"
         curl() {
@@ -564,6 +631,8 @@ teardown() {
     echo "0" > "${call_log}"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/docker-registry"
         call_log="'"${call_log}"'"
         curl() {
@@ -602,6 +671,8 @@ teardown() {
         exec 9< "'"${f}"'"
         export BWX_TTY_FD=9
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/letsencrypt-manual"
         bwx-provider-letsencrypt-manual "test-cert"
         echo "EXPIRES=${PROVIDER_EXPIRES}"
@@ -621,6 +692,8 @@ teardown() {
         exec 9< "'"${f}"'"
         export BWX_TTY_FD=9
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/letsencrypt-manual"
         bwx-provider-letsencrypt-manual "test-cert"
     '
@@ -638,6 +711,8 @@ teardown() {
         exec 9< "'"${f}"'"
         export BWX_TTY_FD=9
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/letsencrypt-manual"
         bwx-provider-letsencrypt-manual "test-cert"
     '
@@ -655,6 +730,8 @@ teardown() {
         exec 9< "'"${f}"'"
         export BWX_TTY_FD=9
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/letsencrypt-manual"
         bwx-provider-letsencrypt-manual "test-cert"
     '
@@ -671,6 +748,8 @@ teardown() {
         exec 9< "'"${f}"'"
         export BWX_TTY_FD=9
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/anthropic-api-key"
         bwx-provider-anthropic-api-key "test-secret"
         echo "VALUE=${PROVIDER_VALUE}"
@@ -690,6 +769,8 @@ teardown() {
         exec 9< "'"${f}"'"
         export BWX_TTY_FD=9
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/anthropic-api-key"
         bwx-provider-anthropic-api-key "test-secret"
         echo "VALUE=${PROVIDER_VALUE}"
@@ -706,6 +787,8 @@ teardown() {
         exec 9< "'"${f}"'"
         export BWX_TTY_FD=9
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/anthropic-api-key"
         bwx-provider-anthropic-api-key "test-secret"
         echo "EXPIRES=${PROVIDER_EXPIRES}"
@@ -721,6 +804,8 @@ teardown() {
         exec 9< "'"${f}"'"
         export BWX_TTY_FD=9
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/anthropic-api-key"
         bwx-provider-anthropic-api-key "test-secret"
     '
@@ -735,6 +820,8 @@ teardown() {
         exec 9< "'"${f}"'"
         export BWX_TTY_FD=9
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/anthropic-api-key"
         bwx-provider-anthropic-api-key "test-secret"
     '
@@ -749,6 +836,8 @@ teardown() {
         exec 9< "'"${f}"'"
         export BWX_TTY_FD=9
         source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/anthropic-api-key"
         bwx-provider-anthropic-api-key "test-secret"
     '
