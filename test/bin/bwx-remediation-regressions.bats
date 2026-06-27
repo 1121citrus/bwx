@@ -394,16 +394,12 @@ MOCK
 # Phase 4A: ShellCheck covers all shell files
 # =========================================================================
 
-@test "4A: build lint covers include/note-parser" {
-    grep -q 'note-parser' "${BWX_ROOT}/build"
+@test "4A: build lint discovers shell files in include/, lib/, and bin/" {
+    grep -q 'find bin/ include/ lib/' "${BWX_ROOT}/build"
 }
 
-@test "4A: build lint covers lib/ files" {
-    grep -q 'find lib/' "${BWX_ROOT}/build"
-}
-
-@test "4A: build lint covers lib/providers/" {
-    grep -q 'find lib/providers/' "${BWX_ROOT}/build"
+@test "4A: build lint includes extensionless files (covers note-parser, providers)" {
+    grep -q '! -name "\*\.\*"' "${BWX_ROOT}/build"
 }
 
 # =========================================================================
