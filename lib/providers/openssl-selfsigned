@@ -1,0 +1,95 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2034
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+# Self-signed TLS certificate generator — fully automated, no TTY.
+# Generates a self-signed certificate and private key using openssl.
+# The provider sets PROVIDER_VALUE to the PEM certificate. For
+# multi-artifact rotation (key + cert), assign each artifact its own
+# BWS secret with provider: openssl-selfsigned and a provider-role:
+# note field set to "cert" or "key".
+# Optional note fields:
+#   provider-role: "cert" (default) or "key"
+#   cert-cn:       common name (default: "bwx-selfsigned")
+#   cert-days:     validity in days (default: 365)
+# Args:
+#   $1 — secret name (for display)
+#   $2 — secrets directory (for temporary key storage)
+#   $3 — current BWS note contents (optional, for config fields)
+# Returns:
+#   0; sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
+bwx-provider-openssl-selfsigned() {
+    local secret="${1}" secrets_dir="${2}" note="${3:-}"
+    local role="cert" cn="bwx-selfsigned" days=365
+
+    if [[ -n "${note}" ]]; then
+        local parsed
+        parsed="$(printf '%s\n' "${note}" \
+            | grep -E '^provider-role:' \
+            | head -1 \
+            | sed 's/^provider-role:[[:space:]]*//')"
+        case "${parsed}" in
+            key)  role="key" ;;
+            cert|"") role="cert" ;;
+            *)
+                warn "Unknown provider-role '${parsed}'"
+                warn "Expected 'cert' or 'key'; using 'cert'"
+                ;;
+        esac
+
+        parsed="$(printf '%s\n' "${note}" \
+            | grep -E '^cert-cn:' \
+            | head -1 \
+            | sed 's/^cert-cn:[[:space:]]*//')"
+        [[ -n "${parsed}" ]] && cn="${parsed}"
+
+        parsed="$(printf '%s\n' "${note}" \
+            | grep -E '^cert-days:' \
+            | head -1 \
+            | sed 's/^cert-days:[[:space:]]*//')"
+        if [[ -n "${parsed}" ]]; then
+            if [[ "${parsed}" =~ ^[0-9]+$ \
+                    && "${parsed}" -ge 1 ]]; then
+                days="${parsed}"
+            else
+                warn "Invalid cert-days '${parsed}'; using ${days}"
+            fi
+        fi
+    fi
+
+    local tmpdir
+    tmpdir="$(mktemp -d)" \
+        || { error "${EXIT_ERROR}" "Failed to create temp dir"
+             return 1; }
+    # shellcheck disable=SC2064
+    trap "rm -rf '${tmpdir}'" RETURN
+
+    local key_file="${tmpdir}/key.pem"
+    local cert_file="${tmpdir}/cert.pem"
+
+    info "Generating self-signed certificate (CN=${cn}, ${days} days)..."
+    openssl req -x509 -newkey rsa:2048 -nodes \
+        -keyout "${key_file}" \
+        -out "${cert_file}" \
+        -days "${days}" \
+        -subj "/CN=${cn}" \
+        2>/dev/null \
+        || { error "${EXIT_ERROR}" "openssl certificate generation failed"
+             return 1; }
+
+    if [[ "${role}" == "key" ]]; then
+        PROVIDER_VALUE="$(<"${key_file}")"
+    else
+        PROVIDER_VALUE="$(<"${cert_file}")"
+    fi
+
+    if [[ -z "${PROVIDER_VALUE}" ]]; then
+        error "${EXIT_ERROR}" "Generated ${role} is empty"
+        return 1
+    fi
+
+    PROVIDER_EXPIRES="${days}"
+    PROVIDER_NOTE="note: Self-signed ${role} (CN=${cn})"
+}
