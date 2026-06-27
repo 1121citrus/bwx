@@ -11,13 +11,21 @@ bwx-provider-prompt() {
     info ""
 
     local value
-    printf 'New value: ' >/dev/tty
-    IFS= read -r value </dev/tty
+    printf 'New value: ' >/dev/tty 2>/dev/null || true
+    if [[ -n "${BWX_TTY_FD:-}" ]]; then
+        IFS= read -r value <&"${BWX_TTY_FD}"
+    else
+        IFS= read -r value </dev/tty
+    fi
     [[ -n "${value}" ]] || { error "${EXIT_ERROR}" "No value provided"; return 1; }
 
     local days
-    printf 'Expiry in days [90]: ' >/dev/tty
-    IFS= read -r days </dev/tty
+    printf 'Expiry in days [90]: ' >/dev/tty 2>/dev/null || true
+    if [[ -n "${BWX_TTY_FD:-}" ]]; then
+        IFS= read -r days <&"${BWX_TTY_FD}"
+    else
+        IFS= read -r days </dev/tty
+    fi
     days="${days:-90}"
     [[ "${days}" =~ ^[0-9]+$ && "${days}" -gt 0 ]] || \
         { error "${EXIT_ERROR}" "Expiry must be a positive integer"; return 1; }

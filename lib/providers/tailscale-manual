@@ -17,8 +17,12 @@ bwx-provider-tailscale-manual() {
     info ""
 
     local new_key
-    printf 'Paste the new key: ' >/dev/tty
-    IFS= read -r new_key </dev/tty
+    printf 'Paste the new key: ' >/dev/tty 2>/dev/null || true
+    if [[ -n "${BWX_TTY_FD:-}" ]]; then
+        IFS= read -r new_key <&"${BWX_TTY_FD}"
+    else
+        IFS= read -r new_key </dev/tty
+    fi
     [[ -n "${new_key}" ]] || { error "${EXIT_ERROR}" "No key provided"; return 1; }
     [[ "${new_key}" == tskey-auth-* ]] || \
         { error "${EXIT_ERROR}" "Key must start with tskey-auth-"; return 1; }

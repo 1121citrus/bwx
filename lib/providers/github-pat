@@ -17,15 +17,23 @@ bwx-provider-github-pat() {
     info ""
 
     local new_token
-    printf 'Paste the new token: ' >/dev/tty
-    IFS= read -r new_token </dev/tty
+    printf 'Paste the new token: ' >/dev/tty 2>/dev/null || true
+    if [[ -n "${BWX_TTY_FD:-}" ]]; then
+        IFS= read -r new_token <&"${BWX_TTY_FD}"
+    else
+        IFS= read -r new_token </dev/tty
+    fi
     [[ -n "${new_token}" ]] || { error "${EXIT_ERROR}" "No token provided"; return 1; }
     [[ "${new_token}" == ghp_* || "${new_token}" == github_pat_* ]] || \
         warn "Token format not recognized (expected ghp_* or github_pat_*)"
 
     local expiry_days
-    printf 'Token expiry in days [365]: ' >/dev/tty
-    IFS= read -r expiry_days </dev/tty
+    printf 'Token expiry in days [365]: ' >/dev/tty 2>/dev/null || true
+    if [[ -n "${BWX_TTY_FD:-}" ]]; then
+        IFS= read -r expiry_days <&"${BWX_TTY_FD}"
+    else
+        IFS= read -r expiry_days </dev/tty
+    fi
     expiry_days="${expiry_days:-365}"
     [[ "${expiry_days}" =~ ^[0-9]+$ && "${expiry_days}" -gt 0 ]] || \
         { error "${EXIT_ERROR}" "Expiry must be a positive integer"; return 1; }
