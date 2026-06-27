@@ -1,0 +1,308 @@
+# shellcheck shell=bash
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+# Validate a secret's note fields without performing rotation.
+# Checks core field formats (file, expires, provider, release-tag)
+# and, when a provider is set or specified, validates provider-
+# specific config fields against their declared types.
+#
+# Usage: bwx note validate [--provider NAME] SECRET [PROJECT]
+
+# Validate a credential reference string syntactically.
+# Checks format without resolving the reference (no BWS lookups,
+# no file reads, no env var access).
+# Args:
+#   $1 — credential reference string
+#   $2 — field name for error messages
+# Returns:
+#   0 if syntactically valid; 1 with warning on stderr if invalid
+_bwx_validate_credential_syntax() {
+    local ref="${1}" label="${2}"
+
+    [[ -n "${ref}" ]] || { warn "${label}: empty credential reference"
+                           return 1; }
+
+    if [[ "${ref}" == *$'\n'* ]]; then
+        warn "${label}: credential reference contains newline"
+        return 1
+    fi
+
+    case "${ref}" in
+        ./*|/*)
+            return 0
+            ;;
+        @env:*)
+            local var="${ref#@env:}"
+            if ! [[ "${var}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+                warn "${label}: invalid env var name '${var}'"
+                return 1
+            fi
+            ;;
+        *:*)
+            local project="${ref%%:*}"
+            local secret="${ref#*:}"
+            if [[ -z "${project}" || -z "${secret}" ]]; then
+                warn "${label}: both project and secret required" \
+                    "in 'project:secret' form"
+                return 1
+            fi
+            if [[ "${project}" == *'$'* || "${project}" == *'`'* \
+                    || "${project}" == *'\'* ]]; then
+                warn "${label}: project contains shell metacharacter"
+                return 1
+            fi
+            if [[ "${secret}" == *'$'* || "${secret}" == *'`'* \
+                    || "${secret}" == *'\'* ]]; then
+                warn "${label}: secret name contains shell metacharacter"
+                return 1
+            fi
+            ;;
+        *)
+            if [[ "${ref}" == *'$'* || "${ref}" == *'`'* \
+                    || "${ref}" == *'\'* ]]; then
+                warn "${label}: literal value contains shell metacharacter"
+                return 1
+            fi
+            ;;
+    esac
+    return 0
+}
+
+# Validate a single provider config field against its declared type.
+# Args:
+#   $1 — field name
+#   $2 — default value (empty = required)
+#   $3 — type specification
+#   $4 — note text
+# Returns:
+#   0 if valid; 1 with warning on stderr if invalid
+_bwx_validate_provider_field() {
+    local field="${1}" default="${2}" type_spec="${3}" note="${4}"
+
+    local value
+    value="$(bwx-note-get-field "${field}" "${note}")"
+
+    if [[ -z "${value}" && -z "${default}" ]]; then
+        warn "${field}: required provider field missing"
+        return 1
+    fi
+
+    [[ -n "${value}" ]] || return 0
+
+    case "${type_spec}" in
+        string)
+            if [[ "${value}" == *'$'* || "${value}" == *'`'* \
+                    || "${value}" == *'\'* ]]; then
+                warn "${field}: contains shell metacharacter"
+                return 1
+            fi
+            ;;
+        integer*)
+            if ! [[ "${value}" =~ ^[0-9]+$ ]]; then
+                warn "${field}: expected integer, got '${value}'"
+                return 1
+            fi
+            if [[ "${type_spec}" == integer:*:* ]]; then
+                local range="${type_spec#integer:}"
+                local min="${range%%:*}"
+                local max="${range#*:}"
+                if [[ "${value}" -lt "${min}" \
+                        || "${value}" -gt "${max}" ]]; then
+                    warn "${field}: ${value} outside range" \
+                        "${min}–${max}"
+                    return 1
+                fi
+            fi
+            ;;
+        credential)
+            _bwx_validate_credential_syntax "${value}" "${field}" \
+                || return 1
+            ;;
+        enum:*)
+            local allowed="${type_spec#enum:}"
+            if ! printf '%s' "|${allowed}|" \
+                    | grep -qF "|${value}|"; then
+                warn "${field}: expected one of" \
+                    "[${allowed}], got '${value}'"
+                return 1
+            fi
+            ;;
+    esac
+    return 0
+}
+
+# Validate a secret's note fields and provider configuration.
+# Args:
+#   [--provider NAME]  Override or specify the provider to validate
+#   [--quiet]          Suppress success message
+#   SECRET             Secret name or UUID (required)
+#   [PROJECT]          Project name or UUID (optional)
+# Returns:
+#   0 if all fields pass; 1 if any validation error found
+bwx-note-validate() {
+    shopt -s extglob
+
+    local provider_override=""
+    local quiet=false
+
+    while [[ $# -gt 0 && "${1}" == -* ]]; do
+        case "${1}" in
+            -h|--help)
+                cat <<'EOF'
+Usage: bwx note validate [options] SECRET [PROJECT]
+
+Validate a secret's note fields without performing rotation.
+Checks core field formats (file, expires, provider, release-tag)
+and provider-specific config fields when a provider is set.
+
+Arguments:
+  SECRET               Secret name or UUID
+  PROJECT              Project name or UUID (default: ${BWX_DEFAULT_PROJECT})
+
+Options:
+  --provider NAME      Override or specify provider for config validation
+  -q, --quiet          Suppress success message
+  -h, --help           Show this help and exit
+
+Core field validation:
+  file:           Must be a safe filename (no traversal, no absolute path)
+  expires:        Must be YYYY-MM-DD format
+  provider:       Must be a safe identifier [A-Za-z0-9._-]
+  release-tag:    Must be a safe identifier [A-Za-z0-9._-]
+
+Provider field validation (when provider is set):
+  Validates each config field against its declared type (string,
+  integer, credential, enum). Required fields must be present.
+  Credential references are checked for syntax only — BWS lookups,
+  file reads, and env var access are not performed.
+EOF
+                return "${EXIT_USAGE:-2}"
+                ;;
+            --provider)
+                [[ -n "${2:-}" && "${2}" != -* ]] \
+                    || error "${EXIT_USAGE}" "--provider requires a value"
+                provider_override="${2}"
+                shift 2
+                ;;
+            -q|--quiet)
+                quiet=true
+                shift
+                ;;
+            --)
+                shift; break ;;
+            -*)
+                error "${EXIT_USAGE}" "Unknown option: ${1}" ;;
+        esac
+    done
+
+    local secret="${1:-}"
+    local project="${2:-}"
+    [[ -n "${secret}" ]] \
+        || error "${EXIT_USAGE}" "SECRET required"
+
+    local note
+    if [[ -n "${project}" ]]; then
+        note="$(bwx-secret-get note "${secret}" "${project}" \
+            2>/dev/null)" || note=""
+    else
+        note="$(bwx-secret-get note "${secret}" 2>/dev/null)" || note=""
+    fi
+
+    if [[ -z "${note}" ]]; then
+        is-true "${quiet}" || info "Note is empty — nothing to validate"
+        return 0
+    fi
+
+    local errors=0
+    local field_value
+
+    # -- Core field validation -----------------------------------------
+
+    field_value="$(bwx-note-get-field file "${note}")"
+    if [[ -n "${field_value}" ]]; then
+        if ! _bwx_note_validate_path "${field_value}"; then
+            warn "file: invalid path '${field_value}'"
+            errors=$((errors + 1))
+        fi
+    fi
+
+    field_value="$(bwx-note-get-field expires "${note}")"
+    if [[ -n "${field_value}" ]]; then
+        if ! _bwx_note_validate_date "${field_value}"; then
+            warn "expires: invalid date '${field_value}'" \
+                "(expected YYYY-MM-DD)"
+            errors=$((errors + 1))
+        fi
+    fi
+
+    field_value="$(bwx-note-get-field provider "${note}")"
+    if [[ -n "${field_value}" ]]; then
+        if ! _bwx_note_validate_identifier "${field_value}"; then
+            warn "provider: invalid identifier '${field_value}'"
+            errors=$((errors + 1))
+        fi
+    fi
+
+    local tags
+    tags="$(bwx-note-get-multi-field release-tag "${note}")"
+    if [[ -n "${tags}" ]]; then
+        local tag
+        while IFS= read -r tag; do
+            if ! _bwx_note_validate_identifier "${tag}"; then
+                warn "release-tag: invalid identifier '${tag}'"
+                errors=$((errors + 1))
+            fi
+        done <<< "${tags}"
+    fi
+
+    # -- Provider config validation ------------------------------------
+
+    local provider="${provider_override}"
+    if [[ -z "${provider}" ]]; then
+        provider="$(bwx-note-get-field provider "${note}")"
+    fi
+
+    if [[ -n "${provider}" ]]; then
+        local provider_dir
+        provider_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/providers" \
+            && pwd)"
+        local provider_file="${provider_dir}/${provider}"
+
+        if [[ ! -f "${provider_file}" ]]; then
+            warn "provider: unknown provider '${provider}'"
+            errors=$((errors + 1))
+        else
+            if ! declare -F _bwx_provider_fields >/dev/null 2>&1; then
+                # shellcheck source=../include/provider-config
+                source "$(dirname "${BASH_SOURCE[0]}")/../include/provider-config"
+            fi
+
+            local fields
+            fields="$(_bwx_provider_fields "${provider}")"
+            if [[ -n "${fields}" ]]; then
+                local pfield pdefault ptype
+                while IFS=$'\x1f' read -r pfield pdefault ptype; do
+                    _bwx_validate_provider_field \
+                        "${pfield}" "${pdefault}" "${ptype}" "${note}" \
+                        || errors=$((errors + 1))
+                done <<< "${fields}"
+            fi
+        fi
+    fi
+
+    # -- Report --------------------------------------------------------
+
+    if [[ "${errors}" -gt 0 ]]; then
+        warn "${errors} validation error(s)"
+        return 1
+    fi
+
+    is-true "${quiet}" || info "Note validation passed"
+    return 0
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bwx-note-validate "$@"
+fi

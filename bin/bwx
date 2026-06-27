@@ -105,6 +105,7 @@ declare -A _BWX_COMMANDS=(
     # lifecycle
     [import]=bwx-import
     [check/expiry]=bwx-check-expiry
+    [note/validate]=bwx-note-validate
     [rotate]=bwx-rotate
     # provider
     [provider/info]=bwx-provider-info
@@ -337,6 +338,7 @@ Commands:
     tag          Manage release tags
     import       Export secrets by release tag to a directory
     check        Check secret metadata (expiry dates)
+    note         Note field operations (validate)
     rotate       Rotate time-limited secrets via provider drivers
     provider     Provider introspection (info)
     raw          Pass-through to the upstream bws binary
@@ -374,6 +376,7 @@ Tag commands:
 Lifecycle commands:
     bwx import TAG DIR [PROJECT]     Export secrets by release tag
     bwx check expiry [--exit-on-expiring]  Check for expiring secrets
+    bwx note validate SECRET [PROJ]  Validate note fields and provider config
     bwx rotate SECRET [PROJECT]      Rotate a secret via its provider
     bwx rotate --all [PROJECT]       Rotate all expiring secrets
 
