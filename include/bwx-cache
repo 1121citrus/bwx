@@ -24,7 +24,7 @@ declare -F bwx-cache-dir >/dev/null 2>&1 || {
     }
 
     # Compute a SHA-256 hash of the given arguments.
-    # Falls back to sha256sum, then cksum if shasum is unavailable.
+    # Prefers native hash tools; falls back to a basic digest.
     # Args:
     #   $@ — values to hash (concatenated)
     # Returns:
