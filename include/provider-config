@@ -1,0 +1,208 @@
+# shellcheck shell=bash
+
+# Provider configuration parsing, credential resolution, and input
+# scrubbing for rotation providers.
+#
+# Provides three public functions:
+#   bwx-scrub-config-value   — reject shell expansion characters
+#   bwx-resolve-credential   — resolve credential references (BWS, file, env)
+#   bwx-provider-config      — typed config field extraction from note text
+#
+# All provider config values pass through bwx-scrub-config-value before
+# reaching provider code. Credential values (resolved secret content)
+# skip the scrub since they may legitimately contain any byte.
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+# Reject values containing shell expansion characters.
+# Blocks $, backtick, backslash, null bytes, and newlines. No
+# legitimate config value (URL, CN, token label, integer, identifier)
+# needs these characters. Returns the value unchanged on success.
+# Args:
+#   $1 — value to scrub
+#   $2 — field name (for error messages)
+# Returns:
+#   0 and writes scrubbed value to stdout; 1 if rejected
+bwx-scrub-config-value() {
+    local val="${1}" field="${2:-config}"
+
+    if [[ "${val}" == *$'\n'* ]]; then
+        warn "${field}: value contains newline — rejected"
+        return 1
+    fi
+
+    # Reject shell expansion: $, backtick, backslash
+    local pattern='[$`\]'
+    # shellcheck disable=SC2016
+    if [[ "${val}" == *'$'* || "${val}" == *'`'* || "${val}" == *'\'* ]]; then
+        warn "${field}: value contains shell metacharacter — rejected"
+        return 1
+    fi
+
+    printf '%s' "${val}"
+}
+
+# Resolve a credential reference to its value.
+#
+# Resolution chain:
+#   PROJECT:SECRET   — BWS secret value lookup (both parts validated
+#                      by the BWS API; project must be accessible,
+#                      secret must exist)
+#   ./relative/path  — read file contents
+#   /absolute/path   — read file contents
+#   @env:VAR_NAME    — environment variable value
+#   (anything else)  — literal value, passed through scrub
+#
+# Resolved credential values are NOT scrubbed — secret content may
+# legitimately contain any byte. The reference string itself (project
+# name, path, env var name) IS scrubbed before use.
+# Args:
+#   $1 — credential reference string
+#   $2 — context label for error messages
+# Returns:
+#   0 and writes resolved value to stdout; 1 on failure
+bwx-resolve-credential() {
+    local ref="${1}" label="${2:-credential}"
+
+    [[ -n "${ref}" ]] || { warn "${label}: empty reference"; return 1; }
+
+    case "${ref}" in
+        ./*|/*)
+            [[ -f "${ref}" ]] \
+                || { warn "${label}: file not found: ${ref}"; return 1; }
+            [[ -r "${ref}" ]] \
+                || { warn "${label}: file not readable: ${ref}"; return 1; }
+            cat "${ref}"
+            ;;
+        @env:*)
+            local var="${ref#@env:}"
+            bwx-scrub-config-value "${var}" "${label} env var name" \
+                >/dev/null || return 1
+            [[ "${var}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] \
+                || { warn "${label}: invalid env var name: ${var}"
+                     return 1; }
+            [[ -n "${!var:-}" ]] \
+                || { warn "${label}: env var not set: ${var}"; return 1; }
+            printf '%s' "${!var}"
+            ;;
+        *:*)
+            local project="${ref%%:*}"
+            local secret="${ref#*:}"
+
+            bwx-scrub-config-value "${project}" "${label} project" \
+                >/dev/null || return 1
+            bwx-scrub-config-value "${secret}" "${label} secret" \
+                >/dev/null || return 1
+
+            [[ -n "${project}" && -n "${secret}" ]] \
+                || { warn "${label}: both project and secret required" \
+                         " in 'project:secret' form"
+                     return 1; }
+
+            bwx-secret-get value "${secret}" "${project}"
+            ;;
+        *)
+            bwx-scrub-config-value "${ref}" "${label}" || return 1
+            ;;
+    esac
+}
+
+# Extract and validate a typed config field from note text.
+#
+# Types:
+#   string      — any single-line value (scrubbed)
+#   integer     — digits only; optional MIN:MAX range via integer:MIN:MAX
+#   credential  — resolved via bwx-resolve-credential (not scrubbed)
+#   enum:a|b|c  — value must be one of the listed alternatives
+#
+# When a field is absent from the note, the default value is returned
+# without validation.
+# Args:
+#   $1 — field name (matches note key, e.g., "grafana-sa-id")
+#   $2 — note text
+#   $3 — default value (used when field is absent; empty string = required)
+#   $4 — type specification
+# Returns:
+#   0 and writes validated value to stdout; 1 on validation failure
+bwx-provider-config() {
+    local field="${1}" note="${2}" default="${3}" type="${4}"
+
+    # Lazy-source the note parser if not already loaded
+    if ! declare -F bwx-note-get-field >/dev/null 2>&1; then
+        local _bwx_root
+        _bwx_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        # shellcheck source=note-parser
+        source "${_bwx_root}/note-parser"
+    fi
+
+    local raw
+    raw="$(bwx-note-get-field "${field}" "${note}")"
+
+    if [[ -z "${raw}" ]]; then
+        if [[ -z "${default}" ]]; then
+            warn "${field}: required field missing from note"
+            return 1
+        fi
+        printf '%s' "${default}"
+        return 0
+    fi
+
+    case "${type}" in
+        string)
+            bwx-scrub-config-value "${raw}" "${field}"
+            ;;
+        integer*)
+            bwx-scrub-config-value "${raw}" "${field}" >/dev/null \
+                || return 1
+            if ! [[ "${raw}" =~ ^[0-9]+$ ]]; then
+                warn "${field}: expected integer, got '${raw}'"
+                if [[ -n "${default}" ]]; then
+                    printf '%s' "${default}"
+                    return 0
+                fi
+                return 1
+            fi
+            # Optional range check: integer:MIN:MAX
+            if [[ "${type}" == integer:*:* ]]; then
+                local range="${type#integer:}"
+                local min="${range%%:*}"
+                local max="${range#*:}"
+                if [[ "${raw}" -lt "${min}" \
+                        || "${raw}" -gt "${max}" ]]; then
+                    warn "${field}: ${raw} outside range" \
+                        "${min}–${max}"
+                    if [[ -n "${default}" ]]; then
+                        printf '%s' "${default}"
+                        return 0
+                    fi
+                    return 1
+                fi
+            fi
+            printf '%s' "${raw}"
+            ;;
+        credential)
+            bwx-resolve-credential "${raw}" "${field}"
+            ;;
+        enum:*)
+            bwx-scrub-config-value "${raw}" "${field}" >/dev/null \
+                || return 1
+            local allowed="${type#enum:}"
+            if printf '%s' "|${allowed}|" | grep -qF "|${raw}|"; then
+                printf '%s' "${raw}"
+            else
+                warn "${field}: expected one of [${allowed}]," \
+                    "got '${raw}'"
+                if [[ -n "${default}" ]]; then
+                    printf '%s' "${default}"
+                    return 0
+                fi
+                return 1
+            fi
+            ;;
+        *)
+            warn "Unknown config type '${type}' for field '${field}'"
+            return 1
+            ;;
+    esac
+}
