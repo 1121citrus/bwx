@@ -105,7 +105,7 @@ state_opt_out = "true"
 EOF
             chmod 600 "${config_file}"
         }
-        trace "docker run --rm --interactive -v '${config_file}:/home/app/.config/bws/config' --env BWS_ACCESS_TOKEN '${image}:${tag}' $*"
+        trace "docker run --rm --interactive -v '${config_file}:/home/app/.config/bws/config' --env BWS_ACCESS_TOKEN '${image}:${tag}' <redacted-args>"
         docker run --rm --interactive \
             -v "${config_file}:/home/app/.config/bws/config" \
             --env BWS_ACCESS_TOKEN \

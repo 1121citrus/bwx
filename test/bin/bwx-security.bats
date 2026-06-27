@@ -94,6 +94,18 @@ teardown() { bwx_test_teardown; }
     [[ "${status}" -ne 0 ]]
 }
 
+@test "security: docker bws wrapper trace redacts forwarded secret args" {
+    ! grep -q 'trace .*\$\*' "${BWX_ROOT}/lib/bwx"
+    grep -q '<redacted-args>' "${BWX_ROOT}/lib/bwx"
+}
+
+@test "security: secret create trace redacts new secret value" {
+    ! grep -q 'trace "bws ${create_args\[\*\]}"' \
+        "${BWX_ROOT}/lib/bwx-create-secret"
+    grep -q "trace \"bws secret create --note '...'" \
+        "${BWX_ROOT}/lib/bwx-create-secret"
+}
+
 # =========================================================================
 # M1/M2: curl credentials passed via stdin not CLI args
 # =========================================================================
