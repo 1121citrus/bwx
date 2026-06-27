@@ -1,0 +1,109 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2034
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+# Docker Hub access token rotation — automated via Hub API.
+# Creates a new personal access token and returns it. Requires
+# Docker Hub credentials in the secrets directory.
+# Credentials read from secrets directory:
+#   docker-hub-username (required)
+#   docker-hub-password (required — account password or existing PAT)
+# Optional note fields:
+#   docker-token-label: label for the new token (default: "bwx-rotated")
+# Args:
+#   $1 — secret name (for display)
+#   $2 — secrets directory (path to credential files)
+#   $3 — current BWS note contents (optional, for config fields)
+# Returns:
+#   0; sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
+bwx-provider-docker-registry() {
+    local secret="${1}" secrets_dir="${2}" note="${3:-}"
+    local hub_api="https://hub.docker.com/v2"
+    local token_label="bwx-rotated"
+
+    if [[ -n "${note}" ]]; then
+        local parsed
+        parsed="$(printf '%s\n' "${note}" \
+            | grep -E '^docker-token-label:' \
+            | head -1 \
+            | sed 's/^docker-token-label:[[:space:]]*//')"
+        [[ -n "${parsed}" ]] && token_label="${parsed}"
+    fi
+
+    local user_file="${secrets_dir}/docker-hub-username"
+    local pw_file="${secrets_dir}/docker-hub-password"
+
+    if [[ ! -f "${user_file}" || ! -f "${pw_file}" ]]; then
+        warn "Docker Hub credentials not found"
+        warn "Store credentials in:"
+        warn "  ${user_file}"
+        warn "  ${pw_file}"
+        return 1
+    fi
+
+    local username password
+    username="$(<"${user_file}")"
+    password="$(<"${pw_file}")"
+
+    info "Authenticating with Docker Hub..."
+    local login_payload login_response jwt
+    login_payload="$(jq -n \
+        --arg u "${username}" \
+        --arg p "${password}" \
+        '{ username: $u, password: $p }'
+    )"
+
+    login_response="$(curl --fail --silent --show-error \
+        --request POST \
+        --url "${hub_api}/users/login" \
+        --header "Content-Type: application/json" \
+        --data "${login_payload}" \
+        2>&1)" \
+        || { error "${EXIT_ERROR}" \
+                 "Docker Hub login failed: ${login_response}"
+             return 1; }
+
+    jwt="$(printf '%s' "${login_response}" \
+        | jq -r '.token // empty')"
+
+    if [[ -z "${jwt}" ]]; then
+        error "${EXIT_ERROR}" "Docker Hub login returned no token"
+        return 1
+    fi
+
+    local full_label
+    full_label="${token_label}-$(date +%Y%m%d-%H%M%S)"
+    info "Creating Docker Hub access token '${full_label}'..."
+    local token_payload token_response
+    token_payload="$(jq -n \
+        --arg label "${full_label}" \
+        '{ token_label: $label, scopes: ["repo:admin"] }'
+    )"
+
+    token_response="$(curl --fail --silent --show-error \
+        --request POST \
+        --url "${hub_api}/access-tokens" \
+        --header "Authorization: Bearer ${jwt}" \
+        --header "Content-Type: application/json" \
+        --data "${token_payload}" \
+        2>&1)" \
+        || { error "${EXIT_ERROR}" \
+                 "Token creation failed: ${token_response}"
+             return 1; }
+
+    local new_token
+    new_token="$(printf '%s' "${token_response}" \
+        | jq -r '.token // empty')"
+
+    if [[ -z "${new_token}" ]]; then
+        error "${EXIT_ERROR}" \
+            "API response did not contain an access token"
+        return 1
+    fi
+
+    PROVIDER_VALUE="${new_token}"
+    PROVIDER_EXPIRES=365
+    PROVIDER_NOTE="note: Docker Hub PAT ${full_label}"
+}
