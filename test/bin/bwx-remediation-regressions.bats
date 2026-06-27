@@ -465,6 +465,13 @@ MOCK
     grep -q -- '--HEAD' "${BWX_ROOT}/doc/usage.md"
 }
 
+@test "5C: Homebrew formula carries tagged release archive checksum" {
+    local formula="${BWX_ROOT}/install/homebrew/Formula/bwx.rb"
+    grep -q 'url "https://github.com/1121citrus/bwx/archive/refs/tags/v1.0.0.tar.gz"' \
+        "${formula}"
+    grep -Eq 'sha256 "[0-9a-f]{64}"' "${formula}"
+}
+
 @test "5C: Homebrew test does not compare CLI version to HEAD version" {
     local formula="${BWX_ROOT}/install/homebrew/Formula/bwx.rb"
     run grep -q 'version.to_s' "${formula}"
