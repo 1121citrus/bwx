@@ -624,27 +624,64 @@ fi
 if [[ "${ADVISE_COVERAGE}" == "true" ]]; then
     echo "==> Stage 5d: Coverage" >&2
 
+    _cov_test_files=(
+        test/bin/bwx.bats
+        test/bin/bwx-secret.bats
+        test/bin/bwx-secret-queries.bats
+        test/bin/bwx-project.bats
+        test/bin/bwx-project-queries.bats
+        test/bin/bwx-tag.bats
+        test/bin/bwx-tag-ops.bats
+        test/bin/bwx-mutations.bats
+        test/bin/bwx-http.bats
+        test/bin/bwx-providers.bats
+        test/bin/bwx-providers-extended.bats
+        test/bin/bwx-provider-config.bats
+        test/bin/bwx-lifecycle.bats
+        test/bin/bwx-security.bats
+        test/bin/bwx-misc.bats
+    )
+
     if [[ "${DRY_RUN}" == "true" ]]; then
         echo "[DRY RUN] docker run --rm --cap-add SYS_PTRACE --security-opt seccomp=unconfined \\" >&2
-        echo "[DRY RUN]   -v ${script_dir}:/code:ro -w /code ${BATS_KCOV_IMAGE}:${BATS_KCOV_TAG} bats-coverage <test files>" >&2
+        echo "[DRY RUN]   -v ${script_dir}:/code:ro -w /code ${BATS_KCOV_IMAGE}:${BATS_KCOV_TAG} kcov --merge ..." >&2
     else
+        # Run kcov per test file then merge — sourced lib files get correct
+        # per-file attribution instead of being absorbed into bin/bwx.
         docker run --rm \
             --cap-add SYS_PTRACE \
             --security-opt seccomp=unconfined \
             -v "${script_dir}:/code:ro" \
             -w /code \
             "${BATS_KCOV_IMAGE}:${BATS_KCOV_TAG}" \
-            bats-coverage \
-                --src /code/lib --include /code/lib,/code/bin \
-                test/bin/bwx.bats \
-                test/bin/bwx-secret.bats \
-                test/bin/bwx-secret-queries.bats \
-                test/bin/bwx-project.bats \
-                test/bin/bwx-project-queries.bats \
-                test/bin/bwx-tag.bats \
-                test/bin/bwx-tag-ops.bats \
-                test/bin/bwx-mutations.bats \
-                test/bin/bwx-http.bats \
+            bash -c '
+                _include="/code/lib,/code/bin,/code/include"
+                _src="/code/lib"
+                for f in "$@"; do
+                    name=$(basename "${f}" .bats)
+                    kcov --include-path="${_include}" \
+                         --bash-parse-files-in-dir="${_src}" \
+                         "/tmp/cov-${name}" \
+                         bats "${f}" >/dev/null 2>&1 || true
+                done
+                kcov --merge /tmp/cov-merged /tmp/cov-* 2>/dev/null
+                cov=$(find /tmp/cov-merged -name coverage.json | head -1)
+                [[ -n "${cov}" ]] || { echo "No coverage data" >&2; exit 0; }
+                jq -r --arg src "${_src}/" "
+                  .files[] |
+                  (.file | ltrimstr(\$src)) +
+                  \": \" + .percent_covered +
+                  \"% (\" + .covered_lines +
+                  \"/\" + .total_lines + \" lines)\"
+                " "${cov}"
+                jq -r "
+                  \"Overall: \" +
+                  (([.files[].covered_lines | tonumber] | add) | tostring) +
+                  \"/\" +
+                  (([.files[].total_lines | tonumber] | add) | tostring) +
+                  \" lines\"
+                " "${cov}"
+            ' _ "${_cov_test_files[@]}" \
             >&2 || echo "    Coverage run failed (advisory only)" >&2
     fi
 fi

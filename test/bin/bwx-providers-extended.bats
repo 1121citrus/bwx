@@ -125,6 +125,20 @@ teardown() {
     [[ "${output}" == *"VALUE_LEN=32"* ]]
 }
 
+@test "password-generate: explicit alphanumeric+symbols charset" {
+    local note="password-charset: alphanumeric+symbols"
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        source "'"${BWX_ROOT}"'/lib/providers/password-generate"
+        bwx-provider-password-generate "test-secret" "'"${TEST_TMPDIR}"'" "'"${note}"'"
+        echo "VALUE_LEN=${#PROVIDER_VALUE}"
+    '
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"VALUE_LEN=32"* ]]
+}
+
 @test "password-generate: no note uses all defaults" {
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
@@ -564,7 +578,58 @@ teardown() {
     [[ "${output}" == *"VALUE=glsa_token"* ]]
 }
 
+@test "grafana-service-account: credential fallback to secrets dir" {
+    jq --version >/dev/null 2>&1 || skip "jq required"
+    local note="grafana-sa-id: 42"
+    echo "admin-pw" > "${TEST_TMPDIR}/grafana-admin-password"
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        source "'"${BWX_ROOT}"'/lib/providers/grafana-service-account"
+        curl() {
+            echo "{\"key\":\"glsa_fallback\"}"
+            return 0
+        }
+        bwx-provider-grafana-service-account "test-secret" "'"${TEST_TMPDIR}"'" "'"${note}"'"
+        echo "VALUE=${PROVIDER_VALUE}"
+    '
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"VALUE=glsa_fallback"* ]]
+}
+
 # ── docker-registry provider ──────────────────────────────────────
+
+@test "docker-registry: credential fallback to secrets dir" {
+    jq --version >/dev/null 2>&1 || skip "jq required"
+    echo "myuser" > "${TEST_TMPDIR}/docker-hub-username"
+    echo "mypass" > "${TEST_TMPDIR}/docker-hub-password"
+    local call_log="${TEST_TMPDIR}/curl-calls"
+    echo "0" > "${call_log}"
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        source "'"${BWX_ROOT}"'/lib/providers/docker-registry"
+        call_log="'"${call_log}"'"
+        curl() {
+            local count
+            count=$(<"${call_log}")
+            count=$((count + 1))
+            echo "${count}" > "${call_log}"
+            if [[ "${count}" -eq 1 ]]; then
+                echo "{\"token\":\"jwt-login\"}"
+            else
+                echo "{\"token\":\"dckr_fallback\"}"
+            fi
+            return 0
+        }
+        bwx-provider-docker-registry "test-secret" "'"${TEST_TMPDIR}"'" ""
+        echo "VALUE=${PROVIDER_VALUE}"
+    '
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"VALUE=dckr_fallback"* ]]
+}
 
 @test "docker-registry: missing credential files returns 1" {
     run bash -c '

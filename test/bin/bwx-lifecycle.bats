@@ -110,6 +110,31 @@ teardown() { bwx_test_teardown; }
     [[ "${output}" == *"[dry-run] Would call bwx-provider-tailscale-manual for secret_key_provider_edge"* ]]
 }
 
+@test "rotate password-generate executes full rotation path" {
+    run "${BWX}" rotate secret_rotatable_v1
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"Rotating secret_rotatable_v1 (provider: password-generate)"* ]]
+    [[ "${output}" == *"Generated 16-character password"* ]]
+    [[ "${output}" == *"Updating BWS secret secret_rotatable_v1"* ]]
+    [[ "${output}" == *"rotated successfully"* ]]
+}
+
+@test "rotate mqtt-password executes full rotation path" {
+    run "${BWX}" rotate secret_mqtt_rotatable_v1
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"Rotating secret_mqtt_rotatable_v1 (provider: mqtt-password)"* ]]
+    [[ "${output}" == *"Generated 32-character MQTT password"* ]]
+    [[ "${output}" == *"rotated successfully"* ]]
+}
+
+@test "rotate --all --dry-run includes automated and interactive secrets" {
+    run "${BWX}" rotate --all --dry-run
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"Rotating secret_rotatable_v1 (provider: password-generate)"* ]]
+    [[ "${output}" == *"Rotating secret_mqtt_rotatable_v1 (provider: mqtt-password)"* ]]
+    [[ "${output}" == *"Rotating secret_expiring_v1 (provider: prompt)"* ]]
+}
+
 # -- completion includes new families --
 
 @test "completion bash includes import" {

@@ -151,6 +151,26 @@ get_mock_secrets() {
     "note": "file: tags-edge\nnote: tag parsing edge secret\nrelease-tag: tag-c  # comment\nrelease-tag :   tag-d\n",
     "creationDate": "2023-01-01T00:00:00Z",
     "revisionDate": "2023-01-01T00:00:00Z"
+  },
+  {
+    "id": "abab-cdcd-efef-0101",
+    "organizationId": "org-1",
+    "projectId": "${project_id}",
+    "key": "secret_rotatable_v1",
+    "value": "old-password-value",
+    "note": "file: rotatable-secret\nprovider: password-generate\nexpires: 2000-01-01\npassword-length: 16\npassword-charset: alphanumeric",
+    "creationDate": "2023-01-01T00:00:00Z",
+    "revisionDate": "2023-01-01T00:00:00Z"
+  },
+  {
+    "id": "bcbc-dede-fafa-0202",
+    "organizationId": "org-1",
+    "projectId": "${project_id}",
+    "key": "secret_mqtt_rotatable_v1",
+    "value": "old-mqtt-password",
+    "note": "file: mqtt-password\nprovider: mqtt-password\nexpires: 2000-01-01",
+    "creationDate": "2023-01-01T00:00:00Z",
+    "revisionDate": "2023-01-01T00:00:00Z"
   }
 ]
 JSON
