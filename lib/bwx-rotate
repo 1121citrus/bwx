@@ -50,11 +50,24 @@ Options:
   -l, --log-level LEVEL  Set log level (default: info)
   -h, --help             Show this help and exit
 
-Built-in providers:
-  tailscale-oauth        Fully automated via OAuth client credentials
-  tailscale-manual       Operator pastes key from Tailscale admin console
-  github-pat             Operator pastes token from GitHub developer settings
-  prompt                 Generic: asks for value and expiry days (default)
+Built-in providers (automated):
+  aws-iam                AWS IAM access key rotation via aws CLI
+  bitwarden-api-key      Machine account token via Bitwarden API
+  docker-registry        Docker Hub access token via Hub API
+  grafana-service-account  Grafana SA token via HTTP API
+  mqtt-password          Random alphanumeric MQTT broker password
+  openssl-selfsigned     Self-signed TLS certificate/key via openssl
+  password-generate      Random password (configurable length/charset)
+  tailscale-oauth        Tagged pre-auth key via OAuth credentials
+
+Built-in providers (interactive):
+  anthropic-api-key      Paste API key with sk-ant- validation
+  github-pat             Paste token from GitHub developer settings
+  letsencrypt-manual     Paste PEM certificate with format validation
+  tailscale-manual       Paste key from Tailscale admin console
+  prompt                 Generic: asks for value and expiry (default)
+
+See doc/providers.md for configuration and credential passing.
 EOF
                 return "${EXIT_USAGE:-2}"
                 ;;
@@ -138,9 +151,15 @@ _bwx_rotate_one() {
         return 0
     fi
 
+    # Lazy-source provider config helpers
+    if ! declare -F bwx-provider-config >/dev/null 2>&1; then
+        source "$(dirname "${BASH_SOURCE[0]}")/../include/provider-config"
+    fi
+
     # Call the provider — it sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
     PROVIDER_VALUE="" PROVIDER_EXPIRES="" PROVIDER_NOTE=""
-    "${provider_fn}" "${secret}" "${BWX_SECRETS_DIR:-.secrets}" || return $?
+    "${provider_fn}" "${secret}" "${BWX_SECRETS_DIR:-.secrets}" "${note}" \
+        || return $?
 
     [[ -n "${PROVIDER_VALUE}" ]] || \
         error "${EXIT_ERROR}" "Provider '${provider}' returned empty value"
