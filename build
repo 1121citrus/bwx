@@ -616,11 +616,14 @@ if [[ "${ADVISE_COVERAGE}" == "true" ]]; then
                 test/bin/bwx-lifecycle.bats \
                 test/bin/bwx-misc.bats \
                 test/bin/bwx-mutations.bats \
+                test/bin/bwx-option-parsing.bats \
                 test/bin/bwx-project.bats \
                 test/bin/bwx-project-queries.bats \
                 test/bin/bwx-remediation-regressions.bats \
                 test/bin/bwx-secret.bats \
                 test/bin/bwx-secret-queries.bats \
+                test/bin/bwx-docker-wrapper.bats \
+                test/bin/bwx-providers.bats \
                 test/bin/bwx-security.bats \
                 test/bin/bwx-tag.bats \
                 test/bin/bwx-tag-ops.bats \
