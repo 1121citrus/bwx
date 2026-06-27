@@ -1,25 +1,16 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-
-## [1.0.0] - 2026-06-24
+## 1.0.0
 
 ### Added
+- Initial public release of bwx.
+- Secret lifecycle commands for create, clone, delete, list, show, get, and set.
+- Project, tag, import, expiry-check, and rotation workflows.
+- Structured note metadata parsing for file, expires, provider, and release-tag fields.
+- Bash completion support and local build/test tooling.
 
-- Initial release with 30 subcommands
-- Single `bwx` entry point with subcommand dispatch
-- Bash completion via `bwx completion bash`
-- Structured note metadata: `file:`, `expires:`, `release-tag:`
-- TTL-based local caching for project and secret lists
-- Release-tag lifecycle management (add, remove, bulk tag/untag)
-- Secret cloning with automatic version increment
-- Docker-wrapped tool functions (jq, bws) — zero install dependencies
-  beyond bash and Docker
+### Changed
+- Documented installation and usage guidance for direct install, Homebrew, and vendored usage.
 
-[Unreleased]: https://github.com/1121citrus/bwx/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/1121citrus/bwx/releases/tag/v1.0.0
+### Fixed
+- Aligned install examples with the current Homebrew workflow and repository layout.
