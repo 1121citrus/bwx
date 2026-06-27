@@ -75,9 +75,8 @@ brew install --HEAD bwx
 eval "$(bwx completion bash)"
 ```
 
-The Homebrew formula is currently a HEAD install until a versioned source
-archive is published. After a tagged release exists, the formula can be
-updated with the release archive URL and SHA-256 checksum.
+The current Homebrew formula installs the `main` branch as `HEAD` until a
+versioned source archive is published.
 
 macOS ships Bash 3.2, which is too old for `bwx`. Install an updated bash and put it first in `PATH`:
 
@@ -112,9 +111,10 @@ export PATH="${PWD}/vendor/bwx/bin:${PATH}"
 eval "$(bwx completion bash)"
 ```
 
-The `PATH` export and completion setup can be placed in the consuming
-project's shell initialization script (for example, an `include/dot-bashrc`
-or similar).
+Pin the vendored checkout to a tag or commit when reproducible installs
+matter. The `PATH` export and completion setup can be placed in the
+consuming project's shell initialization script (for example, an
+`include/dot-bashrc` or similar).
 
 ## Subcommand reference
 

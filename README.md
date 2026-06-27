@@ -193,8 +193,10 @@ eval "$(bwx completion bash)"
 
 ```bash
 brew tap 1121citrus/bwx https://github.com/1121citrus/bwx
-brew install bwx
+brew install --HEAD bwx
 ```
+
+The current Homebrew formula installs the `main` branch as `HEAD` until a tagged release archive is published.
 
 On macOS the system shell is Bash 3.2. If installed via Homebrew, ensure the Homebrew bash is first in your `PATH`:
 
@@ -219,9 +221,11 @@ bash --version
 ### Vendor dependency
 
 ```bash
-git clone --branch v1.0.0 https://github.com/1121citrus/bwx.git vendor/bwx
+git clone https://github.com/1121citrus/bwx.git vendor/bwx
 export PATH="${PWD}/vendor/bwx/bin:${PATH}"
 ```
+
+Pin the checkout to a tag or commit when you need reproducible vendoring.
 
 ### Prerequisites
 
