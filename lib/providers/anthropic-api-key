@@ -1,0 +1,54 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2034
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+# Anthropic API key provider — guided manual flow with validation.
+# Validates the sk-ant- prefix and sets expiry. API keys must be
+# created manually in the Anthropic console.
+# Args:
+#   $1 — secret name (for display)
+# Returns:
+#   0; sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
+bwx-provider-anthropic-api-key() {
+    local secret="${1}"
+
+    info "Generate a new API key in the Anthropic console:"
+    info "  https://console.anthropic.com/settings/keys"
+    printf '\n' >&2
+
+    local new_key
+    printf 'Paste the new API key: ' >/dev/tty 2>/dev/null || true
+    if [[ -n "${BWX_TTY_FD:-}" ]]; then
+        IFS= read -r new_key <&"${BWX_TTY_FD}"
+    else
+        IFS= read -r new_key </dev/tty
+    fi
+
+    if [[ -z "${new_key}" ]]; then
+        error "${EXIT_ERROR}" "No API key provided"
+        return 1
+    fi
+
+    if [[ "${new_key}" != sk-ant-* ]]; then
+        warn "Key format not recognized (expected sk-ant-* prefix)"
+    fi
+
+    local expiry_days
+    printf 'Key expiry in days [365]: ' >/dev/tty 2>/dev/null || true
+    if [[ -n "${BWX_TTY_FD:-}" ]]; then
+        IFS= read -r expiry_days <&"${BWX_TTY_FD}"
+    else
+        IFS= read -r expiry_days </dev/tty
+    fi
+    expiry_days="${expiry_days:-365}"
+    [[ "${expiry_days}" =~ ^[0-9]+$ && "${expiry_days}" -gt 0 ]] || \
+        { error "${EXIT_ERROR}" \
+              "Expiry must be a positive integer"
+          return 1; }
+
+    PROVIDER_VALUE="${new_key}"
+    PROVIDER_EXPIRES="${expiry_days}"
+    PROVIDER_NOTE="note: Anthropic API key"
+}

@@ -1,0 +1,63 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2034
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+# Let's Encrypt certificate paste provider — guided manual flow.
+# Validates PEM format after paste and sets fixed 90-day expiry
+# matching Let's Encrypt certificate lifetime.
+# Args:
+#   $1 — secret name (for display)
+# Returns:
+#   0; sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
+bwx-provider-letsencrypt-manual() {
+    local secret="${1}"
+
+    info "Paste the renewed certificate PEM for '${secret}'."
+    info "Include the full chain (server cert + intermediates)."
+    info "End input with an empty line or EOF."
+    printf '\n' >&2
+
+    local value="" line
+    printf 'Certificate PEM:\n' >/dev/tty 2>/dev/null || true
+    while true; do
+        if [[ -n "${BWX_TTY_FD:-}" ]]; then
+            IFS= read -r line <&"${BWX_TTY_FD}" || break
+        else
+            IFS= read -r line </dev/tty || break
+        fi
+        [[ -n "${line}" ]] || break
+        value+="${line}"$'\n'
+    done
+
+    if [[ -z "${value}" ]]; then
+        error "${EXIT_ERROR}" "No certificate data provided"
+        return 1
+    fi
+
+    if [[ "${value}" != *"-----BEGIN CERTIFICATE-----"* ]]; then
+        error "${EXIT_ERROR}" \
+            "Input does not contain a PEM certificate header"
+        return 1
+    fi
+
+    if [[ "${value}" != *"-----END CERTIFICATE-----"* ]]; then
+        error "${EXIT_ERROR}" \
+            "Input does not contain a PEM certificate footer"
+        return 1
+    fi
+
+    local cert_subject
+    cert_subject="$(printf '%s' "${value}" \
+        | openssl x509 -noout -subject 2>/dev/null \
+        | sed 's/^subject=//')" || true
+
+    if [[ -n "${cert_subject}" ]]; then
+        info "Certificate subject: ${cert_subject}"
+    fi
+
+    PROVIDER_VALUE="${value}"
+    PROVIDER_EXPIRES=90
+    PROVIDER_NOTE="note: Let's Encrypt certificate"
+}
