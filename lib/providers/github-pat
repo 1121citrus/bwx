@@ -1,8 +1,15 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
 # GitHub PAT provider — operator pastes token from developer settings.
 # Fine-grained PATs cannot be created via API.
-
+# Args:
+#   $1 — secret name (for display)
+# Returns:
+#   0; sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
 bwx-provider-github-pat() {
     local secret="${1}"
 

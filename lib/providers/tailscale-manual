@@ -1,8 +1,15 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
 # Tailscale manual provider — operator pastes key from admin console.
 # Used for untagged keys (OAuth clients can only create tagged keys).
-
+# Args:
+#   $1 — secret name (for display)
+# Returns:
+#   0; sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
 bwx-provider-tailscale-manual() {
     local secret="${1}"
 
