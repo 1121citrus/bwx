@@ -20,7 +20,7 @@ bwx_test_setup() {
     export BWS_ACCESS_TOKEN="test-token"
     export BWX_DEFAULT_PROJECT="test-project"
 
-    # Tell lib/bws to preserve the mock bws function instead of
+    # Tell lib/bwx to preserve the mock bws function instead of
     # redefining it with the Docker wrapper and token validation.
     export CITRUS_ENABLE_MOCK_COMMANDS=true
 

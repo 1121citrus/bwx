@@ -71,8 +71,6 @@ BWX="${BWX_ROOT}/bin/bwx"
     [[ "${output}" == "${help_output}" ]]
 }
 
-# -- source guard --
-
 # -- double-dash handling --
 
 @test "-- before family is consumed" {

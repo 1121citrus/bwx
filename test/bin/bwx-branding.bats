@@ -54,7 +54,7 @@ BWX="${BWX_ROOT}/bin/bwx"
     [[ "${output}" != *"bws-"* ]]
 }
 
-# Verify all 28 subcommand help outputs in a loop
+# Verify all 29 subcommand help outputs in a loop
 @test "no subcommand help contains bws- prefix" {
     local cmds=(
         "secret list" "secret show" "secret get value" "secret get note"
