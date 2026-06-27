@@ -3,7 +3,7 @@
 
 # Wrapper around Docker 'bitwarden/bws' image to provide 'bws' command
 
-# Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+# Copyright © 2026 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
 
 {
     declare -F error && declare -F fatal && declare -F trace; } >/dev/null 2>&1 || {

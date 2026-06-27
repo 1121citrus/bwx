@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # shellcheck disable=SC1090,SC1091
 
-# Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+# Copyright © 2026 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
 
 # Return the name of the default project.
 # Uses BWX_DEFAULT_PROJECT if set, otherwise queries the BWS project

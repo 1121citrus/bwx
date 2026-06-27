@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # shellcheck disable=SC1090,SC1091
 
-# Copyright (C) 2025-2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
 # Licensed under AGPL-3.0-or-later.
 
 # Export all secrets for a given release tag from a BWS project to a

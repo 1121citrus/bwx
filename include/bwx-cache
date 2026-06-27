@@ -3,7 +3,7 @@
 
 # Shared cache helpers for Bitwarden Secrets Manager wrappers.
 
-# Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+# Copyright © 2026 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
 
 declare -F bwx-cache-dir >/dev/null 2>&1 || {
     # Return the cache directory path, creating it if needed.

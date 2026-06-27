@@ -3,7 +3,7 @@
 
 # Common bash logging functions.
 
-# Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+# Copyright © 2026 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
 
 # Only define constants if they aren't already present
 
