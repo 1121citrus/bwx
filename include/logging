@@ -85,7 +85,7 @@ function diag() {
     # diagnostic information useful during development or troubleshooting.
     # This level is intended to be used sparingly for very detailed messages.
     # Usage:
-    #   debug [MESSAGE...]
+    #   diag [MESSAGE...]
     # Arguments:
     #   MESSAGE: Log message (optional; if omitted, reads from stdin)
     (set -o noglob; log DIAG "$@")
@@ -94,7 +94,7 @@ function diag() {
 function diagnostic() {
     # Log a diagnostic-level message. This is an alias for 'diag'.
     # Usage:
-    #   debug [MESSAGE...]
+    #   diagnostic [MESSAGE...]
     # Arguments:
     #   MESSAGE: Log message (optional; if omitted, reads from stdin)
     (set -o noglob; diag "$@")
@@ -599,7 +599,7 @@ function error-return() {
 }
 
 function warn() {
-    # Log a warning-level message. This logging is level is more
+    # Log a warning-level message. This logging level is more
     # severe than 'info' but less severe than 'error'.
     # Usage:
     #   warn [MESSAGE...]
