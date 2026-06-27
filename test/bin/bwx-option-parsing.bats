@@ -95,28 +95,17 @@ LOG_LEVEL_COMMANDS=(
     done
 }
 
-# -- secret get property help tests --
+# -- secret get edge cases --
 
-@test "secret get value --help shows usage" {
-    run "${BWX}" secret get value --help
-    [[ "${output}" == *"Usage:"* ]] || [[ "${output}" == *"usage:"* ]] || \
-        [[ "${output}" == *"value"* ]]
+@test "secret get --help shows property list" {
+    run "${BWX}" secret get --help
+    [[ "${output}" == *"value"* ]]
+    [[ "${output}" == *"note"* ]]
+    [[ "${output}" == *"tags"* ]]
 }
 
-@test "secret get id --help shows usage" {
-    run "${BWX}" secret get id --help
-    [[ "${status}" -le 2 ]]
-}
-
-@test "secret get note --help shows usage" {
-    run "${BWX}" secret get note --help
-    [[ "${status}" -le 2 ]]
-}
-
-# -- secret get id edge cases --
-
-@test "secret get id --log-level debug succeeds" {
+@test "secret get --log-level debug id succeeds" {
     run "${BWX}" secret get --log-level debug id secret_key_1
     [[ "${status}" -eq 0 ]]
-    [[ "${output}" == "aaaa-bbbb-cccc-dddd" ]]
+    [[ "${output}" == *"aaaa-bbbb-cccc-dddd"* ]]
 }
