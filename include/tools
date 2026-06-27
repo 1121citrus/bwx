@@ -22,6 +22,73 @@ if ! command -v jq >/dev/null 2>&1; then
     }
 fi
 
+# Provide curl via Docker when not natively installed.
+# Supports all curl arguments including --data @- (stdin),
+# --header, --request, --user, and --url.
+# Args:
+#   $@ — arguments forwarded to curl inside the container
+# Returns:
+#   Exit code from curl; reads stdin, writes stdout
+if ! command -v curl >/dev/null 2>&1; then
+    curl() {
+        docker run --rm -i \
+            "${BWX_CURL_IMAGE:-curlimages/curl}" \
+            "$@"
+    }
+fi
+
+# Provide openssl via Docker when not natively installed.
+# Mounts /tmp for certificate generation temp files.
+# Args:
+#   $@ — arguments forwarded to openssl inside the container
+# Returns:
+#   Exit code from openssl; reads stdin, writes stdout
+if ! command -v openssl >/dev/null 2>&1; then
+    openssl() {
+        local -a volumes=()
+        local arg
+        for arg in "$@"; do
+            case "${arg}" in
+                /*)
+                    local dir
+                    dir="$(dirname "${arg}")"
+                    volumes+=(-v "${dir}:${dir}")
+                    ;;
+            esac
+        done
+        docker run --rm -i \
+            "${volumes[@]}" \
+            "${BWX_OPENSSL_IMAGE:-alpine/openssl}" \
+            "$@"
+    }
+fi
+
+# Provide aws CLI via Docker when not natively installed.
+# Mounts ~/.aws for credential and config resolution, and
+# forwards AWS_* environment variables.
+# Args:
+#   $@ — arguments forwarded to aws inside the container
+# Returns:
+#   Exit code from aws; reads stdin, writes stdout
+if ! command -v aws >/dev/null 2>&1; then
+    aws() {
+        local -a env_args=()
+        local var
+        for var in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY \
+                   AWS_SESSION_TOKEN AWS_DEFAULT_REGION \
+                   AWS_DEFAULT_OUTPUT AWS_PROFILE; do
+            if [[ -n "${!var:-}" ]]; then
+                env_args+=(--env "${var}=${!var}")
+            fi
+        done
+        docker run --rm -i \
+            -v "${HOME}/.aws:/root/.aws:ro" \
+            "${env_args[@]}" \
+            "${BWX_AWS_IMAGE:-amazon/aws-cli}" \
+            "$@"
+    }
+fi
+
 # bws is provided by lib/bwx which handles config, state_opt_out,
 # and access-token validation.  Do not define a bws() fallback here
 # — it would shadow the lib/bwx wrapper and bypass config mounting.

@@ -134,7 +134,7 @@ teardown() {
         bwx-provider-aws-iam "test-secret"
     '
     [[ "${status}" -ne 0 ]]
-    [[ "${output}" == *"aws CLI not found"* ]]
+    [[ "${output}" == *"Neither aws CLI nor docker found"* ]]
 }
 
 @test "aws-iam: list-access-keys failure returns 1" {

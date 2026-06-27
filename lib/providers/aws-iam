@@ -17,9 +17,10 @@
 bwx-provider-aws-iam() {
     local secret="${1}"
 
-    if ! command -v aws >/dev/null 2>&1; then
+    if ! command -v aws >/dev/null 2>&1 \
+            && ! command -v docker >/dev/null 2>&1; then
         error "${EXIT_ERROR}" \
-            "aws CLI not found (required for aws-iam provider)"
+            "Neither aws CLI nor docker found (one is required)"
         return 1
     fi
 
