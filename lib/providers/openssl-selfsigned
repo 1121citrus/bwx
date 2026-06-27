@@ -6,58 +6,29 @@
 
 # Self-signed TLS certificate generator — fully automated, no TTY.
 # Generates a self-signed certificate and private key using openssl.
-# The provider sets PROVIDER_VALUE to the PEM certificate. For
-# multi-artifact rotation (key + cert), assign each artifact its own
-# BWS secret with provider: openssl-selfsigned and a provider-role:
-# note field set to "cert" or "key".
-# Optional note fields:
+# For multi-artifact rotation (key + cert), assign each artifact its
+# own BWS secret with provider: openssl-selfsigned and a distinct
+# provider-role: note field.
+# Note fields (parsed via bwx-provider-config):
 #   provider-role: "cert" (default) or "key"
 #   cert-cn:       common name (default: "bwx-selfsigned")
-#   cert-days:     validity in days (default: 365)
+#   cert-days:     validity in days (default: 365, minimum: 1)
 # Args:
 #   $1 — secret name (for display)
 #   $2 — secrets directory (for temporary key storage)
-#   $3 — current BWS note contents (optional, for config fields)
+#   $3 — current BWS note contents (for config fields)
 # Returns:
 #   0; sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
 bwx-provider-openssl-selfsigned() {
     local secret="${1}" secrets_dir="${2}" note="${3:-}"
-    local role="cert" cn="bwx-selfsigned" days=365
 
-    if [[ -n "${note}" ]]; then
-        local parsed
-        parsed="$(printf '%s\n' "${note}" \
-            | grep -E '^provider-role:' \
-            | head -1 \
-            | sed 's/^provider-role:[[:space:]]*//')"
-        case "${parsed}" in
-            key)  role="key" ;;
-            cert|"") role="cert" ;;
-            *)
-                warn "Unknown provider-role '${parsed}'"
-                warn "Expected 'cert' or 'key'; using 'cert'"
-                ;;
-        esac
-
-        parsed="$(printf '%s\n' "${note}" \
-            | grep -E '^cert-cn:' \
-            | head -1 \
-            | sed 's/^cert-cn:[[:space:]]*//')"
-        [[ -n "${parsed}" ]] && cn="${parsed}"
-
-        parsed="$(printf '%s\n' "${note}" \
-            | grep -E '^cert-days:' \
-            | head -1 \
-            | sed 's/^cert-days:[[:space:]]*//')"
-        if [[ -n "${parsed}" ]]; then
-            if [[ "${parsed}" =~ ^[0-9]+$ \
-                    && "${parsed}" -ge 1 ]]; then
-                days="${parsed}"
-            else
-                warn "Invalid cert-days '${parsed}'; using ${days}"
-            fi
-        fi
-    fi
+    local role cn days
+    role="$(bwx-provider-config provider-role \
+        "${note}" "cert" "enum:cert|key")"
+    cn="$(bwx-provider-config cert-cn \
+        "${note}" "bwx-selfsigned" "string")"
+    days="$(bwx-provider-config cert-days \
+        "${note}" "365" "integer:1:3650")"
 
     local tmpdir
     tmpdir="$(mktemp -d)" \

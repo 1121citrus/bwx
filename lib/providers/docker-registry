@@ -5,47 +5,55 @@
 # Licensed under AGPL-3.0-or-later.
 
 # Docker Hub access token rotation — automated via Hub API.
-# Creates a new personal access token and returns it. Requires
-# Docker Hub credentials in the secrets directory.
-# Credentials read from secrets directory:
-#   docker-hub-username (required)
-#   docker-hub-password (required — account password or existing PAT)
-# Optional note fields:
-#   docker-token-label: label for the new token (default: "bwx-rotated")
+# Creates a new personal access token and returns it.
+# Note fields (parsed via bwx-provider-config):
+#   docker-token-label:  label for the new token (default: "bwx-rotated")
+#   docker-hub-username: Hub username — credential
+#   docker-hub-password: Hub password or existing PAT — credential
+# Credential fields support BWS references (project:secret),
+# file paths (./path), env vars (@env:VAR), or literal values.
+# Falls back to secrets directory files when note fields are absent.
 # Args:
 #   $1 — secret name (for display)
-#   $2 — secrets directory (path to credential files)
-#   $3 — current BWS note contents (optional, for config fields)
+#   $2 — secrets directory (fallback for credential files)
+#   $3 — current BWS note contents (for config fields)
 # Returns:
 #   0; sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
 bwx-provider-docker-registry() {
     local secret="${1}" secrets_dir="${2}" note="${3:-}"
     local hub_api="https://hub.docker.com/v2"
-    local token_label="bwx-rotated"
 
-    if [[ -n "${note}" ]]; then
-        local parsed
-        parsed="$(printf '%s\n' "${note}" \
-            | grep -E '^docker-token-label:' \
-            | head -1 \
-            | sed 's/^docker-token-label:[[:space:]]*//')"
-        [[ -n "${parsed}" ]] && token_label="${parsed}"
-    fi
+    local token_label
+    token_label="$(bwx-provider-config docker-token-label \
+        "${note}" "bwx-rotated" "string")"
 
-    local user_file="${secrets_dir}/docker-hub-username"
-    local pw_file="${secrets_dir}/docker-hub-password"
-
-    if [[ ! -f "${user_file}" || ! -f "${pw_file}" ]]; then
-        warn "Docker Hub credentials not found"
-        warn "Store credentials in:"
-        warn "  ${user_file}"
-        warn "  ${pw_file}"
-        return 1
-    fi
-
+    # Credential fields with secrets-directory fallback
     local username password
-    username="$(<"${user_file}")"
-    password="$(<"${pw_file}")"
+    username="$(bwx-provider-config docker-hub-username \
+        "${note}" "" "credential" 2>/dev/null)" || {
+        local user_file="${secrets_dir}/docker-hub-username"
+        if [[ -f "${user_file}" ]]; then
+            username="$(<"${user_file}")"
+        else
+            warn "Docker Hub credentials not found"
+            warn "Set docker-hub-username in note or store at:"
+            warn "  ${user_file}"
+            return 1
+        fi
+    }
+
+    password="$(bwx-provider-config docker-hub-password \
+        "${note}" "" "credential" 2>/dev/null)" || {
+        local pw_file="${secrets_dir}/docker-hub-password"
+        if [[ -f "${pw_file}" ]]; then
+            password="$(<"${pw_file}")"
+        else
+            warn "Docker Hub credentials not found"
+            warn "Set docker-hub-password in note or store at:"
+            warn "  ${pw_file}"
+            return 1
+        fi
+    }
 
     info "Authenticating with Docker Hub..."
     local login_payload login_response jwt

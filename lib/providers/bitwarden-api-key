@@ -6,15 +6,20 @@
 
 # Bitwarden machine account access token rotation — automated via API.
 # Creates a new access token for the machine account and returns it.
-# Requires an existing BWS_ACCESS_TOKEN with machine-account management
-# permissions, and the organization ID in the secrets directory.
+# Note fields (parsed via bwx-provider-config):
+#   bitwarden-org-id:             organization ID — credential
+#   bitwarden-machine-account-id: machine account ID — credential
+# Credential fields support BWS references (project:secret),
+# file paths (./path), env vars (@env:VAR), or literal values.
+# Falls back to secrets directory files when note fields are absent.
 # Args:
 #   $1 — secret name (for display)
-#   $2 — secrets directory (path to org config files)
+#   $2 — secrets directory (fallback for credential files)
+#   $3 — current BWS note contents (for config fields)
 # Returns:
 #   0; sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
 bwx-provider-bitwarden-api-key() {
-    local secret="${1}" secrets_dir="${2}"
+    local secret="${1}" secrets_dir="${2}" note="${3:-}"
     local api="https://api.bitwarden.com"
 
     if [[ -z "${BWS_ACCESS_TOKEN:-}" ]]; then
@@ -23,26 +28,33 @@ bwx-provider-bitwarden-api-key() {
         return 1
     fi
 
-    local org_id_file="${secrets_dir}/bitwarden-org-id"
-    local machine_id_file="${secrets_dir}/bitwarden-machine-account-id"
-
-    if [[ ! -f "${org_id_file}" ]]; then
-        warn "Bitwarden organization ID not found"
-        warn "Store the organization ID in:"
-        warn "  ${org_id_file}"
-        return 1
-    fi
-
-    if [[ ! -f "${machine_id_file}" ]]; then
-        warn "Bitwarden machine account ID not found"
-        warn "Store the machine account ID in:"
-        warn "  ${machine_id_file}"
-        return 1
-    fi
-
+    # Credential fields with secrets-directory fallback
     local org_id machine_id
-    org_id="$(<"${org_id_file}")"
-    machine_id="$(<"${machine_id_file}")"
+    org_id="$(bwx-provider-config bitwarden-org-id \
+        "${note}" "" "credential" 2>/dev/null)" || {
+        local org_file="${secrets_dir}/bitwarden-org-id"
+        if [[ -f "${org_file}" ]]; then
+            org_id="$(<"${org_file}")"
+        else
+            warn "Bitwarden organization ID not found"
+            warn "Set bitwarden-org-id in note or store at:"
+            warn "  ${org_file}"
+            return 1
+        fi
+    }
+
+    machine_id="$(bwx-provider-config bitwarden-machine-account-id \
+        "${note}" "" "credential" 2>/dev/null)" || {
+        local ma_file="${secrets_dir}/bitwarden-machine-account-id"
+        if [[ -f "${ma_file}" ]]; then
+            machine_id="$(<"${ma_file}")"
+        else
+            warn "Bitwarden machine account ID not found"
+            warn "Set bitwarden-machine-account-id in note or store at:"
+            warn "  ${ma_file}"
+            return 1
+        fi
+    }
 
     info "Creating new access token for machine account..."
     local token_payload token_response

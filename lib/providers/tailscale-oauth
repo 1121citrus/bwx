@@ -5,33 +5,53 @@
 # Licensed under AGPL-3.0-or-later.
 
 # Tailscale OAuth provider — fully automated pre-auth key rotation.
-# Requires OAuth client credentials in the secrets directory.
+# Note fields (parsed via bwx-provider-config):
+#   tailscale-oauth-client-id:     OAuth client ID — credential
+#   tailscale-oauth-client-secret: OAuth client secret — credential
+# Credential fields support BWS references (project:secret),
+# file paths (./path), env vars (@env:VAR), or literal values.
+# Falls back to secrets directory files when note fields are absent.
 # Args:
 #   $1 — secret name (for display)
-#   $2 — secrets directory (path to OAuth credential files)
+#   $2 — secrets directory (fallback for credential files)
+#   $3 — current BWS note contents (for config fields)
 # Returns:
 #   0; sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
 bwx-provider-tailscale-oauth() {
-    local secret="${1}" secrets_dir="${2}"
+    local secret="${1}" secrets_dir="${2}" note="${3:-}"
     local api="https://api.tailscale.com/api/v2"
     local expiry_seconds=7776000
 
-    local client_id_file="${secrets_dir}/tailscale-oauth-client-id"
-    local client_secret_file="${secrets_dir}/tailscale-oauth-client-secret"
-
-    if [[ ! -f "${client_id_file}" || ! -f "${client_secret_file}" ]]; then
-        warn "Tailscale OAuth credentials not found"
-        warn "One-time setup: create an OAuth client in the Tailscale"
-        warn "admin console (Settings → OAuth clients → auth_keys scope),"
-        warn "then store:"
-        warn "  ${client_id_file}"
-        warn "  ${client_secret_file}"
-        return 1
-    fi
-
+    # Credential fields with secrets-directory fallback
     local client_id client_secret
-    client_id="$(<"${client_id_file}")"
-    client_secret="$(<"${client_secret_file}")"
+    client_id="$(bwx-provider-config tailscale-oauth-client-id \
+        "${note}" "" "credential" 2>/dev/null)" || {
+        local id_file="${secrets_dir}/tailscale-oauth-client-id"
+        if [[ -f "${id_file}" ]]; then
+            client_id="$(<"${id_file}")"
+        else
+            warn "Tailscale OAuth credentials not found"
+            warn "One-time setup: create an OAuth client in the"
+            warn "Tailscale admin console (Settings → OAuth clients"
+            warn "→ auth_keys scope), then either:"
+            warn "  1. Set tailscale-oauth-client-id in the note"
+            warn "  2. Store at: ${id_file}"
+            return 1
+        fi
+    }
+
+    client_secret="$(bwx-provider-config tailscale-oauth-client-secret \
+        "${note}" "" "credential" 2>/dev/null)" || {
+        local secret_file="${secrets_dir}/tailscale-oauth-client-secret"
+        if [[ -f "${secret_file}" ]]; then
+            client_secret="$(<"${secret_file}")"
+        else
+            warn "Tailscale OAuth credentials not found"
+            warn "Store the client secret at:"
+            warn "  ${secret_file}"
+            return 1
+        fi
+    }
 
     info "Authenticating with Tailscale OAuth..."
     local token_response
