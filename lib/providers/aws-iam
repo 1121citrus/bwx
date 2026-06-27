@@ -1,0 +1,70 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2034
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+# AWS IAM access key rotation — fully automated via AWS CLI.
+# Creates a new access key, returns the secret key, and deactivates
+# the old key. Requires the aws CLI (or Docker-wrapped equivalent)
+# with iam:CreateAccessKey, iam:ListAccessKeys, and
+# iam:UpdateAccessKey permissions.
+# Args:
+#   $1 — secret name (for display)
+#   $2 — secrets directory (unused)
+# Returns:
+#   0; sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
+bwx-provider-aws-iam() {
+    local secret="${1}"
+
+    if ! command -v aws >/dev/null 2>&1; then
+        error "${EXIT_ERROR}" \
+            "aws CLI not found (required for aws-iam provider)"
+        return 1
+    fi
+
+    info "Listing current access keys..."
+    local old_key_id
+    old_key_id="$(aws iam list-access-keys \
+        --query 'AccessKeyMetadata[0].AccessKeyId' \
+        --output text 2>&1)" \
+        || { error "${EXIT_ERROR}" \
+                 "Failed to list access keys: ${old_key_id}"
+             return 1; }
+
+    if [[ -z "${old_key_id}" || "${old_key_id}" == "None" ]]; then
+        warn "No existing access key found; creating first key"
+        old_key_id=""
+    fi
+
+    info "Creating new access key..."
+    local new_creds
+    new_creds="$(aws iam create-access-key --output json 2>&1)" \
+        || { error "${EXIT_ERROR}" \
+                 "Failed to create access key: ${new_creds}"
+             return 1; }
+
+    local new_secret_key new_key_id
+    new_secret_key="$(printf '%s' "${new_creds}" \
+        | jq -r '.AccessKey.SecretAccessKey')"
+    new_key_id="$(printf '%s' "${new_creds}" \
+        | jq -r '.AccessKey.AccessKeyId')"
+
+    if [[ -z "${new_secret_key}" \
+            || "${new_secret_key}" == "null" ]]; then
+        error "${EXIT_ERROR}" "New access key value is empty"
+        return 1
+    fi
+
+    if [[ -n "${old_key_id}" ]]; then
+        info "Deactivating old access key ${old_key_id}..."
+        aws iam update-access-key \
+            --access-key-id "${old_key_id}" \
+            --status Inactive 2>&1 \
+            || warn "Failed to deactivate old key ${old_key_id}"
+    fi
+
+    PROVIDER_VALUE="${new_secret_key}"
+    PROVIDER_EXPIRES=365
+    PROVIDER_NOTE="note: AWS IAM key ${new_key_id}"
+}
