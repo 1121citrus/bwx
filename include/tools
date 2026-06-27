@@ -9,6 +9,11 @@
 # Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
 # Licensed under AGPL-3.0-or-later.
 
+# Provide jq via Docker when not natively installed.
+# Args:
+#   $@ — arguments forwarded to jq inside the container
+# Returns:
+#   Exit code from jq; reads stdin, writes stdout
 if ! command -v jq >/dev/null 2>&1; then
     jq() {
         docker run --rm -i \
@@ -17,6 +22,12 @@ if ! command -v jq >/dev/null 2>&1; then
     }
 fi
 
+# Provide bws via Docker when not natively installed.
+# Forwards BWS_ACCESS_TOKEN and BWS_SERVER_BASE_URL into the container.
+# Args:
+#   $@ — arguments forwarded to bws inside the container
+# Returns:
+#   Exit code from bws
 if ! command -v bws >/dev/null 2>&1; then
     bws() {
         docker run --rm \

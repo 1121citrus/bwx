@@ -6,6 +6,12 @@
 # Copyright © 2025 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
 
 declare -F bwx-cache-dir >/dev/null 2>&1 || {
+    # Return the cache directory path, creating it if needed.
+    # Honors BWX_CACHE_DIR, then XDG_CACHE_HOME, then ~/.cache/bwx.
+    # Args:
+    #   None
+    # Returns:
+    #   0 and writes directory path to stdout; 1 if creation fails
     bwx-cache-dir() {
         if [[ "${CITRUS_ENABLE_MOCK_COMMANDS:-false}" == "true" && -z "${BWX_CACHE_DIR:-}" ]]; then
             return 1
@@ -17,6 +23,12 @@ declare -F bwx-cache-dir >/dev/null 2>&1 || {
         printf '%s\n' "${cache_dir}"
     }
 
+    # Compute a SHA-256 hash of the given arguments.
+    # Falls back to sha256sum, then cksum if shasum is unavailable.
+    # Args:
+    #   $@ — values to hash (concatenated)
+    # Returns:
+    #   0; writes hex digest to stdout
     bwx-cache-hash() {
         if [[ -x /usr/bin/shasum ]]; then
             printf '%s' "$*" | /usr/bin/shasum -a 256 | awk '{print $1}'
@@ -29,6 +41,13 @@ declare -F bwx-cache-dir >/dev/null 2>&1 || {
         fi
     }
 
+    # Build a cache file path from a namespace and key.
+    # Args:
+    #   $1 — namespace (e.g., "secrets", "projects")
+    #   $2 — cache key (hashed to form the filename)
+    #   $3 — file extension (default: "json")
+    # Returns:
+    #   0 and writes file path to stdout; 1 if cache dir unavailable
     bwx-cache-file() {
         local namespace="${1:?Need namespace}"
         local cache_key="${2:?Need cache key}"
@@ -42,6 +61,12 @@ declare -F bwx-cache-dir >/dev/null 2>&1 || {
             "${extension}"
     }
 
+    # Return the modification time of a file as epoch seconds.
+    # Tries date -r, stat --format, then stat -f for portability.
+    # Args:
+    #   $1 — file path
+    # Returns:
+    #   0 and writes epoch seconds to stdout; non-zero on failure
     bwx-cache-mtime() {
         local cache_file="${1:?Need cache file}"
         date -r "${cache_file}" '+%s' 2>/dev/null || \
@@ -49,6 +74,12 @@ declare -F bwx-cache-dir >/dev/null 2>&1 || {
             stat -f '%m' "${cache_file}" 2>/dev/null
     }
 
+    # Test whether a cache file exists and is within its TTL.
+    # Args:
+    #   $1 — cache file path
+    #   $2 — TTL in seconds (0 or non-numeric = always stale)
+    # Returns:
+    #   0 if fresh; 1 if missing, unreadable, or expired
     bwx-cache-is-fresh() {
         local cache_file="${1:?Need cache file}"
         local ttl="${2:-0}"
@@ -62,6 +93,12 @@ declare -F bwx-cache-dir >/dev/null 2>&1 || {
         (( now - mtime <= ttl ))
     }
 
+    # Read a cache file if it is still fresh.
+    # Args:
+    #   $1 — cache file path
+    #   $2 — TTL in seconds
+    # Returns:
+    #   0 and writes file contents to stdout; 1 if stale or missing
     bwx-cache-read() {
         local cache_file="${1:?Need cache file}"
         local ttl="${2:-0}"
@@ -69,6 +106,14 @@ declare -F bwx-cache-dir >/dev/null 2>&1 || {
         cat "${cache_file}"
     }
 
+    # Write a payload to a cache file atomically.
+    # Uses a temp file and mv to avoid partial reads. Sets 600
+    # permissions on the file and 700 on the directory.
+    # Args:
+    #   $1 — cache file path
+    #   $2 — payload string
+    # Returns:
+    #   0 on success; 1 on write failure
     bwx-cache-write() {
         local cache_file="${1:?Need cache file}"
         local payload="${2-}"
@@ -90,6 +135,11 @@ declare -F bwx-cache-dir >/dev/null 2>&1 || {
         mv -f "${temp_file}" "${cache_file}"
     }
 
+    # Delete a cache file and any associated temp fragments.
+    # Args:
+    #   $1 — cache file path
+    # Returns:
+    #   0 (always succeeds silently)
     bwx-cache-delete() {
         local cache_file="${1:?Need cache file}"
         rm -f -- "${cache_file}" "${cache_file}.tmp."* >/dev/null 2>&1 || :
