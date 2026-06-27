@@ -608,8 +608,9 @@ if [[ "${ADVISE_COVERAGE}" == "true" ]]; then
             -w /code \
             "${BATS_KCOV_IMAGE}:${BATS_KCOV_TAG}" \
             bats-coverage \
-                --src /code/lib --include /code/lib,/code/bin \
+                --src /code/lib --include /code/lib,/code/bin,/code/include \
                 test/bin/bwx.bats \
+                test/bin/bwx-cache.bats \
                 test/bin/bwx-branding.bats \
                 test/bin/bwx-deep-review-regressions.bats \
                 test/bin/bwx-http.bats \
