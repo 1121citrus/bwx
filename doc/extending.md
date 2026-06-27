@@ -290,31 +290,53 @@ generic fallback.
 5. No dispatch table or completion changes needed — providers are
    discovered by filename
 
-### Example: AWS IAM key provider
+### Built-in providers
 
-```bash
-# lib/providers/aws-iam
-# shellcheck shell=bash
-# shellcheck disable=SC2034
+| Provider | Automation | TTY | Description |
+|----------|-----------|-----|-------------|
+| `prompt` | None (fallback) | Yes | Generic paste-a-value workflow |
+| `github-pat` | None | Yes | GitHub fine-grained PAT with prefix validation |
+| `tailscale-manual` | None | Yes | Tailscale pre-auth key with prefix validation |
+| `tailscale-oauth` | Full | No | Tailscale pre-auth key via OAuth API |
+| `anthropic-api-key` | None | Yes | Anthropic API key with `sk-ant-` validation |
+| `letsencrypt-manual` | None | Yes | PEM certificate paste with format validation |
+| `aws-iam` | Full | No | AWS IAM access key rotation via `aws` CLI |
+| `bitwarden-api-key` | Full | No | Bitwarden machine account token via API |
+| `docker-registry` | Full | No | Docker Hub access token via Hub API |
+| `grafana-service-account` | Full | No | Grafana service account token via HTTP API |
+| `mqtt-password` | Full | No | Random alphanumeric MQTT broker password |
+| `openssl-selfsigned` | Full | No | Self-signed TLS certificate/key via `openssl` |
+| `password-generate` | Full | No | Random password with configurable length/charset |
 
-bwx-provider-aws-iam() {
-    local secret="${1}"
+### Provider note metadata
 
-    info "Rotating AWS IAM access key..."
-    local old_key_id new_creds
-    old_key_id=$(aws iam list-access-keys \
-        --query 'AccessKeyMetadata[0].AccessKeyId' --output text)
-    new_creds=$(aws iam create-access-key --output json)
+Some providers read optional configuration from the BWS note.
+Add these fields alongside the standard `provider:` field:
 
-    PROVIDER_VALUE=$(printf '%s' "${new_creds}" \
-        | jq -r '.AccessKey.SecretAccessKey')
-    PROVIDER_EXPIRES=365
-    PROVIDER_NOTE="note: AWS IAM access key (rotated $(date +%Y-%m-%d))"
+| Field | Used by | Default | Description |
+|-------|---------|---------|-------------|
+| `password-length:` | `password-generate` | `32` | Password length (8–256) |
+| `password-charset:` | `password-generate` | `alphanumeric+symbols` | `alphanumeric` or `alphanumeric+symbols` |
+| `provider-role:` | `openssl-selfsigned` | `cert` | `cert` or `key` (one secret per artifact) |
+| `cert-cn:` | `openssl-selfsigned` | `bwx-selfsigned` | Certificate common name |
+| `cert-days:` | `openssl-selfsigned` | `365` | Certificate validity period |
+| `grafana-url:` | `grafana-service-account` | `http://localhost:3000` | Grafana base URL |
+| `grafana-sa-id:` | `grafana-service-account` | (required) | Service account ID |
+| `grafana-token-name:` | `grafana-service-account` | `bwx-rotated` | Token name prefix |
+| `docker-token-label:` | `docker-registry` | `bwx-rotated` | Docker Hub token label |
 
-    aws iam update-access-key \
-        --access-key-id "${old_key_id}" --status Inactive
-}
-```
+### Provider credential files
+
+Automated providers that call external APIs read credentials from
+the secrets directory:
+
+| Provider | Required files |
+|----------|----------------|
+| `tailscale-oauth` | `tailscale-oauth-client-id`, `tailscale-oauth-client-secret` |
+| `bitwarden-api-key` | `bitwarden-org-id`, `bitwarden-machine-account-id` |
+| `docker-registry` | `docker-hub-username`, `docker-hub-password` |
+| `grafana-service-account` | `grafana-admin-password` (optional: `grafana-admin-user`) |
+| `aws-iam` | AWS CLI credentials (via `~/.aws/` or environment) |
 
 ---
 
