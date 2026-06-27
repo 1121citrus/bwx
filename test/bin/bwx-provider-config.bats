@@ -336,3 +336,36 @@ line2" "test"
     [[ "${status}" -eq 0 ]]
     [[ "${output}" == "from-env" ]]
 }
+
+# ── credential-via-stdin security checks ──────────────────────────
+
+@test "security: bitwarden-api-key passes token via stdin not args" {
+    grep -q -- '--header @-' "${BWX_ROOT}/lib/providers/bitwarden-api-key"
+    local inline_auth
+    inline_auth=$(grep -c 'header "Authorization: Bearer' \
+        "${BWX_ROOT}/lib/providers/bitwarden-api-key" || true)
+    [[ "${inline_auth}" -eq 0 ]]
+}
+
+@test "security: docker-registry passes JWT via stdin not args" {
+    grep -q -- '--header @-' "${BWX_ROOT}/lib/providers/docker-registry"
+    local inline_auth
+    inline_auth=$(grep -c 'header "Authorization: Bearer' \
+        "${BWX_ROOT}/lib/providers/docker-registry" || true)
+    [[ "${inline_auth}" -eq 0 ]]
+}
+
+@test "security: grafana-service-account passes auth via stdin not --user" {
+    grep -q -- '--header @-' \
+        "${BWX_ROOT}/lib/providers/grafana-service-account"
+    local user_flag
+    user_flag=$(grep -c -- '--user' \
+        "${BWX_ROOT}/lib/providers/grafana-service-account" || true)
+    [[ "${user_flag}" -eq 0 ]]
+}
+
+@test "security: no provider passes credentials via --user flag" {
+    local count
+    count=$(grep -rl -- '--user' "${BWX_ROOT}/lib/providers/" | wc -l)
+    [[ "${count}" -eq 0 ]]
+}

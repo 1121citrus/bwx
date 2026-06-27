@@ -93,11 +93,11 @@ bwx-provider-docker-registry() {
     token_response="$(curl --fail --silent --show-error \
         --request POST \
         --url "${hub_api}/access-tokens" \
-        --header "Authorization: Bearer ${jwt}" \
+        --header @- \
         --header "Content-Type: application/json" \
         --data "${token_payload}" \
-        2>&1)" \
-        || { error "${EXIT_ERROR}" \
+        <<< "Authorization: Bearer ${jwt}"
+    )" || { error "${EXIT_ERROR}" \
                  "Token creation failed: ${token_response}"
              return 1; }
 

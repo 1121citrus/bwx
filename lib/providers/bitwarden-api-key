@@ -71,11 +71,11 @@ bwx-provider-bitwarden-api-key() {
     token_response="$(curl --fail --silent --show-error \
         --request POST \
         --url "${api}/service-accounts/${machine_id}/access-tokens" \
-        --header "Authorization: Bearer ${BWS_ACCESS_TOKEN}" \
+        --header @- \
         --header "Content-Type: application/json" \
         --data "${token_payload}" \
-        2>&1)" \
-        || { error "${EXIT_ERROR}" \
+        <<< "Authorization: Bearer ${BWS_ACCESS_TOKEN}"
+    )" || { error "${EXIT_ERROR}" \
                  "Access token creation failed: ${token_response}"
              return 1; }
 
