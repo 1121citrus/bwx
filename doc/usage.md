@@ -1082,23 +1082,23 @@ release-tag: 2026.06.24.01
 Extract the `file:` property:
 
 ```bash
-bwx secret filename my_secret_v1
+bwx secret get filename my_secret_v1
 ```
 
 Extract `release-tag:` values:
 
 ```bash
-bwx secret tags my_secret_v1
+bwx secret get tags my_secret_v1
 ```
 
 Parse from raw note text:
 
 ```bash
 # Single-value property
-bwx secret note my_secret_v1 | grep '^file:' | sed 's/^file: //'
+bwx secret get note my_secret_v1 | grep '^file:' | sed 's/^file: //'
 
 # Multi-value property
-bwx secret note my_secret_v1 | grep '^release-tag:' | awk '{print $2}'
+bwx secret get note my_secret_v1 | grep '^release-tag:' | awk '{print $2}'
 ```
 
 ### Multi-value vs single-value

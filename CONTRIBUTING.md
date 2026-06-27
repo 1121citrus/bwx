@@ -24,7 +24,7 @@ The `build` script runs all stages: lint → test.
 Run the test suite directly:
 
 ```bash
-bats test/bin/
+./test/run-all
 ```
 
 Or through the build script:
@@ -35,13 +35,12 @@ Or through the build script:
 
 ### Code style
 
-All shell scripts must pass shellcheck:
+The build script runs shellcheck over the bash entrypoints and support
+modules under `bin/`, `include/`, and `lib/`.
 
 ```bash
-shellcheck bin/bwx src/**/*.bash
+./build
 ```
-
-This check runs automatically in `./build`.
 
 ### Submitting changes
 
