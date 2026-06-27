@@ -83,6 +83,18 @@ bws() {
             error "${EXIT_NOTFOUND}" "BWS_CONFIG_FILE '${config_file}' not found"
         fi
         [[ -r "${config_file}" ]] || {
+            if [[ "${server_base}" =~ [[:space:]] ]]; then
+                fatal "${EXIT_USAGE}" "BWS_SERVER_BASE_URL contains whitespace and is not allowed"
+            fi
+            if [[ "${server_base}" =~ [\"\'] ]]; then
+                fatal "${EXIT_USAGE}" "BWS_SERVER_BASE_URL contains quotes and is not allowed"
+            fi
+            if [[ "${server_base}" == *$'\n'* || "${server_base}" == *$'\r'* ]]; then
+                fatal "${EXIT_USAGE}" "BWS_SERVER_BASE_URL contains newlines and is not allowed"
+            fi
+            if [[ ! "${server_base}" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]+)?(/.*)?$ ]]; then
+                fatal "${EXIT_USAGE}" "BWS_SERVER_BASE_URL must be a valid http(s) URL"
+            fi
             config_file=$(mktemp)
             # shellcheck disable=SC2064
             trap "rm -f '${config_file}' >/dev/null 2>&1" RETURN EXIT

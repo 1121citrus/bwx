@@ -169,6 +169,15 @@ STUB
     run -0 bws project list
 }
 
+@test "bws: rejects unsafe BWS_SERVER_BASE_URL values" {
+    export BWS_ACCESS_TOKEN="0.valid-token"
+    export BWS_SERVER_BASE_URL=$'https://vault.bitwarden.com"\n[profiles.evil]\nfoo = bar'
+    source "${BWX_ROOT}/lib/bwx"
+    run bws project list
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"BWS_SERVER_BASE_URL"* ]]
+}
+
 # ── source guard ────────────────────────────────────────────────────
 
 @test "lib/bwx: direct execution works" {
