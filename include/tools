@@ -22,18 +22,6 @@ if ! command -v jq >/dev/null 2>&1; then
     }
 fi
 
-# Provide bws via Docker when not natively installed.
-# Forwards BWS_ACCESS_TOKEN and BWS_SERVER_BASE_URL into the container.
-# Args:
-#   $@ — arguments forwarded to bws inside the container
-# Returns:
-#   Exit code from bws
-if ! command -v bws >/dev/null 2>&1; then
-    bws() {
-        docker run --rm \
-            -e BWS_ACCESS_TOKEN \
-            -e BWS_SERVER_BASE_URL \
-            "${BWX_BWS_IMAGE:-bitwarden/bws:latest}" \
-            "$@"
-    }
-fi
+# bws is provided by lib/bwx which handles config, state_opt_out,
+# and access-token validation.  Do not define a bws() fallback here
+# — it would shadow the lib/bwx wrapper and bypass config mounting.
