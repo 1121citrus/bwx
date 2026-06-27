@@ -13,7 +13,7 @@ bwx-default-project-name() {
                 cat <<EOF
 Usage: bwx project default name [options]
 
-Print the name of the default default Bitwarden Secrets Manager project.
+Print the name of the default Bitwarden Secrets Manager project.
 
 Environment variables:
     BWX_DEFAULT_PROJECT  Explicit default project name

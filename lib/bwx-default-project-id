@@ -14,7 +14,7 @@ bwx-default-project-id() {
                 cat <<EOF
 Usage: bwx project default id [options]
 
-Return the UUID of the default default Bitwarden Secrets Manager project.
+Return the UUID of the default Bitwarden Secrets Manager project.
 
 Environment variables:
     BWX_DEFAULT_PROJECT_ID  Cached UUID value to reuse between calls

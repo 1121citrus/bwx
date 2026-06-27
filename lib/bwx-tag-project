@@ -40,7 +40,7 @@ Arguments:
     RELEASE_TAG The release tag to add to the selected secrets (required)
     SECRETS...  Optional list of secrets to update; if not specified, all secrets
                 with the specified release tag will be updated. If neither SECRETS
-                nor --seclect-tag is specified, then all the secrets in the project
+                nor --select-tag is specified, then all the secrets in the project
                 will be used.
 
 Options:
