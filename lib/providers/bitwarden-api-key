@@ -1,0 +1,83 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2034
+
+# Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
+# Licensed under AGPL-3.0-or-later.
+
+# Bitwarden machine account access token rotation — automated via API.
+# Creates a new access token for the machine account and returns it.
+# Requires an existing BWS_ACCESS_TOKEN with machine-account management
+# permissions, and the organization ID in the secrets directory.
+# Args:
+#   $1 — secret name (for display)
+#   $2 — secrets directory (path to org config files)
+# Returns:
+#   0; sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
+bwx-provider-bitwarden-api-key() {
+    local secret="${1}" secrets_dir="${2}"
+    local api="https://api.bitwarden.com"
+
+    if [[ -z "${BWS_ACCESS_TOKEN:-}" ]]; then
+        error "${EXIT_ERROR}" \
+            "BWS_ACCESS_TOKEN not set (required for token rotation)"
+        return 1
+    fi
+
+    local org_id_file="${secrets_dir}/bitwarden-org-id"
+    local machine_id_file="${secrets_dir}/bitwarden-machine-account-id"
+
+    if [[ ! -f "${org_id_file}" ]]; then
+        warn "Bitwarden organization ID not found"
+        warn "Store the organization ID in:"
+        warn "  ${org_id_file}"
+        return 1
+    fi
+
+    if [[ ! -f "${machine_id_file}" ]]; then
+        warn "Bitwarden machine account ID not found"
+        warn "Store the machine account ID in:"
+        warn "  ${machine_id_file}"
+        return 1
+    fi
+
+    local org_id machine_id
+    org_id="$(<"${org_id_file}")"
+    machine_id="$(<"${machine_id_file}")"
+
+    info "Creating new access token for machine account..."
+    local token_payload token_response
+    token_payload="$(jq -n \
+        --arg name "bwx-rotated-$(date +%Y%m%d-%H%M%S)" \
+        --argjson expire_days 365 \
+        '{
+            name: $name,
+            encryptedPayload: null,
+            expireAt: null
+        }'
+    )"
+
+    token_response="$(curl --fail --silent --show-error \
+        --request POST \
+        --url "${api}/service-accounts/${machine_id}/access-tokens" \
+        --header "Authorization: Bearer ${BWS_ACCESS_TOKEN}" \
+        --header "Content-Type: application/json" \
+        --data "${token_payload}" \
+        2>&1)" \
+        || { error "${EXIT_ERROR}" \
+                 "Access token creation failed: ${token_response}"
+             return 1; }
+
+    local new_token
+    new_token="$(printf '%s' "${token_response}" \
+        | jq -r '.accessToken // empty')"
+
+    if [[ -z "${new_token}" ]]; then
+        error "${EXIT_ERROR}" \
+            "API response did not contain an access token"
+        return 1
+    fi
+
+    PROVIDER_VALUE="${new_token}"
+    PROVIDER_EXPIRES=365
+    PROVIDER_NOTE="note: Machine account access token"
+}
