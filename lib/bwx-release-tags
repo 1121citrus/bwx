@@ -65,7 +65,8 @@ EOF
     local project_key
     project_key="${1:-$(bwx-default-project-name)}"
     local sanitized_project
-    sanitized_project=$(LC_ALL='en_US.UTF-8' awk '{print toupper($0)}' <<<"${project_key//[^[:alnum:]]/_}")
+    local _sanitize_tmp="${project_key//[^[:alnum:]]/_}"
+    sanitized_project="${_sanitize_tmp^^}"
     local tag_cache_var="BWX_PROJECT_RELEASE_TAGS_${sanitized_project}"
 
     if [[ -n "${refresh_flag}" ]]; then

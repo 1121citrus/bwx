@@ -129,7 +129,8 @@ EOF
     eval "${secret_list}"
 
     local sanitized_project
-    sanitized_project=$(LC_ALL='en_US.UTF-8' awk '{print toupper($0)}' <<<"${project_id//[^[:alnum:]]/_}")
+    local _sanitize_tmp="${project_id//[^[:alnum:]]/_}"
+    sanitized_project="${_sanitize_tmp^^}"
     local secret_list_var="BWX_PROJECT_SECRET_LIST_${sanitized_project}"
     local release_tag_filter
     release_tag_filter="$(bwx-note-release-tag-jq-filter)"

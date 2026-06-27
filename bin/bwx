@@ -20,6 +20,15 @@ set -o errtrace
 set -o nounset
 set -o pipefail
 
+# Minimum bash version guard — associative arrays, mapfile, and case
+# transforms require bash 4.0+.  macOS ships bash 3.2 by default.
+if (( BASH_VERSINFO[0] < 4 )); then
+    printf 'bwx requires bash 4.0 or later (found %s)\n' \
+        "${BASH_VERSION}" >&2
+    printf 'On macOS, install via Homebrew: brew install bash\n' >&2
+    exit 1
+fi
+
 resolve_script_dir() {
     local source="${BASH_SOURCE[0]}"
     local target
