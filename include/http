@@ -18,6 +18,26 @@
 _HTTP_BACKEND=""
 _BWX_CURL_IMAGE="${BWX_CURL_IMAGE:-curlimages/curl}"
 
+# Reject anything that is not an http(s) URL.  Guards against an
+# argument-injection vector where a URL beginning with `-` would be
+# interpreted by curl/wget/fetch as an option flag.  Backends below
+# also pass `--` before the URL as a second line of defense.
+# Args:
+#   $1 — URL to validate
+# Returns:
+#   0 if URL is well-formed http(s); 1 otherwise
+_http_validate_url() {
+    local url="${1-}"
+    [[ -n "${url}" ]] || {
+        echo "[ERROR] URL is empty" >&2
+        return 1
+    }
+    if [[ ! "${url}" =~ ^https?://[^[:space:]]+$ ]]; then
+        echo "[ERROR] URL must be http(s) and contain no whitespace: '${url}'" >&2
+        return 1
+    fi
+}
+
 # Resolve the HTTP backend once.
 # Args:
 #   None
@@ -54,21 +74,22 @@ _http_resolve() {
 #   0 on success; non-zero on HTTP or network error
 http_get() {
     local url="${1:?URL required}"
+    _http_validate_url "${url}" || return 1
     _http_resolve || return 1
 
     case "${_HTTP_BACKEND}" in
         curl)
-            curl --fail --silent --show-error --location "${url}"
+            curl --fail --silent --show-error --location -- "${url}"
             ;;
         wget)
-            wget --quiet -O - "${url}"
+            wget --quiet -O - -- "${url}"
             ;;
         fetch)
-            fetch --quiet -o - "${url}"
+            fetch --quiet -o - -- "${url}"
             ;;
         docker)
             docker run --rm "${_BWX_CURL_IMAGE}" \
-                --fail --silent --show-error --location "${url}"
+                --fail --silent --show-error --location -- "${url}"
             ;;
     esac
 }
@@ -81,21 +102,22 @@ http_get() {
 #   0 on success; non-zero on HTTP or network error
 http_download() {
     local url="${1:?URL required}" dest="${2:?output file required}"
+    _http_validate_url "${url}" || return 1
     _http_resolve || return 1
 
     case "${_HTTP_BACKEND}" in
         curl)
-            curl --fail --silent --show-error --location -o "${dest}" "${url}"
+            curl --fail --silent --show-error --location -o "${dest}" -- "${url}"
             ;;
         wget)
-            wget --quiet -O "${dest}" "${url}"
+            wget --quiet -O "${dest}" -- "${url}"
             ;;
         fetch)
-            fetch --quiet -o "${dest}" "${url}"
+            fetch --quiet -o "${dest}" -- "${url}"
             ;;
         docker)
             docker run --rm "${_BWX_CURL_IMAGE}" \
-                --fail --silent --show-error --location "${url}" \
+                --fail --silent --show-error --location -- "${url}" \
                 > "${dest}"
             ;;
     esac

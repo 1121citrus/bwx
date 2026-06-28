@@ -172,3 +172,61 @@ _make_fake() {
     run http_get
     [[ "${status}" -ne 0 ]]
 }
+
+# -- Argument-injection hardening --
+
+@test "http_get rejects URL beginning with '-' (would be parsed as flag)" {
+    _HTTP_BACKEND="curl"
+    run http_get "-oroot"
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"URL must be http(s)"* ]]
+}
+
+@test "http_get rejects URL without http(s) scheme" {
+    _HTTP_BACKEND="curl"
+    run http_get "file:///etc/passwd"
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"URL must be http(s)"* ]]
+}
+
+@test "http_get rejects URL containing whitespace" {
+    _HTTP_BACKEND="curl"
+    run http_get "https://example.com/path with space"
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"URL must be http(s)"* ]]
+}
+
+@test "http_get rejects empty URL via validator (independent of :? guard)" {
+    run _http_validate_url ""
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"URL is empty"* ]]
+}
+
+@test "http_download rejects URL beginning with '-'" {
+    _HTTP_BACKEND="curl"
+    run http_download "-oroot" "${TEST_TMPDIR}/dest"
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"URL must be http(s)"* ]]
+}
+
+@test "http_get curl backend passes '--' separator before URL" {
+    grep -qE 'curl[^|]*-- "\$\{url\}"' "${BWX_ROOT}/include/http"
+}
+
+@test "http_get wget backend passes '--' separator before URL" {
+    grep -qE 'wget[^|]*-- "\$\{url\}"' "${BWX_ROOT}/include/http"
+}
+
+@test "http_get fetch backend passes '--' separator before URL" {
+    grep -qE 'fetch[^|]*-- "\$\{url\}"' "${BWX_ROOT}/include/http"
+}
+
+@test "http_get accepts a valid https URL through the validator" {
+    run _http_validate_url "https://example.com/foo"
+    [[ "${status}" -eq 0 ]]
+}
+
+@test "http_get accepts a valid http URL through the validator" {
+    run _http_validate_url "http://example.com/"
+    [[ "${status}" -eq 0 ]]
+}
