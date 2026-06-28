@@ -95,7 +95,8 @@ bws() {
             if [[ ! "${server_base}" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]+)?(/.*)?$ ]]; then
                 fatal "${EXIT_USAGE}" "BWS_SERVER_BASE_URL must be a valid http(s) URL"
             fi
-            config_file=$(mktemp)
+            # SECURITY: Use a template with TMPDIR to avoid predictable names in /tmp
+            config_file=$(mktemp "${TMPDIR:-/tmp}/bwx.XXXXXX")
             # shellcheck disable=SC2064
             trap "rm -f '${config_file}' >/dev/null 2>&1" RETURN EXIT
             cat > "${config_file}" <<EOF

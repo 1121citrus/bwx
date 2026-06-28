@@ -217,7 +217,8 @@ _bwx_rotate_all() {
     local failed=0
 
     local candidates_file
-    candidates_file="$(mktemp)" || \
+    # SECURITY: Use a template with TMPDIR to avoid predictable names in /tmp
+    candidates_file="$(mktemp "${TMPDIR:-/tmp}/bwx.XXXXXX")" || \
         error "${EXIT_ERROR}" "Cannot create temp file for candidate list"
     # shellcheck disable=SC2064
     trap "rm -f '${candidates_file}'" RETURN

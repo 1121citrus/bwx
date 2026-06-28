@@ -31,7 +31,8 @@ bwx-provider-openssl-selfsigned() {
         "${note}" "365" "integer:1:3650")"
 
     local tmpdir
-    tmpdir="$(mktemp -d)" \
+    # SECURITY: Use a template with TMPDIR to avoid predictable names in /tmp
+    tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/bwx.XXXXXX")" \
         || { error "${EXIT_ERROR}" "Failed to create temp dir"
              return 1; }
     # shellcheck disable=SC2064
