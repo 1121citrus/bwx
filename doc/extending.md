@@ -40,9 +40,12 @@ files and then every `lib/bwx-*` file:
 
 ```text
 bin/bwx
+  source include/path           # BWX_ROOT, realpath helpers
   source include/logging        # exit codes, log functions (error, trace, ...)
   source include/bwx-cache      # file-backed TTL cache helpers
-  source include/tools          # docker-wrapped jq fallback
+  source include/tools          # docker-wrapped jq, curl, openssl, aws fallbacks
+  source include/http           # HTTP client resolution (curl, wget, fetch, docker)
+  source include/note-parser    # structured note field parsing and mutation
   source lib/bwx-*              # all library functions (glob)
 ```
 
@@ -291,6 +294,11 @@ generic fallback.
 4. Add `provider: <name>` to the BWS note of each secret that uses it
 5. No dispatch table or completion changes needed — providers are
    discovered by filename
+6. Verify the field declarations are discoverable:
+   `bwx provider info <name>` parses `bwx-provider-config` calls from
+   the source file statically — no code is executed
+7. Validate note content before first rotation:
+   `bwx note validate SECRET` checks core and provider-specific fields
 
 ### Built-in providers
 

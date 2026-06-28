@@ -147,8 +147,16 @@ bwx tag secrets TAG          List secrets with TAG
 ```text
 bwx import TAG DIR [PROJECT] Export tagged secrets to a directory
 bwx check expiry [--exit-on-expiring]  Pre-release expiry gate
+bwx note validate SECRET     Validate note fields and provider config
 bwx rotate SECRET            Rotate via provider driver
 bwx rotate --all             Rotate all expiring secrets
+```
+
+### Provider commands
+
+```text
+bwx provider info NAME       Show expected config fields for a provider
+bwx provider info --list     List all available providers
 ```
 
 ### Other commands

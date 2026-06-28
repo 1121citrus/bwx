@@ -38,8 +38,12 @@ Complete reference for `bwx` 1.0.0, a Bitwarden Secrets Manager extended CLI.
       - [`bwx import`](#bwx-import)
     - [`check` family](#check-family)
       - [`bwx check expiry`](#bwx-check-expiry)
+    - [`note` family](#note-family)
+      - [`bwx note validate`](#bwx-note-validate)
     - [`rotate` family](#rotate-family)
       - [`bwx rotate`](#bwx-rotate)
+    - [`provider` family](#provider-family)
+      - [`bwx provider info`](#bwx-provider-info)
     - [`raw`](#raw)
     - [`completion`](#completion)
   - [Structured note metadata](#structured-note-metadata)
@@ -944,6 +948,82 @@ $ bwx check expiry
 
 ---
 
+### `note` family
+
+Commands for validating note field content.
+
+---
+
+#### `bwx note validate`
+
+```text
+bwx note validate [options] SECRET [PROJECT]
+```
+
+Validate a secret's note fields without performing rotation. Checks
+core field formats (`file:`, `expires:`, `provider:`, `release-tag:`)
+and, when a provider is set or specified via `--provider`, validates
+provider-specific config fields against their declared types.
+
+Accumulates all errors before reporting. Returns exit code 1 if any
+validation error is found.
+
+**Arguments:**
+
+| Argument  | Required | Description                                              |
+|-----------|----------|----------------------------------------------------------|
+| `SECRET`  | Yes      | Secret name or UUID                                      |
+| `PROJECT` | No       | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
+
+**Options:**
+
+| Option            | Description                                        |
+|-------------------|----------------------------------------------------|
+| `--provider NAME` | Override or specify provider for config validation |
+| `-q`, `--quiet`   | Suppress success message                           |
+
+**Core field validation:**
+
+| Field          | Rule                                                                      |
+|----------------|---------------------------------------------------------------------------|
+| `file:`        | Must be a safe filename (no traversal, no absolute path, no leading dash) |
+| `expires:`     | Must match `YYYY-MM-DD` format                                            |
+| `provider:`    | Must be a safe identifier `[A-Za-z0-9._-]+`                               |
+| `release-tag:` | Must be a safe identifier `[A-Za-z0-9._-]+`                               |
+
+**Provider field validation:**
+
+When a `provider:` field is present in the note (or `--provider` is
+passed), each config field declared by the provider is validated:
+
+- **Required fields** (empty default) must be present
+- **string** fields are checked for shell metacharacters
+- **integer** fields must be numeric and within declared range
+- **enum** fields must match one of the allowed values
+- **credential** references are checked for syntactic validity only —
+  no BWS lookups, file reads, or env var access
+
+**Example:**
+
+```console
+$ bwx note validate my_password_v1
+[INFO] Note validation passed
+
+$ bwx note validate --provider grafana-service-account my_token_v1
+[WARN] grafana-sa-id: required provider field missing
+[WARN] grafana-admin-password: required provider field missing
+[WARN] 2 validation error(s)
+
+$ bwx note validate bad_secret_v1
+[WARN] file: invalid path '../escape'
+[WARN] expires: invalid date 'not-a-date' (expected YYYY-MM-DD)
+[WARN] 2 validation error(s)
+```
+
+[**↑ Contents**](#bwx-subcommand-reference)
+
+---
+
 ### `rotate` family
 
 #### `bwx rotate`
@@ -1004,6 +1084,74 @@ $ bwx rotate tailscale_sidecar_authkey_v1
 [INFO] Creating new tagged pre-auth key...
 [INFO] Updating BWS secret tailscale_sidecar_authkey_v1
 [INFO] tailscale_sidecar_authkey_v1 rotated successfully (expires 2026-09-24)
+```
+
+[**↑ Contents**](#bwx-subcommand-reference)
+
+---
+
+### `provider` family
+
+Commands for inspecting rotation provider configuration.
+
+---
+
+#### `bwx provider info`
+
+```text
+bwx provider info NAME
+bwx provider info --list
+```
+
+Display the expected note fields, types, and defaults for a rotation
+provider. Useful for authoring BWS notes before rotation. Parses
+provider source files statically — no provider code is executed.
+
+**Arguments:**
+
+| Argument | Required | Description                                                          |
+|----------|----------|----------------------------------------------------------------------|
+| `NAME`   | Yes      | Provider name (e.g., `password-generate`, `grafana-service-account`) |
+| `--list` | —        | List all available provider names instead of showing field info      |
+
+**Example:**
+
+```console
+$ bwx provider info password-generate
+Provider: password-generate
+Type: automated
+
+Config fields (set in BWS note):
+  FIELD                               TYPE                                DEFAULT
+  ----------------------------------- ----------------------------------- -------
+  password-length                     integer:8:256                       32
+  password-charset                    enum:alphanumeric|alphanumeric+symbols alphanumeric+symbols
+
+$ bwx provider info grafana-service-account
+Provider: grafana-service-account
+Type: automated
+
+Config fields (set in BWS note):
+  FIELD                               TYPE                                DEFAULT
+  ----------------------------------- ----------------------------------- -------
+  grafana-url                         string                              http://localhost:3000
+  grafana-sa-id                       integer                             (required)
+  grafana-token-name                  string                              bwx-rotated
+  grafana-admin-user                  credential                          admin
+  grafana-admin-password              credential                          (required)
+
+$ bwx provider info prompt
+Provider: prompt
+Type: interactive
+
+No configurable note fields.
+
+$ bwx provider info --list
+anthropic-api-key
+aws-iam
+bitwarden-api-key
+docker-registry
+...
 ```
 
 [**↑ Contents**](#bwx-subcommand-reference)

@@ -9,6 +9,7 @@ field in its note metadata.
 
 - [Rotation providers](#rotation-providers)
   - [How rotation works](#how-rotation-works)
+  - [Discovering provider fields](#discovering-provider-fields)
   - [Assigning a provider to a secret](#assigning-a-provider-to-a-secret)
   - [Credential passing](#credential-passing)
     - [Resolution chain](#resolution-chain)
@@ -50,6 +51,34 @@ generic fallback.
 `bwx rotate --all` iterates over every secret that has an `expires:`
 field and rotates those within the warning window.
 
+## Discovering provider fields
+
+Use `bwx provider info` to display the expected config fields, types,
+and defaults for any provider before authoring a note:
+
+```console
+$ bwx provider info password-generate
+Provider: password-generate
+Type: automated
+
+Config fields (set in BWS note):
+  FIELD                               TYPE                                DEFAULT
+  ----------------------------------- ----------------------------------- -------
+  password-length                     integer:8:256                       32
+  password-charset                    enum:alphanumeric|alphanumeric+symbols alphanumeric+symbols
+```
+
+Fields marked `(required)` must be present in the note for rotation
+to succeed. Use `bwx provider info --list` to see all available
+providers.
+
+After authoring the note, validate it without performing rotation:
+
+```console
+$ bwx note validate my_secret_v1
+[INFO] Note validation passed
+```
+
 ## Assigning a provider to a secret
 
 Set the `provider:` field in the secret's BWS note:
@@ -79,13 +108,13 @@ that supports multiple credential sources.
 When a provider config field has type `credential`, its value is
 resolved through this chain:
 
-| Format | Resolution | Example |
-|--------|------------|---------|
-| `PROJECT:SECRET` | BWS secret value lookup | `myproject:grafana_admin_pw_v1` |
-| `/absolute/path` | Read file contents | `/opt/secrets/admin-pw` |
-| `./relative/path` | Read file contents | `./.secrets/admin-pw` |
-| `@env:VAR_NAME` | Environment variable | `@env:GRAFANA_ADMIN_PASSWORD` |
-| *(anything else)* | Literal value | `my-password-here` |
+| Format            | Resolution              | Example                          |
+|-------------------|-------------------------|----------------------------------|
+| `PROJECT:SECRET`  | BWS secret value lookup | `myproject:grafana_admin_pw_v1`  |
+| `/absolute/path`  | Read file contents      | `/opt/secrets/admin-pw`          |
+| `./relative/path` | Read file contents      | `./.secrets/admin-pw`            |
+| `@env:VAR_NAME`   | Environment variable    | `@env:GRAFANA_ADMIN_PASSWORD`    |
+| *(anything else)* | Literal value           | `my-password-here`               |
 
 For the `PROJECT:SECRET` form, both the project name and the secret
 name are validated by the BWS API — the project must be accessible

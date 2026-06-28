@@ -39,8 +39,6 @@ _bwx_provider_is_interactive() {
 # Returns:
 #   0 on success; EXIT_USAGE on bad input; EXIT_NOTFOUND if unknown
 bwx-provider-info() {
-    shopt -s extglob
-
     case "${1:-}" in
         -h|--help)
             cat <<'EOF'

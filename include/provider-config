@@ -1,12 +1,17 @@
 # shellcheck shell=bash
 
-# Provider configuration parsing, credential resolution, and input
-# scrubbing for rotation providers.
+# Provider configuration parsing, credential resolution, input
+# scrubbing, and static field extraction for rotation providers.
 #
-# Provides three public functions:
+# Public functions:
 #   bwx-scrub-config-value   — reject shell expansion characters
 #   bwx-resolve-credential   — resolve credential references (BWS, file, env)
 #   bwx-provider-config      — typed config field extraction from note text
+#
+# Private helpers:
+#   _bwx-absolute-path            — resolve physical absolute path
+#   _bwx-credential-file-allowed  — verify file stays inside secrets dir
+#   _bwx_provider_fields          — static field extraction from provider source
 #
 # All provider config values pass through bwx-scrub-config-value before
 # reaching provider code. Credential values (resolved secret content)
@@ -262,8 +267,8 @@ bwx-provider-config() {
 # Args:
 #   $1 — provider name (must match a file in lib/providers/)
 # Returns:
-#   0; writes tab-separated lines to stdout: FIELD\tDEFAULT\tTYPE
-#   Empty default means the field is required.
+#   0; writes unit-separator-delimited (0x1f) lines to stdout:
+#   FIELD<US>DEFAULT<US>TYPE.  Empty default means the field is required.
 #   Returns 1 if the provider file does not exist.
 _bwx_provider_fields() {
     local provider="${1}"
