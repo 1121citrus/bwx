@@ -244,8 +244,10 @@ Pin the checkout to a tag or commit when you need reproducible vendoring.
 
 - [Full subcommand reference](doc/usage.md) — every command with
   examples and expected output
+- [Rotation providers](doc/providers.md) — provider reference,
+  credential passing, config fields, and input scrubbing
 - [Extending bwx](doc/extending.md) — architecture, adding
-  subcommands, adding note properties, rotation providers
+  subcommands, adding note properties, writing custom providers
 - [Include modules](include/README.md) — shared runtime modules used by
   `bin/bwx`
 - [Logging configuration](doc/logging.md) — log levels, prolog

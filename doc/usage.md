@@ -1070,9 +1070,10 @@ to paste a new value.
 | `tailscale-manual` | Operator-prompted | Paste key from admin console |
 | `tailscale-oauth` | Fully automated | Tagged pre-auth key via OAuth client credentials |
 
-See [extending.md](extending.md) for provider note metadata fields,
-credential file requirements, and instructions for adding new
-providers.
+See [providers.md](providers.md) for the full provider reference:
+note metadata fields, credential passing, input scrubbing, and
+configuration examples. See [extending.md](extending.md) for
+instructions on writing custom providers.
 
 **Example:**
 
