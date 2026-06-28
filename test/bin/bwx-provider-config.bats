@@ -87,27 +87,46 @@ line2" "test"
 # ── bwx-resolve-credential ────────────────────────────────────────
 
 @test "resolve: reads file via ./ path" {
-    echo "file-secret-value" > "${TEST_TMPDIR}/cred"
+    mkdir -p "${TEST_TMPDIR}/.secrets"
+    echo "file-secret-value" > "${TEST_TMPDIR}/.secrets/cred"
     run bash -c '
+        cd "'"${TEST_TMPDIR}"'"
+        export BWX_SECRETS_DIR=".secrets"
         source "'"${BWX_ROOT}"'/include/logging"
         source "'"${BWX_ROOT}"'/include/note-parser"
         source "'"${BWX_ROOT}"'/include/provider-config"
-        bwx-resolve-credential "'"${TEST_TMPDIR}/cred"'" "test"
+        bwx-resolve-credential "./.secrets/cred" "test"
     '
     [[ "${status}" -eq 0 ]]
     [[ "${output}" == *"file-secret-value"* ]]
 }
 
-@test "resolve: reads file via absolute path" {
-    echo "abs-secret" > "${TEST_TMPDIR}/abscred"
+@test "resolve: reads absolute file inside secrets directory" {
+    mkdir -p "${TEST_TMPDIR}/.secrets"
+    echo "abs-secret" > "${TEST_TMPDIR}/.secrets/abscred"
     run bash -c '
+        export BWX_SECRETS_DIR="'"${TEST_TMPDIR}/.secrets"'"
         source "'"${BWX_ROOT}"'/include/logging"
         source "'"${BWX_ROOT}"'/include/note-parser"
         source "'"${BWX_ROOT}"'/include/provider-config"
-        bwx-resolve-credential "'"${TEST_TMPDIR}/abscred"'" "test"
+        bwx-resolve-credential "'"${TEST_TMPDIR}/.secrets/abscred"'" "test"
     '
     [[ "${status}" -eq 0 ]]
     [[ "${output}" == *"abs-secret"* ]]
+}
+
+@test "resolve: rejects file outside secrets directory" {
+    mkdir -p "${TEST_TMPDIR}/.secrets"
+    echo "outside-secret" > "${TEST_TMPDIR}/outside"
+    run bash -c '
+        export BWX_SECRETS_DIR="'"${TEST_TMPDIR}/.secrets"'"
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        bwx-resolve-credential "'"${TEST_TMPDIR}/outside"'" "test"
+    '
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"outside secrets directory"* ]]
 }
 
 @test "resolve: reads env var via @env:" {
@@ -313,9 +332,11 @@ line2" "test"
 }
 
 @test "config: credential type resolves file path" {
-    echo "resolved-secret" > "${TEST_TMPDIR}/mycred"
-    local note="cred-field: ${TEST_TMPDIR}/mycred"
+    mkdir -p "${TEST_TMPDIR}/.secrets"
+    echo "resolved-secret" > "${TEST_TMPDIR}/.secrets/mycred"
+    local note="cred-field: ${TEST_TMPDIR}/.secrets/mycred"
     run bash -c '
+        export BWX_SECRETS_DIR="'"${TEST_TMPDIR}/.secrets"'"
         source "'"${BWX_ROOT}"'/include/logging"
         source "'"${BWX_ROOT}"'/include/note-parser"
         source "'"${BWX_ROOT}"'/include/provider-config"
@@ -362,6 +383,26 @@ line2" "test"
     user_flag=$(grep -c -- '--user' \
         "${BWX_ROOT}/lib/providers/grafana-service-account" || true)
     [[ "${user_flag}" -eq 0 ]]
+}
+
+@test "security: grafana provider rejects unallowlisted remote URL" {
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/lib/providers/grafana-service-account"
+        _bwx-grafana-url-allowed "https://attacker.example.com"
+    '
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"not allowed"* ]]
+}
+
+@test "security: grafana provider accepts explicit allowed host" {
+    run bash -c '
+        export BWX_ALLOWED_PROVIDER_HOSTS="grafana.example.com"
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/lib/providers/grafana-service-account"
+        _bwx-grafana-url-allowed "https://grafana.example.com"
+    '
+    [[ "${status}" -eq 0 ]]
 }
 
 @test "security: no provider passes credentials via --user flag" {

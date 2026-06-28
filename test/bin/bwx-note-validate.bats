@@ -17,24 +17,36 @@ teardown() {
 
 # ── _bwx_validate_credential_syntax unit tests ──────────────────
 
-@test "credential syntax: accepts file path reference" {
+@test "credential syntax: accepts secrets-dir file path reference" {
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
         source "'"${BWX_ROOT}"'/include/note-parser"
         source "'"${BWX_ROOT}"'/lib/bwx-note-validate"
-        _bwx_validate_credential_syntax "./secrets/password" "test"
+        _bwx_validate_credential_syntax "./.secrets/password" "test"
     '
     [[ "${status}" -eq 0 ]]
 }
 
-@test "credential syntax: accepts absolute path reference" {
+@test "credential syntax: rejects absolute path reference" {
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
         source "'"${BWX_ROOT}"'/include/note-parser"
         source "'"${BWX_ROOT}"'/lib/bwx-note-validate"
         _bwx_validate_credential_syntax "/etc/secrets/key" "test"
     '
-    [[ "${status}" -eq 0 ]]
+    [[ "${status}" -eq 1 ]]
+    [[ "${output}" == *"outside secrets directory"* ]]
+}
+
+@test "credential syntax: rejects relative path outside secrets directory" {
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/lib/bwx-note-validate"
+        _bwx_validate_credential_syntax "./tmp/password" "test"
+    '
+    [[ "${status}" -eq 1 ]]
+    [[ "${output}" == *"outside secrets directory"* ]]
 }
 
 @test "credential syntax: accepts env var reference" {

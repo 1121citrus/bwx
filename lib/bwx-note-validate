@@ -31,7 +31,14 @@ _bwx_validate_credential_syntax() {
 
     case "${ref}" in
         ./*|/*)
-            return 0
+            local secrets_dir="${BWX_SECRETS_DIR:-.secrets}"
+            case "${ref}" in
+                "${secrets_dir}"/*|./"${secrets_dir}"/*) return 0 ;;
+                *)
+                    warn "${label}: file path outside secrets directory"
+                    return 1
+                    ;;
+            esac
             ;;
         @env:*)
             local var="${ref#@env:}"

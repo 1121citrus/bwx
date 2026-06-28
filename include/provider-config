@@ -41,6 +41,56 @@ bwx-scrub-config-value() {
     printf '%s' "${val}"
 }
 
+# Return a physical absolute path for an existing filesystem path.
+# Args:
+#   $1 — path to normalize
+# Returns:
+#   0 and writes the absolute path to stdout; 1 on failure
+_bwx-absolute-path() {
+    local path="${1:?path required}"
+    local dir base
+    dir="$(dirname "${path}")" || return 1
+    base="$(basename "${path}")" || return 1
+    (cd "${dir}" && printf '%s/%s\n' "$(pwd -P)" "${base}")
+}
+
+# Verify a credential file reference stays inside BWX_SECRETS_DIR.
+# Args:
+#   $1 — credential file reference
+#   $2 — context label for error messages
+# Returns:
+#   0 if the file is allowed; 1 otherwise
+_bwx-credential-file-allowed() {
+    local ref="${1}" label="${2:-credential}"
+    local secrets_dir="${BWX_SECRETS_DIR:-.secrets}"
+
+    bwx-scrub-config-value "${ref}" "${label} file path" \
+        >/dev/null || return 1
+
+    [[ -d "${secrets_dir}" ]] \
+        || { warn "${label}: secrets directory not found: ${secrets_dir}"
+             return 1; }
+    [[ ! -L "${ref}" ]] \
+        || { warn "${label}: symlink credential files are not allowed: ${ref}"
+             return 1; }
+
+    local abs_ref abs_secrets_dir
+    abs_ref="$(_bwx-absolute-path "${ref}")" \
+        || { warn "${label}: file path cannot be resolved: ${ref}"
+             return 1; }
+    abs_secrets_dir="$(_bwx-absolute-path "${secrets_dir}")" \
+        || { warn "${label}: secrets directory cannot be resolved: ${secrets_dir}"
+             return 1; }
+
+    case "${abs_ref}" in
+        "${abs_secrets_dir}"/*) return 0 ;;
+        *)
+            warn "${label}: file path outside secrets directory: ${ref}"
+            return 1
+            ;;
+    esac
+}
+
 # Resolve a credential reference to its value.
 #
 # Resolution chain:
@@ -71,6 +121,8 @@ bwx-resolve-credential() {
                 || { warn "${label}: file not found: ${ref}"; return 1; }
             [[ -r "${ref}" ]] \
                 || { warn "${label}: file not readable: ${ref}"; return 1; }
+            _bwx-credential-file-allowed "${ref}" "${label}" \
+                || return 1
             cat "${ref}"
             ;;
         @env:*)
