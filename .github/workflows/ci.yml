@@ -16,13 +16,30 @@ permissions:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Run bwx build
-        run: ./build --no-scan
+    uses: 1121citrus/shared-github-workflows/.github/workflows/pipeline.yml@v1
+    with:
+      image: 1121citrus/bwx
+      test-mode: bats
+      test-bats-files: |
+        test/bin/bwx.bats
+        test/bin/bwx-branding.bats
+        test/bin/bwx-cache.bats
+        test/bin/bwx-deep-review-regressions.bats
+        test/bin/bwx-docker-wrapper.bats
+        test/bin/bwx-http.bats
+        test/bin/bwx-lifecycle.bats
+        test/bin/bwx-misc.bats
+        test/bin/bwx-mutations.bats
+        test/bin/bwx-option-parsing.bats
+        test/bin/bwx-portability.bats
+        test/bin/bwx-project.bats
+        test/bin/bwx-project-queries.bats
+        test/bin/bwx-providers.bats
+        test/bin/bwx-remediation-regressions.bats
+        test/bin/bwx-secret.bats
+        test/bin/bwx-secret-queries.bats
+        test/bin/bwx-security.bats
+        test/bin/bwx-tag.bats
+        test/bin/bwx-tag-ops.bats
+      test-extra-packages: jq
+    secrets: inherit
