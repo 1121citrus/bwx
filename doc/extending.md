@@ -334,11 +334,16 @@ Add these fields alongside the standard `provider:` field:
 | `grafana-sa-id:` | `grafana-service-account` | (required) | Service account ID |
 | `grafana-token-name:` | `grafana-service-account` | `bwx-rotated` | Token name prefix |
 | `docker-token-label:` | `docker-registry` | `bwx-rotated` | Docker Hub token label |
+| `aws-iam-username:` | `aws-iam` | (caller's own) | IAM username to rotate |
+| `aws-access-key-id:` | `aws-iam` | (CLI chain) | Access key for authentication |
+| `aws-secret-access-key:` | `aws-iam` | (CLI chain) | Secret key for authentication |
+| `aws-region:` | `aws-iam` | `us-east-1` | AWS region |
 
 ### Provider credential files
 
 Automated providers that call external APIs read credentials from
-the secrets directory:
+the secrets directory or from note fields via the credential
+resolution chain (see [providers.md](providers.md)):
 
 | Provider | Required files |
 |----------|----------------|
@@ -346,7 +351,7 @@ the secrets directory:
 | `bitwarden-api-key` | `bitwarden-org-id`, `bitwarden-machine-account-id` |
 | `docker-registry` | `docker-hub-username`, `docker-hub-password` |
 | `grafana-service-account` | `grafana-admin-password` (optional: `grafana-admin-user`) |
-| `aws-iam` | AWS CLI credentials (via `~/.aws/` or environment) |
+| `aws-iam` | `aws-access-key-id`, `aws-secret-access-key` (optional — falls through to AWS CLI chain) |
 
 ---
 

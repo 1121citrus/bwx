@@ -163,7 +163,7 @@ teardown() {
         source "'"${BWX_ROOT}"'/include/note-parser"
         source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/aws-iam"
-        bwx-provider-aws-iam "test-secret"
+        bwx-provider-aws-iam "test-secret" ".secrets" ""
     '
     [[ "${status}" -ne 0 ]]
     [[ "${output}" == *"Neither aws CLI nor docker found"* ]]
@@ -176,7 +176,7 @@ teardown() {
         source "'"${BWX_ROOT}"'/include/provider-config"
         source "'"${BWX_ROOT}"'/lib/providers/aws-iam"
         aws() { echo "AccessDenied" >&2; return 1; }
-        bwx-provider-aws-iam "test-secret"
+        bwx-provider-aws-iam "test-secret" ".secrets" ""
     '
     [[ "${status}" -ne 0 ]]
     [[ "${output}" == *"Failed to list access keys"* ]]
@@ -203,7 +203,7 @@ teardown() {
             echo "LimitExceeded"
             return 1
         }
-        bwx-provider-aws-iam "test-secret"
+        bwx-provider-aws-iam "test-secret" ".secrets" ""
     '
     [[ "${status}" -ne 0 ]]
     [[ "${output}" == *"Failed to create access key"* ]]
@@ -229,7 +229,7 @@ teardown() {
             esac
             return 0
         }
-        bwx-provider-aws-iam "test-secret"
+        bwx-provider-aws-iam "test-secret" ".secrets" ""
         echo "VALUE=${PROVIDER_VALUE}"
         echo "EXPIRES=${PROVIDER_EXPIRES}"
         echo "NOTE=${PROVIDER_NOTE}"
@@ -259,12 +259,186 @@ teardown() {
             esac
             return 0
         }
-        bwx-provider-aws-iam "test-secret"
+        bwx-provider-aws-iam "test-secret" ".secrets" ""
         echo "VALUE=${PROVIDER_VALUE}"
     '
     [[ "${status}" -eq 0 ]]
     [[ "${output}" == *"No existing access key found"* ]]
     [[ "${output}" == *"VALUE=newSecret"* ]]
+}
+
+@test "aws-iam: note credentials inject into environment" {
+    local aws_log="${TEST_TMPDIR}/aws-env"
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        source "'"${BWX_ROOT}"'/lib/providers/aws-iam"
+        aws_log="'"${aws_log}"'"
+        aws() {
+            case "$*" in
+                *list-access-keys*)
+                    printf "KEY_ID=%s\n" "${AWS_ACCESS_KEY_ID}" \
+                        >> "${aws_log}"
+                    printf "SECRET=%s\n" "${AWS_SECRET_ACCESS_KEY}" \
+                        >> "${aws_log}"
+                    printf "REGION=%s\n" "${AWS_DEFAULT_REGION}" \
+                        >> "${aws_log}"
+                    echo "AKIAOLD123456"
+                    ;;
+                *create-access-key*)
+                    echo "{\"AccessKey\":{\"AccessKeyId\":\"AKIANEW\",\"SecretAccessKey\":\"newSec\"}}"
+                    ;;
+                *update-access-key*)
+                    return 0
+                    ;;
+            esac
+            return 0
+        }
+        note="aws-access-key-id: AKIATEST123
+aws-secret-access-key: testSecretKey456
+aws-region: eu-west-1"
+        bwx-provider-aws-iam "test-secret" ".secrets" "${note}"
+    '
+    [[ "${status}" -eq 0 ]]
+    grep -q "KEY_ID=AKIATEST123" "${aws_log}"
+    grep -q "SECRET=testSecretKey456" "${aws_log}"
+    grep -q "REGION=eu-west-1" "${aws_log}"
+}
+
+@test "aws-iam: note username passes --user-name to aws CLI" {
+    local aws_log="${TEST_TMPDIR}/aws-args"
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        source "'"${BWX_ROOT}"'/lib/providers/aws-iam"
+        aws_log="'"${aws_log}"'"
+        aws() {
+            echo "$*" >> "${aws_log}"
+            case "$*" in
+                *list-access-keys*)
+                    echo "None"
+                    ;;
+                *create-access-key*)
+                    echo "{\"AccessKey\":{\"AccessKeyId\":\"AKIANEW\",\"SecretAccessKey\":\"s\"}}"
+                    ;;
+            esac
+            return 0
+        }
+        note="aws-iam-username: backup-service"
+        bwx-provider-aws-iam "test-secret" ".secrets" "${note}"
+    '
+    [[ "${status}" -eq 0 ]]
+    grep -q -- "--user-name backup-service" "${aws_log}"
+}
+
+@test "aws-iam: defaults region to us-east-1 when absent" {
+    local aws_log="${TEST_TMPDIR}/aws-env"
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        source "'"${BWX_ROOT}"'/lib/providers/aws-iam"
+        aws_log="'"${aws_log}"'"
+        aws() {
+            printf "REGION=%s\n" "${AWS_DEFAULT_REGION}" \
+                >> "${aws_log}"
+            case "$*" in
+                *list-access-keys*)
+                    echo "None"
+                    ;;
+                *create-access-key*)
+                    echo "{\"AccessKey\":{\"AccessKeyId\":\"AKIANEW\",\"SecretAccessKey\":\"s\"}}"
+                    ;;
+            esac
+            return 0
+        }
+        bwx-provider-aws-iam "test-secret" ".secrets" ""
+    '
+    [[ "${status}" -eq 0 ]]
+    grep -q "REGION=us-east-1" "${aws_log}"
+}
+
+@test "aws-iam: rejects only one of key-id/secret-key set" {
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        source "'"${BWX_ROOT}"'/lib/providers/aws-iam"
+        aws() { return 0; }
+        note="aws-access-key-id: AKIATEST123"
+        bwx-provider-aws-iam "test-secret" ".secrets" "${note}"
+    '
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"Both aws-access-key-id and aws-secret-access-key"* ]]
+}
+
+@test "aws-iam: credential fallback to secrets directory files" {
+    mkdir -p "${TEST_TMPDIR}/secrets"
+    echo -n "AKIAFILE123" > "${TEST_TMPDIR}/secrets/aws-access-key-id"
+    echo -n "fileSecretKey" > "${TEST_TMPDIR}/secrets/aws-secret-access-key"
+    local aws_log="${TEST_TMPDIR}/aws-env"
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        source "'"${BWX_ROOT}"'/lib/providers/aws-iam"
+        aws_log="'"${aws_log}"'"
+        aws() {
+            printf "KEY_ID=%s\n" "${AWS_ACCESS_KEY_ID}" \
+                >> "${aws_log}"
+            printf "SECRET=%s\n" "${AWS_SECRET_ACCESS_KEY}" \
+                >> "${aws_log}"
+            case "$*" in
+                *list-access-keys*)
+                    echo "None"
+                    ;;
+                *create-access-key*)
+                    echo "{\"AccessKey\":{\"AccessKeyId\":\"AKIANEW\",\"SecretAccessKey\":\"s\"}}"
+                    ;;
+            esac
+            return 0
+        }
+        bwx-provider-aws-iam "test-secret" "'"${TEST_TMPDIR}/secrets"'" ""
+    '
+    [[ "${status}" -eq 0 ]]
+    grep -q "KEY_ID=AKIAFILE123" "${aws_log}"
+    grep -q "SECRET=fileSecretKey" "${aws_log}"
+}
+
+@test "aws-iam: env var credential reference resolves" {
+    local aws_log="${TEST_TMPDIR}/aws-env"
+    run bash -c '
+        export MY_AWS_KEY="AKIAENV789"
+        export MY_AWS_SECRET="envSecretKey"
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        source "'"${BWX_ROOT}"'/lib/providers/aws-iam"
+        aws_log="'"${aws_log}"'"
+        aws() {
+            printf "KEY_ID=%s\n" "${AWS_ACCESS_KEY_ID}" \
+                >> "${aws_log}"
+            printf "SECRET=%s\n" "${AWS_SECRET_ACCESS_KEY}" \
+                >> "${aws_log}"
+            case "$*" in
+                *list-access-keys*)
+                    echo "None"
+                    ;;
+                *create-access-key*)
+                    echo "{\"AccessKey\":{\"AccessKeyId\":\"AKIANEW\",\"SecretAccessKey\":\"s\"}}"
+                    ;;
+            esac
+            return 0
+        }
+        note="aws-access-key-id: @env:MY_AWS_KEY
+aws-secret-access-key: @env:MY_AWS_SECRET"
+        bwx-provider-aws-iam "test-secret" ".secrets" "${note}"
+    '
+    [[ "${status}" -eq 0 ]]
+    grep -q "KEY_ID=AKIAENV789" "${aws_log}"
+    grep -q "SECRET=envSecretKey" "${aws_log}"
 }
 
 # ── openssl-selfsigned provider ────────────────────────────────────

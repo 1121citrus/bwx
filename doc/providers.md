@@ -217,14 +217,42 @@ key, and deactivates the old key.
 
 **Prerequisites:** `aws` CLI or Docker (image: `amazon/aws-cli`)
 
-**Note fields:** None — uses AWS CLI credential chain (`~/.aws/`,
-environment variables)
+**Note fields:**
+
+| Field                   | Type       | Default      | Description                  |
+|-------------------------|------------|--------------|------------------------------|
+| `aws-iam-username`      | string     | (caller)     | IAM username to rotate       |
+| `aws-access-key-id`     | credential | (CLI chain)  | Access key for authentication|
+| `aws-secret-access-key` | credential | (CLI chain)  | Secret key for authentication|
+| `aws-region`            | string     | `us-east-1`  | AWS region                   |
+
+**Credential resolution:** When `aws-access-key-id` and
+`aws-secret-access-key` are set in the note, they are exported as
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` before calling the
+`aws` CLI. Credential fields support the standard resolution chain
+(BWS references, file paths, env vars, literals).
+
+**Fallback:** When note fields are absent, reads from
+`$SECRETS_DIR/aws-access-key-id` and
+`$SECRETS_DIR/aws-secret-access-key`. When neither note fields nor
+secrets files exist, falls through to the AWS CLI native credential
+chain (`~/.aws/`, environment variables).
 
 **Default expiry:** 365 days
 
 **Behavior:** The old key is deactivated (not deleted) after the new
 key is created. Manual cleanup of inactive keys is left to the
 operator.
+
+**Example note:**
+
+```text
+provider: aws-iam
+aws-iam-username: backup-service
+aws-access-key-id: myproject:aws_sysops_access_key_v1
+aws-secret-access-key: myproject:aws_sysops_secret_key_v1
+aws-region: us-east-1
+```
 
 ---
 

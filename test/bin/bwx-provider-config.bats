@@ -407,6 +407,7 @@ line2" "test"
 
 @test "security: no provider passes credentials via --user flag" {
     local count
-    count=$(grep -rl -- '--user' "${BWX_ROOT}/lib/providers/" | wc -l)
+    count=$(grep -rn -- '--user[[:space:]]' "${BWX_ROOT}/lib/providers/" \
+        | grep -vc -- '--user-name' || true)
     [[ "${count}" -eq 0 ]]
 }
