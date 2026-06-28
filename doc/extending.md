@@ -14,7 +14,7 @@ CLI.
     - [4. Add usage text](#4-add-usage-text)
     - [5. Add tests](#5-add-tests)
     - [6. Document](#6-document)
-    - [Complete example: `bwx secret owner`](#complete-example-bwx-secret-owner)
+    - [Complete example: `bwx secret app-owner`](#complete-example-bwx-secret-app-owner)
   - [Adding a rotation provider](#adding-a-rotation-provider)
     - [Provider contract](#provider-contract)
     - [Provider resolution](#provider-resolution)
@@ -96,7 +96,7 @@ Add one line to the `_BWX_COMMANDS` associative array in `bin/bwx`:
 ```bash
 declare -A _BWX_COMMANDS=(
     ...
-    [secret/owner]=bwx-secret-owner       # ← new entry
+    [secret/owner]=bwx-secret-app-owner       # ← new entry
     ...
 )
 ```
@@ -112,7 +112,7 @@ needed.  Verify with:
 ```console
 $ eval "$(bwx completion bash)"
 $ bwx secret <TAB>
-clone  create  filename  id  key  list  ls  name  note  owner  set  show  tags  value
+app-owner  clone  create  filename  id  key  list  ls  name  note  set  show  tags  value
 ```
 
 ### 4. Add usage text
@@ -120,12 +120,12 @@ clone  create  filename  id  key  list  ls  name  note  owner  set  show  tags  
 In `_bwx_usage()`, add a line under the appropriate command section:
 
 ```text
-    bwx secret owner SECRET     Get the owner of a secret
+    bwx secret app-owner SECRET     Get the owner of a secret
 ```
 
 ### 5. Add tests
 
-Create `test/bin/bwx-secret-owner.bats` (see [testing patterns](#testing-patterns)
+Create `test/bin/bwx-secret-app-owner.bats` (see [testing patterns](#testing-patterns)
 below).
 
 ### 6. Document
@@ -133,9 +133,9 @@ below).
 Add the subcommand to `doc/usage.md` if it exists, or to the `README.md`
 command reference.
 
-### Complete example: `bwx secret owner`
+### Complete example: `bwx secret app-owner`
 
-Library file `lib/bwx-secret-owner`:
+Library file `lib/bwx-secret-app-owner`:
 
 ```bash
 # shellcheck disable=SC1090,SC1091
@@ -149,7 +149,7 @@ Library file `lib/bwx-secret-owner`:
 #   PROJECT  Project name or UUID (optional; defaults to BWX_DEFAULT_PROJECT)
 # Returns:
 #   0 and writes the owner value to stdout, or empty if not set
-bwx-secret-owner() {
+bwx-secret-app-owner() {
     set -o errexit -o errtrace -o nounset -o pipefail
     # Shell tracing intentionally omitted because secret values flow
     # through this function. For verbose diagnostics, use
@@ -163,7 +163,7 @@ bwx-secret-owner() {
                 declare -F bwx-default-project-name >/dev/null 2>&1 || \
                     source "$(dirname "${BASH_SOURCE[0]}")/bwx-default-project-name"
                 cat <<EOF
-Usage: bwx secret owner [options] SECRET [PROJECT]
+Usage: bwx secret app-owner [options] SECRET [PROJECT]
 
 Returns the 'app-owner' property from a Bitwarden Secrets Manager secret.
 
@@ -240,7 +240,7 @@ EOF
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    bwx-secret-owner "$@"
+    bwx-secret-app-owner "$@"
 fi
 ```
 
@@ -404,7 +404,7 @@ branches to `lib/bwx-secret-get` and `lib/bwx-secret-set`.
 **Getter** — add to the `case "${property}"` in `bwx-secret-get`:
 
 ```bash
-        owner)
+        app-owner)
             local note
             note="$(printf '%s' "${secret_json}" | jq -r '.note // ""')"
             printf '%s' "${note}" \
@@ -417,7 +417,7 @@ branches to `lib/bwx-secret-get` and `lib/bwx-secret-set`.
 **Setter** — add to the `case "${property}"` in `bwx-secret-set`:
 
 ```bash
-        owner)
+        app-owner)
             local current_note
             current_note="$(bwx-secret-get note "${secret}" ${project_id:+"${project_id}"})"
             local new_note
@@ -428,8 +428,8 @@ branches to `lib/bwx-secret-get` and `lib/bwx-secret-set`.
                 new_note="app-owner: ${value}"$'\n'"${current_note}"
             fi
             bws secret edit "${secret_uuid}" --note "${new_note}" >/dev/null || \
-                error "${EXIT_ERROR}" "Failed to update owner for '${secret}'"
-            info "Updated owner for '${secret}' to '${value}'"
+                error "${EXIT_ERROR}" "Failed to update app-owner for '${secret}'"
+            info "Updated app-owner for '${secret}' to '${value}'"
             ;;
 ```
 
@@ -437,10 +437,10 @@ No dispatch table changes, no completion changes, no new lib files.
 The property is immediately available:
 
 ```console
-$ bwx secret set owner my_secret_v1 "ops-team"
-[INFO] Updated owner for 'my_secret_v1' to 'ops-team'
+$ bwx secret set app-owner my_secret_v1 "ops-team"
+[INFO] Updated app-owner for 'my_secret_v1' to 'ops-team'
 
-$ bwx secret get owner my_secret_v1
+$ bwx secret get app-owner my_secret_v1
 ops-team
 ```
 
@@ -453,7 +453,7 @@ subcommand tests go in a file named after the subcommand:
 
 ```text
 test/bin/bwx.bats                  # dispatch and help tests
-test/bin/bwx-secret-owner.bats     # tests for bwx secret owner
+test/bin/bwx-secret-app-owner.bats     # tests for bwx secret app-owner
 ```
 
 ### Stubbing the bws binary
@@ -519,7 +519,7 @@ teardown() {
 
 ```bash
 #!/usr/bin/env bats
-# Tests for bwx secret owner.
+# Tests for bwx secret app-owner.
 
 setup() {
     BWX_ROOT="$(cd "$(dirname "${BATS_TEST_FILENAME}")/../.." && pwd)"
@@ -531,28 +531,28 @@ teardown() {
     rm -rf "${STUB_DIR}"
 }
 
-@test "secret owner --help exits 2" {
-    run "${BWX}" secret owner --help
+@test "secret app-owner --help exits 2" {
+    run "${BWX}" secret app-owner --help
     [[ "${status}" -eq 2 ]]
     [[ "${output}" == *"Usage:"* ]]
 }
 
-@test "secret owner requires SECRET argument" {
-    run "${BWX}" secret owner
+@test "secret app-owner requires SECRET argument" {
+    run "${BWX}" secret app-owner
     [[ "${status}" -ne 0 ]]
     [[ "${output}" == *"Secret name or UUID required"* ]]
 }
 
-@test "secret owner returns owner from note" {
-    run "${BWX}" secret owner test-secret
+@test "secret app-owner returns owner from note" {
+    run "${BWX}" secret app-owner test-secret
     [[ "${status}" -eq 0 ]]
     [[ "${output}" == "ops-team" ]]
 }
 
-@test "secret owner returns empty for secret without owner" {
+@test "secret app-owner returns empty for secret without owner" {
     # Override stub to return note without owner line
     # ...
-    run "${BWX}" secret owner no-owner-secret
+    run "${BWX}" secret app-owner no-owner-secret
     [[ "${status}" -eq 0 ]]
     [[ -z "${output}" ]]
 }
@@ -579,7 +579,7 @@ the "all ... subcommands are recognized" tests so the new name is verified.
   The only project-wide suppression is `SC1090,SC1091` (non-constant source
   paths) at the top of each lib file.
 - **4-space indentation.** No tabs.
-- **Function names** use kebab-case with a `bwx-` prefix: `bwx-secret-owner`.
+- **Function names** use kebab-case with a `bwx-` prefix: `bwx-secret-app-owner`.
   The name must match the lib filename exactly.
 - **Functions are lexically sorted** within files. When a file contains only
   one function this is trivially satisfied; in files with helpers, sort them
@@ -593,7 +593,7 @@ the "all ... subcommands are recognized" tests so the new name is verified.
     #   PROJECT  Project name or UUID (optional)
     # Returns:
     #   0 and writes the owner value to stdout
-    bwx-secret-owner() {
+    bwx-secret-app-owner() {
     ```
 
 - **Strict mode** at the function entry, not the file level:
@@ -622,7 +622,7 @@ the "all ... subcommands are recognized" tests so the new name is verified.
 
     ```bash
     if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-        bwx-secret-owner "$@"
+        bwx-secret-app-owner "$@"
     fi
     ```
 
