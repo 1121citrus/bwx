@@ -43,7 +43,7 @@ teardown() {
             done
     '
     [[ "${status}" -eq 0 ]]
-    [[ "${lines[0]}" == "provider-role|cert|enum:cert|key" ]]
+    [[ "${lines[0]}" == "cert-role|cert|enum:cert|key" ]]
     [[ "${lines[1]}" == "cert-cn|bwx-selfsigned|string" ]]
     [[ "${lines[2]}" == "cert-days|365|integer:1:3650" ]]
 }
@@ -193,7 +193,7 @@ teardown() {
 @test "provider info: openssl-selfsigned shows enum and range" {
     run "${BWX}" provider info openssl-selfsigned
     [[ "${status}" -eq 0 ]]
-    [[ "${output}" == *"provider-role"* ]]
+    [[ "${output}" == *"cert-role"* ]]
     [[ "${output}" == *"enum:cert|key"* ]]
     [[ "${output}" == *"cert-days"* ]]
     [[ "${output}" == *"integer:1:3650"* ]]

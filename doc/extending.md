@@ -327,7 +327,7 @@ Add these fields alongside the standard `provider:` field:
 |-------|---------|---------|-------------|
 | `password-length:` | `password-generate` | `32` | Password length (8–256) |
 | `password-charset:` | `password-generate` | `alphanumeric+symbols` | `alphanumeric` or `alphanumeric+symbols` |
-| `provider-role:` | `openssl-selfsigned` | `cert` | `cert` or `key` (one secret per artifact) |
+| `cert-role:` | `openssl-selfsigned` | `cert` | `cert` or `key` (one secret per artifact) |
 | `cert-cn:` | `openssl-selfsigned` | `bwx-selfsigned` | Certificate common name |
 | `cert-days:` | `openssl-selfsigned` | `365` | Certificate validity period |
 | `grafana-url:` | `grafana-service-account` | `http://localhost:3000` | Grafana base URL |

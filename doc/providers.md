@@ -260,7 +260,7 @@ aws-region: us-east-1
 
 Generates a self-signed TLS certificate or private key. For
 multi-artifact rotation, create one BWS secret per artifact (cert
-and key) with distinct `provider-role:` values.
+and key) with distinct `cert-role:` values.
 
 **Prerequisites:** `openssl` or Docker (image: `alpine/openssl`)
 
@@ -268,7 +268,7 @@ and key) with distinct `provider-role:` values.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `provider-role` | enum | `cert` | `cert` or `key` |
+| `cert-role` | enum | `cert` | `cert` or `key` |
 | `cert-cn` | string | `bwx-selfsigned` | Certificate common name |
 | `cert-days` | integer (1–3650) | `365` | Validity period in days |
 
@@ -278,7 +278,7 @@ and key) with distinct `provider-role:` values.
 
 ```text
 provider: openssl-selfsigned
-provider-role: cert
+cert-role: cert
 cert-cn: mqtt.example.com
 cert-days: 365
 ```
@@ -287,7 +287,7 @@ cert-days: 365
 
 ```text
 provider: openssl-selfsigned
-provider-role: key
+cert-role: key
 cert-cn: mqtt.example.com
 cert-days: 365
 ```

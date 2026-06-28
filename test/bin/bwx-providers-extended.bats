@@ -463,7 +463,7 @@ aws-secret-access-key: @env:MY_AWS_SECRET"
 
 @test "openssl-selfsigned: cert role returns PEM certificate" {
     command -v openssl >/dev/null 2>&1 || skip "openssl required"
-    local note="provider-role: cert"
+    local note="cert-role: cert"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
         source "'"${BWX_ROOT}"'/include/note-parser"
@@ -479,7 +479,7 @@ aws-secret-access-key: @env:MY_AWS_SECRET"
 
 @test "openssl-selfsigned: key role returns PEM private key" {
     command -v openssl >/dev/null 2>&1 || skip "openssl required"
-    local note="provider-role: key"
+    local note="cert-role: key"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
         source "'"${BWX_ROOT}"'/include/note-parser"
@@ -512,7 +512,7 @@ aws-secret-access-key: @env:MY_AWS_SECRET"
 
 @test "openssl-selfsigned: warns on unknown role" {
     command -v openssl >/dev/null 2>&1 || skip "openssl required"
-    local note="provider-role: ca"
+    local note="cert-role: ca"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
         source "'"${BWX_ROOT}"'/include/note-parser"
@@ -522,7 +522,7 @@ aws-secret-access-key: @env:MY_AWS_SECRET"
         echo "EXPIRES=${PROVIDER_EXPIRES}"
     '
     [[ "${status}" -eq 0 ]]
-    [[ "${output}" == *"Unknown provider-role"* ]]
+    [[ "${output}" == *"Unknown cert-role"* ]]
     [[ "${output}" == *"EXPIRES=365"* ]]
 }
 

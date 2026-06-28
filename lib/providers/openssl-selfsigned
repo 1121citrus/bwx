@@ -8,9 +8,9 @@
 # Generates a self-signed certificate and private key using openssl.
 # For multi-artifact rotation (key + cert), assign each artifact its
 # own BWS secret with provider: openssl-selfsigned and a distinct
-# provider-role: note field.
+# cert-role: note field.
 # Note fields (parsed via bwx-provider-config):
-#   provider-role: "cert" (default) or "key"
+#   cert-role: "cert" (default) or "key"
 #   cert-cn:       common name (default: "bwx-selfsigned")
 #   cert-days:     validity in days (default: 365, minimum: 1)
 # Args:
@@ -23,7 +23,7 @@ bwx-provider-openssl-selfsigned() {
     local secret="${1}" secrets_dir="${2}" note="${3:-}"
 
     local role cn days
-    role="$(bwx-provider-config provider-role \
+    role="$(bwx-provider-config cert-role \
         "${note}" "cert" "enum:cert|key")"
     cn="$(bwx-provider-config cert-cn \
         "${note}" "bwx-selfsigned" "string")"
