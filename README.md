@@ -39,15 +39,17 @@ the operational layer on top:
   with symlinks and UUID-based storage
 - **Expiry checking** — pre-release gate that blocks deployments
   when credentials are near expiration
-- **Rotation** — provider-driven rotation with built-in drivers for
-  Tailscale and GitHub, and a generic prompt fallback for anything
-  else
+- **Rotation** — provider-driven rotation with 13 built-in drivers
+  (8 fully automated, 5 interactive) covering AWS IAM, Tailscale,
+  GitHub, Docker Hub, Grafana, Bitwarden, TLS certificates, MQTT,
+  random passwords, and a generic prompt fallback
 - **Versioned cloning** — `clone` increments `_v1` → `_v2` for safe
   key rotation with downgrade support
 - **Caching** — TTL-based local cache for API responses; one API
   call per session, not per command
-- **Zero install dependencies** — bash + Docker; `jq` and `bws` are
-  wrapped via Docker containers when not natively installed
+- **Zero install dependencies** — bash + Docker; `jq`, `bws`,
+  `curl`, `openssl`, and `aws` are wrapped via Docker containers
+  when not natively installed
 
 ## Intended workflow
 
@@ -81,15 +83,24 @@ develop → tag → import → deploy → rotate (on schedule)
    warning window (default: 14 days) block the release until rotated.
 
 6. **Rotate** — `bwx rotate SECRET` reads the `provider:` field from
-   the secret's note and calls the matching driver.  Built-in
-   providers handle Tailscale OAuth, Tailscale manual, GitHub PATs,
-   and a generic paste-a-value prompt.  The framework updates the
-   BWS value, sets the new `expires:` date, and preserves all other
-   metadata.
+   the secret's note and calls the matching driver.  Automated
+   providers (password-generate, aws-iam, openssl-selfsigned,
+   mqtt-password, tailscale-oauth, bitwarden-api-key,
+   grafana-service-account, docker-registry) run without operator
+   input; interactive providers (github-pat, anthropic-api-key,
+   letsencrypt-manual, tailscale-manual, prompt) guide the operator
+   through a paste-and-validate flow.  The framework updates the BWS
+   value, sets the new `expires:` date, and preserves all other
+   metadata.  Provider credentials can be stored as BWS secrets
+   themselves (`project:secret` references), read from files, or
+   passed via environment variables.  See
+   [doc/providers.md](doc/providers.md) for the full reference.
 
-Secrets that do not expire (database passwords, SSH keys, GPG
-passphrases) skip steps 5–6 entirely.  They are tagged and imported
-like any other secret but have no `expires:` or `provider:` metadata.
+Secrets that do not expire (SSH keys, GPG passphrases) skip steps
+5–6 entirely.  They are tagged and imported like any other secret
+but have no `expires:` or `provider:` metadata.  Secrets like
+database passwords that *should* rotate can now use the
+`password-generate` provider for fully automated rotation.
 
 ## Quick start
 
