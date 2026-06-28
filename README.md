@@ -247,7 +247,7 @@ Pin the checkout to a tag or commit when you need reproducible vendoring.
 ### Prerequisites
 
 - **Bash 4.0+** (macOS ships 3.2 — install a newer shell with Homebrew or pkgin)
-- **Docker** — only when `jq` or `bws` are not natively installed
+- **Docker** — used as a fallback when external tools are not natively installed
 
 ## Documentation
 
