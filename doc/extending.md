@@ -143,12 +143,12 @@ Library file `lib/bwx-secret-owner`:
 # Copyright (C) 2026 James Hanlon [mailto:jim@hanlonsoftware.com]
 # Licensed under AGPL-3.0-or-later.
 
-# Print the owner property from a secret's note field.
+# Print the app-owner property from a secret's note field.
 # Args:
 #   SECRET   Secret name or UUID (required)
 #   PROJECT  Project name or UUID (optional; defaults to BWX_DEFAULT_PROJECT)
 # Returns:
-#   0 and writes the owner value to stdout, or empty if no owner is set
+#   0 and writes the owner value to stdout, or empty if not set
 bwx-secret-owner() {
     set -o errexit -o errtrace -o nounset -o pipefail
     # Shell tracing intentionally omitted because secret values flow
@@ -165,7 +165,7 @@ bwx-secret-owner() {
                 cat <<EOF
 Usage: bwx secret owner [options] SECRET [PROJECT]
 
-Returns the 'owner' property from a Bitwarden Secrets Manager secret.
+Returns the 'app-owner' property from a Bitwarden Secrets Manager secret.
 
 Arguments:
   SECRET       Secret name or UUID (required)
@@ -232,10 +232,10 @@ EOF
 
     local owner
     owner=$(printf '%s' "${note}" \
-        | grep -iE '^owner: ' \
-        | sed -E 's/^[Oo]wner:[[:space:]]*//' \
+        | grep -iE '^app-owner: ' \
+        | sed -E 's/^[Aa]pp-[Oo]wner:[[:space:]]*//' \
         | head -1)
-    trace "secret '${secret}' owner '${owner}'"
+    trace "secret '${secret}' app-owner '${owner}'"
     [[ -n "${owner}" ]] && echo "${owner}"
 }
 
@@ -365,7 +365,7 @@ might look like:
 
 ```text
 file: mosquitto.conf
-owner: ops-team
+app-owner: ops-team
 release-tag: v1.2.0
 release-tag: v1.3.0
 ```
@@ -374,7 +374,7 @@ Properties fall into two categories:
 
 | Category | Example | Cardinality | Getter returns |
 |---|---|---|---|
-| Single-value | `file:`, `owner:` | At most one line per secret | The value (or empty) |
+| Single-value | `file:`, `app-owner:` | At most one line per secret | The value (or empty) |
 | Multi-value | `release-tag:` | Zero or more lines per secret | All values, one per line |
 
 ### Parsing pattern
@@ -385,8 +385,8 @@ extended regex) and `sed -E` to strip the key prefix:
 ```bash
 # Single-value property (returns first match)
 owner=$(printf '%s' "${note}" \
-    | grep -iE '^owner: ' \
-    | sed -E 's/^[Oo]wner:[[:space:]]*//' \
+    | grep -iE '^app-owner: ' \
+    | sed -E 's/^[Aa]pp-[Oo]wner:[[:space:]]*//' \
     | head -1)
 
 # Multi-value property (returns all matches, sorted and deduplicated)
@@ -408,8 +408,8 @@ branches to `lib/bwx-secret-get` and `lib/bwx-secret-set`.
             local note
             note="$(printf '%s' "${secret_json}" | jq -r '.note // ""')"
             printf '%s' "${note}" \
-                | grep -iE '^[[:space:]]*owner[[:space:]]*:' \
-                | sed -E 's/^[[:space:]]*owner[[:space:]]*:[[:space:]]*//' \
+                | grep -iE '^[[:space:]]*app-owner[[:space:]]*:' \
+                | sed -E 's/^[[:space:]]*app-owner[[:space:]]*:[[:space:]]*//' \
                 | head -1
             ;;
 ```
@@ -421,11 +421,11 @@ branches to `lib/bwx-secret-get` and `lib/bwx-secret-set`.
             local current_note
             current_note="$(bwx-secret-get note "${secret}" ${project_id:+"${project_id}"})"
             local new_note
-            if printf '%s' "${current_note}" | grep -qiE '^[[:space:]]*owner[[:space:]]*:'; then
+            if printf '%s' "${current_note}" | grep -qiE '^[[:space:]]*app-owner[[:space:]]*:'; then
                 new_note="$(printf '%s' "${current_note}" \
-                    | sed -E "s|^([[:space:]]*)owner[[:space:]]*:.*|\1owner: ${value}|")"
+                    | sed -E "s|^([[:space:]]*)app-owner[[:space:]]*:.*|\1app-owner: ${value}|")"
             else
-                new_note="owner: ${value}"$'\n'"${current_note}"
+                new_note="app-owner: ${value}"$'\n'"${current_note}"
             fi
             bws secret edit "${secret_uuid}" --note "${new_note}" >/dev/null || \
                 error "${EXIT_ERROR}" "Failed to update owner for '${secret}'"
@@ -480,7 +480,7 @@ case "${1:-} ${2:-}" in
     "id": "aaaa-bbbb-cccc",
     "key": "test-secret",
     "value": "s3cret",
-    "note": "file: config.env\nowner: ops-team\nrelease-tag: v1.0.0",
+    "note": "file: config.env\napp-owner: ops-team\nrelease-tag: v1.0.0",
     "organizationId": "org-1",
     "projectId": "proj-1"
   }
@@ -493,7 +493,7 @@ JSON
   "id": "aaaa-bbbb-cccc",
   "key": "test-secret",
   "value": "s3cret",
-  "note": "file: config.env\nowner: ops-team\nrelease-tag: v1.0.0"
+  "note": "file: config.env\napp-owner: ops-team\nrelease-tag: v1.0.0"
 }
 JSON
         ;;
@@ -626,6 +626,11 @@ the "all ... subcommands are recognized" tests so the new name is verified.
     fi
     ```
 
+- **Note field-naming convention.** Unhyphenated single-word field names
+  (`file`, `note`, `expires`, `provider`, `release-tag`) are reserved for
+  the bwx framework. Provider config fields and custom metadata fields must
+  contain at least one hyphen (e.g., `grafana-url`, `cert-days`, `app-owner`).
+  `bwx note validate` enforces this convention.
 - **American English** in all messages, comments, and documentation.
 - **Line length** should not exceed 80 characters and must not exceed 120,
   except where syntactically required.

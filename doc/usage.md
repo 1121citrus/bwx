@@ -48,6 +48,7 @@ Complete reference for `bwx` 1.0.0, a Bitwarden Secrets Manager extended CLI.
     - [`completion`](#completion)
   - [Structured note metadata](#structured-note-metadata)
     - [Properties](#properties)
+    - [Field-naming convention](#field-naming-convention)
     - [Example note](#example-note)
     - [Parsing patterns](#parsing-patterns)
     - [Multi-value vs single-value](#multi-value-vs-single-value)
@@ -1227,6 +1228,24 @@ pattern `key: value`.
 | `expires:` | Single-value | Expiration date for time-limited credentials (ISO 8601 date, for example `2026-09-20`). Used by `bwx check expiry` to detect upcoming expirations. |
 | `provider:` | Single-value | Rotation provider driver name (e.g., `tailscale-oauth`, `github-pat`). Used by `bwx rotate` to determine how to generate a new credential. Falls back to `prompt` if not set. |
 | `release-tag:` | Multi-value | One or more release identifiers binding the secret to specific deployments. Each tag is a separate `release-tag:` line. |
+
+### Field-naming convention
+
+Core field names (`file`, `note`, `expires`, `provider`, `release-tag`)
+are reserved for the bwx framework.  All other field names — including
+provider config fields and any custom metadata — must contain at least
+one hyphen.  This prevents provider fields from colliding with current
+or future core fields.
+
+| Category        | Pattern                  | Examples                                       |
+|-----------------|--------------------------|------------------------------------------------|
+| Core (reserved) | Single unhyphenated word | `file`, `note`, `expires`, `provider`          |
+| Provider config | Hyphenated prefix        | `grafana-url`, `cert-days`, `password-length`  |
+| Custom metadata | Hyphenated prefix        | `app-owner`, `deploy-env`, `team-name`         |
+
+`bwx note validate` warns on field names that violate this convention.
+Use `bwx provider info NAME` to see the expected field names for a
+specific provider.
 
 ### Example note
 

@@ -15,6 +15,7 @@ field in its note metadata.
     - [Resolution chain](#resolution-chain)
     - [Examples](#examples)
   - [Input scrubbing](#input-scrubbing)
+  - [Field-naming convention](#field-naming-convention)
   - [Provider reference](#provider-reference)
     - [Automated providers](#automated-providers)
       - [`password-generate`](#password-generate)
@@ -166,6 +167,17 @@ No legitimate config value (URL, hostname, token label, integer)
 needs these characters. **Credential values** (the resolved content
 of a secret, file, or env var) are NOT scrubbed — secret content may
 contain any byte.
+
+## Field-naming convention
+
+Provider config field names must contain at least one hyphen.
+Unhyphenated single-word names (`file`, `note`, `expires`, `provider`,
+`release-tag`) are reserved for the bwx framework. All built-in
+providers follow this convention with domain-scoped prefixes:
+`password-length`, `grafana-url`, `cert-days`, `aws-iam-username`,
+etc.
+
+`bwx note validate` enforces this rule and warns on violations.
 
 ## Provider reference
 
