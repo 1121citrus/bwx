@@ -12,7 +12,8 @@ Do not open a public GitHub issue for security vulnerabilities.
 
 | Version | Supported |
 | ------- | --------- |
-| 1.0.x   | Yes       |
+| 1.1.x   | Yes       |
+| 1.0.x   | No — upgrade to 1.1.x |
 | Older   | No — upgrade to latest |
 
 ---
@@ -25,10 +26,11 @@ comes entirely from its runtime dependencies:
 | Dependency | Source | Used when | Security concern |
 | ---------- | ------ | --------- | ---------------- |
 | **bash** (4.0+) | System package | Always | OS-level updates; no bwx-specific risk |
-| **jq** | Native install or Docker `apteno/alpine-jq` | Parsing BWS API JSON | Docker image may contain Alpine CVEs |
+| **jq** | Native or Docker `apteno/alpine-jq` | Parsing BWS API JSON | Docker image may contain Alpine CVEs |
 | **bws** | Native or Docker `bitwarden/bws` | All BWS API operations | Docker image may contain OS/binary CVEs |
-| **curl** / **wget** / **fetch** | System package | `include/http` consumers | OS-level updates |
-| **Docker** `curlimages/curl` | Docker Hub | HTTP fallback (no native client) | Docker image may contain Alpine CVEs |
+| **curl** | Native or Docker `curlimages/curl` | Provider API calls, HTTP fallback | Docker image may contain Alpine CVEs |
+| **openssl** | Native or Docker `alpine/openssl` | TLS cert generation (`openssl-selfsigned`) | Docker image may contain Alpine CVEs |
+| **aws** | Native or Docker `amazon/aws-cli` | IAM key rotation (`aws-iam`) | Docker image may contain AL2 CVEs |
 
 ### Docker image pins
 
@@ -39,7 +41,9 @@ to Docker-wrapped alternatives.  The default image references are:
 | -------- | ------- | ------- |
 | `BWX_JQ_IMAGE` | `apteno/alpine-jq` | jq wrapper |
 | `BWX_BWS_IMAGE` | `bitwarden/bws:latest` | Bitwarden CLI wrapper |
-| `BWX_CURL_IMAGE` | `curlimages/curl` | HTTP client fallback |
+| `BWX_CURL_IMAGE` | `curlimages/curl` | HTTP client and provider API calls |
+| `BWX_OPENSSL_IMAGE` | `alpine/openssl` | TLS certificate generation |
+| `BWX_AWS_IMAGE` | `amazon/aws-cli` | AWS IAM key rotation |
 
 To pin a specific image version (recommended for production):
 
@@ -47,6 +51,8 @@ To pin a specific image version (recommended for production):
 export BWX_JQ_IMAGE="apteno/alpine-jq:2023-01-01"
 export BWX_BWS_IMAGE="bitwarden/bws:2025.1.0"
 export BWX_CURL_IMAGE="curlimages/curl:8.11.1"
+export BWX_OPENSSL_IMAGE="alpine/openssl:3.4.1"
+export BWX_AWS_IMAGE="amazon/aws-cli:2.27.0"
 ```
 
 ### Scanning
