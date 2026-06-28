@@ -25,6 +25,18 @@ if command -v bws >/dev/null 2>&1; then
     return "${RETURN_SUCCESS:-0}" 2>/dev/null || exit "${EXIT_SUCCESS:-0}"
 fi
 
+# Module-scope cleanup state for bws()'s RETURN/EXIT trap. Keeping the
+# path in a global, and the cleanup body in a named function, means the
+# trap action is never built by string-interpolating a filename into
+# shell code.
+_bws_config_file=""
+_bws_cleanup_config_file() {
+    local f="${_bws_config_file}"
+    _bws_config_file=""
+    [[ -n "${f}" ]] && rm -f -- "${f}" >/dev/null 2>&1
+    return 0
+}
+
 # Docker-wrapped bws command with log-level extraction and token
 # validation.  Strips --log-level before forwarding to the container.
 # Args:
@@ -97,8 +109,11 @@ bws() {
             fi
             # SECURITY: Use a template with TMPDIR to avoid predictable names in /tmp
             config_file=$(mktemp "${TMPDIR:-/tmp}/bwx.XXXXXX")
-            # shellcheck disable=SC2064
-            trap "rm -f '${config_file}' >/dev/null 2>&1" RETURN EXIT
+            # Function-based trap reads the path from a module-scope
+            # variable at fire time, so the filename is never embedded
+            # as shell code into the trap action.
+            _bws_config_file="${config_file}"
+            trap _bws_cleanup_config_file RETURN EXIT
             cat > "${config_file}" <<EOF
 [profiles.default]
 server_base = "${server_base}"

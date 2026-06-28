@@ -216,14 +216,16 @@ _bwx_rotate_all() {
     local project="${1}" dryrun="${2}"
     local failed=0
 
-    local candidates_file
-    # SECURITY: Use a template with TMPDIR to avoid predictable names in /tmp
-    candidates_file="$(mktemp "${TMPDIR:-/tmp}/bwx.XXXXXX")" || \
+    # SECURITY: Use a template with TMPDIR to avoid predictable names in /tmp.
+    # The cleanup path lives in a module-scope variable read by a
+    # function-based RETURN trap, so the path is never embedded as
+    # shell code into the trap action.
+    _bwx_rotate_candidates_file="$(mktemp "${TMPDIR:-/tmp}/bwx.XXXXXX")" || \
         error "${EXIT_ERROR}" "Cannot create temp file for candidate list"
-    # shellcheck disable=SC2064
-    trap "rm -f '${candidates_file}'" RETURN
+    trap _bwx_rotate_cleanup_candidates RETURN
 
-    if ! _bwx_default_secret_notes "${project}" > "${candidates_file}"; then
+    if ! _bwx_default_secret_notes "${project}" \
+            > "${_bwx_rotate_candidates_file}"; then
         error "${EXIT_ERROR}" "Failed to fetch secret list for rotation"
     fi
 
@@ -234,13 +236,25 @@ _bwx_rotate_all() {
 
         _bwx_rotate_one "${key}" "${project}" "${dryrun}" || \
             failed=$((failed + 1))
-    done < "${candidates_file}"
+    done < "${_bwx_rotate_candidates_file}"
 
     info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     if [[ "${failed}" -gt 0 ]]; then
         error "${EXIT_ERROR}" "${failed} rotation(s) failed"
     fi
     info "All rotations complete"
+}
+
+# Module-scope cleanup state for _bwx_rotate_all's RETURN trap. Keeping
+# the path in a global, and the cleanup body in a named function, means
+# the trap action is never built by string-interpolating a filename into
+# shell code.
+_bwx_rotate_candidates_file=""
+_bwx_rotate_cleanup_candidates() {
+    local f="${_bwx_rotate_candidates_file}"
+    _bwx_rotate_candidates_file=""
+    [[ -n "${f}" ]] && rm -f -- "${f}"
+    return 0
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

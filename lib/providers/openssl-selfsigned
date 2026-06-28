@@ -19,6 +19,19 @@
 #   $3 — current BWS note contents (for config fields)
 # Returns:
 #   0; sets PROVIDER_VALUE, PROVIDER_EXPIRES, PROVIDER_NOTE
+
+# Module-scope cleanup state for the openssl-selfsigned provider's
+# RETURN trap. Keeping the path in a global, and the cleanup body in a
+# named function, means the trap action is never built by
+# string-interpolating a directory name into shell code.
+_bwx_openssl_tmpdir=""
+_bwx_openssl_cleanup_tmpdir() {
+    local d="${_bwx_openssl_tmpdir}"
+    _bwx_openssl_tmpdir=""
+    [[ -n "${d}" ]] && rm -rf -- "${d}"
+    return 0
+}
+
 bwx-provider-openssl-selfsigned() {
     local secret="${1}" secrets_dir="${2}" note="${3:-}"
 
@@ -35,8 +48,11 @@ bwx-provider-openssl-selfsigned() {
     tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/bwx.XXXXXX")" \
         || { error "${EXIT_ERROR}" "Failed to create temp dir"
              return 1; }
-    # shellcheck disable=SC2064
-    trap "rm -rf '${tmpdir}'" RETURN
+    # Function-based trap reads the path from a module-scope variable
+    # at fire time, so the directory name is never embedded as shell
+    # code into the trap action.
+    _bwx_openssl_tmpdir="${tmpdir}"
+    trap _bwx_openssl_cleanup_tmpdir RETURN
 
     local key_file="${tmpdir}/key.pem"
     local cert_file="${tmpdir}/cert.pem"

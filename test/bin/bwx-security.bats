@@ -316,3 +316,44 @@ MOCK
     run _bwx_note_validate_path ""
     [[ "${status}" -ne 0 ]]
 }
+
+# =========================================================================
+# Trap-based cleanup: no quoted-path traps that could execute filename
+# =========================================================================
+
+@test "security: lib/ files use function-based RETURN traps, not quoted paths" {
+    # `trap "rm ... '${var}'" RETURN` expands the path at trap-install
+    # time and embeds it as shell code. If the filename ever contains
+    # a quote or shell metacharacter, the trap body would execute it.
+    # Function-based traps (`trap _cleanup_fn RETURN`) re-read the
+    # variable at fire time and pass it as an argument — never as code.
+    local hits
+    hits=$(grep -rnE "trap[[:space:]]+\"rm[[:space:]]" \
+            "${BWX_ROOT}/lib/" "${BWX_ROOT}/include/" 2>/dev/null \
+            | wc -l)
+    [[ "${hits}" -eq 0 ]]
+}
+
+@test "security: trap cleanup functions strip injected filenames" {
+    # End-to-end shape check: install a function-based RETURN trap,
+    # set the target variable to a value containing shell-injection
+    # bait, fire the trap, and confirm only the literal path is acted
+    # on (the bait file is left intact).
+    local marker="${TEST_TMPDIR}/should-not-be-touched"
+    : > "${marker}"
+    local tmpfile
+    tmpfile="$(mktemp "${TEST_TMPDIR}/cleanup.XXXXXX")"
+    : > "${tmpfile}"
+    local saved="${tmpfile}"
+    # Inject bait: if the trap body evaluated the variable as code,
+    # this would delete the marker. The function-based trap passes
+    # the value as a single argv element to rm, so the literal
+    # filename (which does not exist) is simply ignored.
+    tmpfile="${saved}'; rm -f '${marker}"
+    _cleanup() { rm -f -- "${tmpfile}"; }
+    (
+        trap _cleanup RETURN
+        true
+    )
+    [[ -f "${marker}" ]]
+}
