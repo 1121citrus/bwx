@@ -11,7 +11,7 @@ class Bwx < Formula
   homepage "https://github.com/1121citrus/bwx"
   license "AGPL-3.0-or-later"
   url "https://github.com/1121citrus/bwx/archive/refs/tags/v1.1.0.tar.gz"
-  sha256 "53b31474b8eddb01a5462966421e14f6ef0cead43edfc5ae9652b54bc14d8c6a"
+  sha256 "7199e800516d5e24c758ed66f884f1fcbe87da9ea7f130d963ba2add18ee1f32"
   head "https://github.com/1121citrus/bwx.git", branch: "main"
 
   depends_on "bash" => :recommended
