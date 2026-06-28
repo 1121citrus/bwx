@@ -212,10 +212,8 @@ eval "$(bwx completion bash)"
 
 ```bash
 brew tap 1121citrus/bwx https://github.com/1121citrus/bwx
-brew install --HEAD bwx
+brew install bwx
 ```
-
-The current Homebrew formula installs the `main` branch as `HEAD` until a tagged release archive is published.
 
 On macOS the system shell is Bash 3.2. If installed via Homebrew, ensure the Homebrew bash is first in your `PATH`:
 
