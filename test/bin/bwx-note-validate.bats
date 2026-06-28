@@ -459,6 +459,71 @@ teardown() {
     [[ "${output}" == *"grafana-sa-id: required provider field missing"* ]]
 }
 
+# ── bwx note validate CLI — field-naming convention ──────────────
+
+@test "note validate: rejects unhyphenated non-core field" {
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        source "'"${BWX_ROOT}"'/lib/bwx-note-validate"
+        bwx-secret-get() {
+            printf "file: test\nrole: admin"
+        }
+        bwx-note-validate "test-secret"
+    '
+    [[ "${status}" -eq 1 ]]
+    [[ "${output}" == *"role: unhyphenated field name is reserved"* ]]
+}
+
+@test "note validate: accepts core fields without hyphen" {
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        source "'"${BWX_ROOT}"'/lib/bwx-note-validate"
+        bwx-secret-get() {
+            printf "file: test\nnote: hello\nexpires: 2026-12-31\nprovider: prompt"
+        }
+        bwx-note-validate "test-secret"
+    '
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"Note validation passed"* ]]
+}
+
+@test "note validate: accepts hyphenated provider fields" {
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        source "'"${BWX_ROOT}"'/lib/bwx-note-validate"
+        bwx-secret-get() {
+            printf "file: test\ncustom-owner: ops-team\napp-env: production"
+        }
+        bwx-note-validate "test-secret"
+    '
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"Note validation passed"* ]]
+}
+
+@test "note validate: naming error accumulates with other errors" {
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        source "'"${BWX_ROOT}"'/lib/bwx-note-validate"
+        bwx-secret-get() {
+            printf "file: ../bad\nowner: ops\nexpires: nope"
+        }
+        bwx-note-validate "test-secret"
+    '
+    [[ "${status}" -eq 1 ]]
+    [[ "${output}" == *"owner: unhyphenated field name"* ]]
+    [[ "${output}" == *"file: invalid path"* ]]
+    [[ "${output}" == *"expires: invalid date"* ]]
+    [[ "${output}" == *"3 validation error"* ]]
+}
+
 # ── bwx note validate CLI — option handling ──────────────────────
 
 @test "note validate: no argument returns usage error" {

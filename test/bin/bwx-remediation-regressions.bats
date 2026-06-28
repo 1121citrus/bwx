@@ -311,6 +311,83 @@ MOCK
 }
 
 # =========================================================================
+# Phase 3B (cont'd): field-naming convention
+# =========================================================================
+
+@test "3B: field-names extracts all field names from note" {
+    source "${BWX_ROOT}/include/note-parser"
+    local note=$'file: test\nexpires: 2026-01-01\npassword-length: 32'
+    local result
+    result="$(bwx-note-field-names "${note}")"
+    [[ "${result}" == *"file"* ]]
+    [[ "${result}" == *"expires"* ]]
+    [[ "${result}" == *"password-length"* ]]
+}
+
+@test "3B: field-names lowercases field names" {
+    source "${BWX_ROOT}/include/note-parser"
+    local note=$'File: test\nEXPIRES: 2026-01-01'
+    local result
+    result="$(bwx-note-field-names "${note}")"
+    [[ "${result}" == *"file"* ]]
+    [[ "${result}" == *"expires"* ]]
+    [[ "${result}" != *"File"* ]]
+    [[ "${result}" != *"EXPIRES"* ]]
+}
+
+@test "3B: field-names deduplicates repeated fields" {
+    source "${BWX_ROOT}/include/note-parser"
+    local note=$'release-tag: v1\nrelease-tag: v2'
+    local result
+    result="$(bwx-note-field-names "${note}")"
+    local count
+    count=$(printf '%s\n' "${result}" | grep -c 'release-tag')
+    [[ "${count}" -eq 1 ]]
+}
+
+@test "3B: field-names skips non-field lines" {
+    source "${BWX_ROOT}/include/note-parser"
+    local note=$'file: test\nJust a note line\n  # comment\nexpires: 2026-01-01'
+    local result
+    result="$(bwx-note-field-names "${note}")"
+    [[ "${result}" == *"file"* ]]
+    [[ "${result}" == *"expires"* ]]
+    local count
+    count=$(printf '%s\n' "${result}" | wc -l)
+    [[ "${count}" -eq 2 ]]
+}
+
+@test "3B: validate-field-name accepts core fields" {
+    source "${BWX_ROOT}/include/note-parser"
+    _bwx_note_validate_field_name "file"
+    _bwx_note_validate_field_name "note"
+    _bwx_note_validate_field_name "expires"
+    _bwx_note_validate_field_name "provider"
+    _bwx_note_validate_field_name "release-tag"
+}
+
+@test "3B: validate-field-name accepts hyphenated provider fields" {
+    source "${BWX_ROOT}/include/note-parser"
+    _bwx_note_validate_field_name "password-length"
+    _bwx_note_validate_field_name "grafana-url"
+    _bwx_note_validate_field_name "cert-cn"
+    _bwx_note_validate_field_name "aws-iam-username"
+    _bwx_note_validate_field_name "docker-hub-password"
+}
+
+@test "3B: validate-field-name rejects unhyphenated non-core fields" {
+    source "${BWX_ROOT}/include/note-parser"
+    run _bwx_note_validate_field_name "role"
+    [[ "${status}" -ne 0 ]]
+    run _bwx_note_validate_field_name "url"
+    [[ "${status}" -ne 0 ]]
+    run _bwx_note_validate_field_name "length"
+    [[ "${status}" -ne 0 ]]
+    run _bwx_note_validate_field_name "owner"
+    [[ "${status}" -ne 0 ]]
+}
+
+# =========================================================================
 # Phase 3C: rotation preserves unknown metadata fields
 # =========================================================================
 

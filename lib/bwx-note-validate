@@ -225,6 +225,21 @@ EOF
     local errors=0
     local field_value
 
+    # -- Field-naming convention ---------------------------------------
+
+    local all_names
+    all_names="$(bwx-note-field-names "${note}")"
+    if [[ -n "${all_names}" ]]; then
+        local fname
+        while IFS= read -r fname; do
+            if ! _bwx_note_validate_field_name "${fname}"; then
+                warn "${fname}: unhyphenated field name is reserved" \
+                    "for core fields (use a hyphenated prefix)"
+                errors=$((errors + 1))
+            fi
+        done <<< "${all_names}"
+    fi
+
     # -- Core field validation -----------------------------------------
 
     field_value="$(bwx-note-get-field file "${note}")"

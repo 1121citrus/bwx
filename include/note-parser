@@ -100,6 +100,54 @@ _bwx_note_validate_field() {
     esac
 }
 
+# -- Field-naming convention -----------------------------------------------
+#
+# Core fields (single unhyphenated words) are reserved for the bwx
+# framework.  Provider config fields MUST use a hyphenated prefix
+# so they cannot collide with current or future core fields.
+#
+# Reserved: file, note, expires, provider, release-tag
+# Valid provider field: grafana-url, cert-days, password-length, ...
+# Invalid provider field: role, length, url (no hyphen — looks core)
+
+# _bwx_note_core_fields — list of reserved core field names.
+readonly _BWX_NOTE_CORE_FIELDS="file note expires provider release-tag"
+
+# _bwx_note_validate_field_name — check that a field name follows
+# the naming convention.  Core field names (unhyphenated single words)
+# are reserved; all other field names must contain a hyphen.
+# Args:
+#   $1 — field name (lowercased by caller)
+# Returns:
+#   0 if the name is a known core field or contains a hyphen;
+#   1 if the name is an unhyphenated word not in the core set
+_bwx_note_validate_field_name() {
+    local name="${1}"
+    local core
+    for core in ${_BWX_NOTE_CORE_FIELDS}; do
+        [[ "${name}" == "${core}" ]] && return 0
+    done
+    [[ "${name}" == *-* ]] && return 0
+    return 1
+}
+
+# bwx-note-field-names — extract all field names from a note.
+# Parses lines matching the canonical grammar and returns the
+# lowercased field name from each.
+# Args:
+#   $1 — note text
+# Returns:
+#   0; writes one field name per line to stdout
+bwx-note-field-names() {
+    local note="${1}"
+    printf '%s\n' "${note}" \
+        | grep -iE '^[[:space:]]*[a-zA-Z][a-zA-Z0-9_-]*[[:space:]]*:' \
+        | sed -E 's/^[[:space:]]*([a-zA-Z][a-zA-Z0-9_-]*)[[:space:]]*:.*/\1/' \
+        | awk '{ print tolower($0) }' \
+        | sort -u \
+        || true
+}
+
 # bwx-note-get-field — extract a single-value field from a note.
 # Returns 0 with empty stdout when the field is absent (optional).
 # Args:
