@@ -544,7 +544,9 @@ MOCK
 
 @test "5C: Homebrew formula carries tagged release archive checksum" {
     local formula="${BWX_ROOT}/install/homebrew/Formula/bwx.rb"
-    grep -q 'url "https://github.com/1121citrus/bwx/archive/refs/tags/v1.0.0.tar.gz"' \
+    local version
+    version="$(<"${BWX_ROOT}/version.txt")"
+    grep -q "url \"https://github.com/1121citrus/bwx/archive/refs/tags/v${version}.tar.gz\"" \
         "${formula}"
     grep -Eq 'sha256 "[0-9a-f]{64}"' "${formula}"
 }
