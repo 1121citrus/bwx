@@ -772,6 +772,40 @@ aws-secret-access-key: @env:MY_AWS_SECRET"
     [[ "${output}" == *"VALUE=glsa_fallback"* ]]
 }
 
+@test "grafana-service-account: basic-auth header is single-line for long credentials" {
+    jq --version >/dev/null 2>&1 || skip "jq required"
+    # GNU coreutils base64 wraps at 76 columns by default; a long
+    # admin password would otherwise produce a multi-line header that
+    # corrupts the HTTP request. The provider must strip newlines.
+    local long_pw
+    long_pw="$(printf 'p%.0s' $(seq 1 200))"
+    printf '%s' "${long_pw}" > "${TEST_TMPDIR}/grafana-admin-password"
+    local note=$'grafana-sa-id: 42\ngrafana-admin-password: '"${TEST_TMPDIR}/grafana-admin-password"
+    local header_capture="${TEST_TMPDIR}/auth-header"
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/note-parser"
+        source "'"${BWX_ROOT}"'/include/provider-config"
+        source "'"${BWX_ROOT}"'/lib/providers/grafana-service-account"
+        capture_file="'"${header_capture}"'"
+        curl() {
+            # Provider passes --header @- with the auth line on stdin;
+            # capture it so we can assert it is a single line.
+            cat > "${capture_file}"
+            echo "{\"key\":\"glsa_x\"}"
+            return 0
+        }
+        bwx-provider-grafana-service-account "test-secret" "'"${TEST_TMPDIR}"'" "'"${note}"'"
+    '
+    [[ "${status}" -eq 0 ]]
+    # Header file must hold exactly one logical line beginning with
+    # "Authorization: Basic " followed by an unbroken base64 token.
+    local line_count
+    line_count="$(grep -c . "${header_capture}")"
+    [[ "${line_count}" -eq 1 ]]
+    grep -qE '^Authorization: Basic [A-Za-z0-9+/=]+$' "${header_capture}"
+}
+
 # ── docker-registry provider ──────────────────────────────────────
 
 @test "docker-registry: credential fallback to secrets dir" {
