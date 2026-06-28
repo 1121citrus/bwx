@@ -10,8 +10,8 @@ class Bwx < Formula
   desc "Bitwarden Secrets Manager eXtended CLI"
   homepage "https://github.com/1121citrus/bwx"
   license "AGPL-3.0-or-later"
-  url "https://github.com/1121citrus/bwx/archive/refs/tags/v1.0.0.tar.gz"
-  sha256 "57e5441be7df7ee9f3790f2a95c74633db402dc46b60e8a54b9e40bb20a35f76"
+  url "https://github.com/1121citrus/bwx/archive/refs/tags/v1.1.0.tar.gz"
+  sha256 "53b31474b8eddb01a5462966421e14f6ef0cead43edfc5ae9652b54bc14d8c6a"
   head "https://github.com/1121citrus/bwx.git", branch: "main"
 
   depends_on "bash" => :recommended
