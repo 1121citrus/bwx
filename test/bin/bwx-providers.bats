@@ -344,3 +344,43 @@ teardown() {
     [[ "${output}" == *"EXPIRES=90"* ]]
     [[ "${output}" == *"Tagged reusable key"* ]]
 }
+
+@test "tailscale-oauth: oauth body URL-encodes special characters in credentials" {
+    jq --version >/dev/null 2>&1 || skip "jq required for oauth provider"
+    # Credentials containing '&', '=', '%' would corrupt a raw form body.
+    printf '%s' 'id&name=evil' > "${TEST_TMPDIR}/tailscale-oauth-client-id"
+    printf '%s' 'p%ss&grant_type=admin' \
+        > "${TEST_TMPDIR}/tailscale-oauth-client-secret"
+    local body_capture="${TEST_TMPDIR}/oauth-body"
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/lib/providers/tailscale-oauth"
+        capture_file="'"${body_capture}"'"
+        curl() {
+            case "$*" in
+                *oauth/token*)
+                    # Capture the form body that the provider piped in
+                    cat > "${capture_file}"
+                    echo "{\"access_token\":\"x\"}"
+                    ;;
+                *keys*)
+                    echo "{\"key\":\"tskey-ok\"}"
+                    ;;
+            esac
+            return 0
+        }
+        bwx-provider-tailscale-oauth "test-secret" "'"${TEST_TMPDIR}"'"
+    '
+    [[ "${status}" -eq 0 ]]
+    local body
+    body="$(<"${body_capture}")"
+    # Raw '&' and '=' inside credential values would split into bogus
+    # parameters; the encoded body must contain percent escapes only.
+    [[ "${body}" == *"client_id=id%26name%3Devil"* ]]
+    [[ "${body}" == *"client_secret=p%25ss%26grant_type%3Dadmin"* ]]
+    [[ "${body}" == *"grant_type=client_credentials"* ]]
+    # Sanity: parameter count must be exactly three
+    local field_count
+    field_count="$(printf '%s\n' "${body}" | tr '&' '\n' | grep -c '=')"
+    [[ "${field_count}" -eq 3 ]]
+}

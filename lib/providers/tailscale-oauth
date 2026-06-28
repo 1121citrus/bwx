@@ -54,11 +54,20 @@ bwx-provider-tailscale-oauth() {
     }
 
     info "Authenticating with Tailscale OAuth..."
-    local token_response
+    local token_response oauth_body
+    # URL-encode credential parts so values containing '&', '=', or '%'
+    # cannot corrupt the application/x-www-form-urlencoded body.
+    oauth_body="$(jq -rn \
+        --arg id "${client_id}" \
+        --arg secret "${client_secret}" \
+        '"client_id=" + ($id|@uri) +
+         "&client_secret=" + ($secret|@uri) +
+         "&grant_type=client_credentials"'
+    )"
     token_response="$(curl --fail --silent --show-error \
         --request POST \
         --url "${api}/oauth/token" \
-        --data @- <<< "client_id=${client_id}&client_secret=${client_secret}&grant_type=client_credentials"
+        --data @- <<< "${oauth_body}"
     )" || { error "${EXIT_ERROR}" "Tailscale OAuth token request failed"; return 1; }
 
     local token
