@@ -65,6 +65,56 @@ teardown() {
     [[ "${h1}" != "${h2}" ]]
 }
 
+@test "cache-hash produces 64-char SHA-256 hex (not CRC32)" {
+    # CRC32 (cksum) would yield ~10 decimal digits. Reject any output
+    # that is not a 64-character hex string so a regression to the
+    # weaker fallback fails loudly instead of silently colliding.
+    local h
+    h=$(bwx-cache-hash "any-key")
+    [[ "${h}" =~ ^[0-9a-f]{64}$ ]]
+}
+
+@test "cache-hash refuses to fall back to cksum when no SHA tool exists" {
+    # Rewrite the function so all three SHA probes fail, then call it.
+    # Verifies the else branch errors out instead of silently falling
+    # back to cksum (which produces trivial collisions).
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/bwx-cache"
+        eval "$(declare -f bwx-cache-hash \
+            | sed -e "s|/usr/bin/shasum|/nonexistent/shasum|" \
+                  -e "s|command -v shasum|false|" \
+                  -e "s|command -v sha256sum|false|")"
+        bwx-cache-hash "any-key"
+    '
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"no SHA-256 implementation"* ]]
+}
+
+@test "cache-hash source has no cksum invocation" {
+    # Reject any actual call to cksum; comments mentioning cksum by
+    # name are stripped before the scan so the docstring can warn
+    # future maintainers without false-positiving this test.
+    local code
+    code=$(sed 's/#.*$//' "${BWX_ROOT}/include/bwx-cache")
+    ! printf '%s\n' "${code}" | grep -qE 'cksum'
+}
+
+@test "cache-file fails when bwx-cache-hash fails" {
+    # Override bwx-cache-hash inside a subshell so it always fails;
+    # bwx-cache-file must propagate the failure (return 1) instead of
+    # producing a path with an empty hash segment.
+    run bash -c '
+        source "'"${BWX_ROOT}"'/include/logging"
+        source "'"${BWX_ROOT}"'/include/bwx-cache"
+        export BWX_CACHE_DIR="'"${TEST_TMPDIR}/cache"'"
+        bwx-cache-hash() { return 1; }
+        bwx-cache-file "ns" "key" "json"
+    '
+    [[ "${status}" -ne 0 ]]
+    [[ -z "${output}" ]]
+}
+
 # ── bwx-cache-file ──────────────────────────────────────────────────
 
 @test "cache-file returns path under cache dir" {

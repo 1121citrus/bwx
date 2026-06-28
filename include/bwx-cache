@@ -24,11 +24,13 @@ declare -F bwx-cache-dir >/dev/null 2>&1 || {
     }
 
     # Compute a SHA-256 hash of the given arguments.
-    # Prefers native hash tools; falls back to a basic digest.
+    # Requires a SHA implementation; refuses to fall back to a
+    # collision-prone digest (cksum CRC32) that could let unrelated
+    # cache keys share a file.
     # Args:
     #   $@ — values to hash (concatenated)
     # Returns:
-    #   0; writes hex digest to stdout
+    #   0 and writes hex digest to stdout; 1 if no SHA tool is found
     bwx-cache-hash() {
         if [[ -x /usr/bin/shasum ]]; then
             printf '%s' "$*" | /usr/bin/shasum -a 256 | awk '{print $1}'
@@ -37,7 +39,9 @@ declare -F bwx-cache-dir >/dev/null 2>&1 || {
         elif command -v sha256sum >/dev/null 2>&1; then
             printf '%s' "$*" | sha256sum | awk '{print $1}'
         else
-            printf '%s' "$*" | cksum | awk '{print $1}'
+            printf 'bwx-cache-hash: no SHA-256 implementation found ' >&2
+            printf '(install coreutils or shasum)\n' >&2
+            return 1
         fi
     }
 
@@ -48,16 +52,18 @@ declare -F bwx-cache-dir >/dev/null 2>&1 || {
     #   $3 — file extension (default: "json")
     # Returns:
     #   0 and writes file path to stdout; 1 if cache dir unavailable
+    #   or no SHA-256 implementation is available
     bwx-cache-file() {
         local namespace="${1:?Need namespace}"
         local cache_key="${2:?Need cache key}"
         local extension="${3:-json}"
-        local cache_dir
+        local cache_dir hash
         cache_dir=$(bwx-cache-dir) || return 1
+        hash=$(bwx-cache-hash "${cache_key}") || return 1
         printf '%s/%s-%s.%s\n' \
             "${cache_dir}" \
             "${namespace}" \
-            "$(bwx-cache-hash "${cache_key}")" \
+            "${hash}" \
             "${extension}"
     }
 

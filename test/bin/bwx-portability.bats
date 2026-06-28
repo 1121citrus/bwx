@@ -69,20 +69,20 @@ BWX="${BWX_ROOT}/bin/bwx"
 # P-04: Hash fallback chain includes sha256sum
 # ---------------------------------------------------------------------------
 
-@test "bwx-cache-hash tries sha256sum before cksum" {
+@test "bwx-cache-hash supports sha256sum (GNU coreutils) systems" {
     grep -q 'sha256sum' "${BWX_ROOT}/include/bwx-cache"
 }
 
-@test "bwx-cache-hash fallback order is shasum then sha256sum then cksum" {
-    local shasum_line sha256sum_line cksum_line
+@test "bwx-cache-hash fallback order is shasum then sha256sum" {
+    # cksum is intentionally not a fallback: CRC32 collisions would
+    # let unrelated cache keys share a file. The function errors out
+    # when no SHA-256 implementation is present (see bwx-cache.bats).
+    local shasum_line sha256sum_line
     shasum_line=$(grep -n 'shasum -a 256' "${BWX_ROOT}/include/bwx-cache" \
         | head -1 | cut -d: -f1)
     sha256sum_line=$(grep -n 'sha256sum' "${BWX_ROOT}/include/bwx-cache" \
         | head -1 | cut -d: -f1)
-    cksum_line=$(grep -n 'cksum' "${BWX_ROOT}/include/bwx-cache" \
-        | head -1 | cut -d: -f1)
     [[ "${shasum_line}" -lt "${sha256sum_line}" ]]
-    [[ "${sha256sum_line}" -lt "${cksum_line}" ]]
 }
 
 # ---------------------------------------------------------------------------
