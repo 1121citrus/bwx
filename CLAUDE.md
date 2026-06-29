@@ -91,3 +91,17 @@ This is a public repository under `1121citrus/bwx`. No commit message,
 documentation, or code comment may reference the private `1121-citrus`
 repository or any citrus-specific infrastructure. All language must be
 generic and self-contained.
+
+## Development toolchain
+
+The project requires only `docker`, `bash`, and POSIX core utilities.
+No additional tools need to be installed — `./build` encapsulates every
+`docker run` invocation needed to lint, build, test, and scan.
+
+- Use `./build` for all CI operations.
+- Do not run `brew install`, `apt install`, `apk add`, or any other host
+  package manager to obtain tools; use the `docker run` patterns in
+  `build` instead.
+- Do not search `PATH` or well-known system locations for tools not
+  already in `build`; propose adding a `docker run` invocation following
+  the existing pattern.
