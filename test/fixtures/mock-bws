@@ -72,6 +72,16 @@ get_mock_secrets() {
     "revisionDate": "2023-01-01T00:00:00Z"
   },
   {
+    "id": "aaaa-mode-bbbb-cccc",
+    "organizationId": "org-1",
+    "projectId": "${project_id}",
+    "key": "mode_secret",
+    "value": "mode_value",
+    "note": "file: mode-secret\nnote: declares its own mode\nmode: 0640\nrelease-tag: test-tag-1",
+    "creationDate": "2023-01-01T00:00:00Z",
+    "revisionDate": "2023-01-01T00:00:00Z"
+  },
+  {
     "id": "mmmm-nnnn-oooo-pppp",
     "organizationId": "org-1",
     "projectId": "${project_id}",

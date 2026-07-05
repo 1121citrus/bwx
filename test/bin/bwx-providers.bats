@@ -329,7 +329,7 @@ teardown() {
                     echo "{\"access_token\":\"test-oauth-token\"}"
                     ;;
                 *keys*)
-                    echo "{\"key\":\"tskey-auth-stubbed-key\"}"
+                    echo "{\"key\":\"tskey-auth-FAKE_NOT_REAL\"}"
                     ;;
             esac
             return 0
@@ -340,7 +340,7 @@ teardown() {
         echo "NOTE=${PROVIDER_NOTE}"
     '
     [[ "${status}" -eq 0 ]]
-    [[ "${output}" == *"VALUE=tskey-auth-stubbed-key"* ]]
+    [[ "${output}" == *"VALUE=tskey-auth-FAKE_NOT_REAL"* ]]
     [[ "${output}" == *"EXPIRES=90"* ]]
     [[ "${output}" == *"Tagged reusable key"* ]]
 }

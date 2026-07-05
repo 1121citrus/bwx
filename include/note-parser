@@ -83,6 +83,15 @@ _bwx_note_validate_identifier() {
     [[ "${1}" =~ ^[A-Za-z0-9._-]+$ ]]
 }
 
+# _bwx_note_validate_mode — check an octal file mode (e.g. 0644, 600).
+# Args:
+#   $1 — value to validate
+# Returns:
+#   0 if valid; 1 otherwise
+_bwx_note_validate_mode() {
+    [[ "${1}" =~ ^0?[0-7]{3,4}$ ]]
+}
+
 # _bwx_note_validate_field — validate a value against its field type.
 # Args:
 #   $1 — field name
@@ -96,6 +105,7 @@ _bwx_note_validate_field() {
         expires)     _bwx_note_validate_date "${val}" ;;
         provider)    _bwx_note_validate_identifier "${val}" ;;
         release-tag) _bwx_note_validate_identifier "${val}" ;;
+        mode)        _bwx_note_validate_mode "${val}" ;;
         *)           return 0 ;;
     esac
 }
@@ -106,12 +116,12 @@ _bwx_note_validate_field() {
 # framework.  Provider config fields MUST use a hyphenated prefix
 # so they cannot collide with current or future core fields.
 #
-# Reserved: file, note, expires, provider, release-tag
+# Reserved: file, note, expires, provider, release-tag, mode
 # Valid provider field: grafana-url, cert-days, password-length, ...
 # Invalid provider field: role, length, url (no hyphen — looks core)
 
 # _bwx_note_core_fields — list of reserved core field names.
-readonly _BWX_NOTE_CORE_FIELDS="file note expires provider release-tag"
+readonly _BWX_NOTE_CORE_FIELDS="file note expires provider release-tag mode"
 
 # _bwx_note_validate_field_name — check that a field name follows
 # the naming convention.  Core field names (unhyphenated single words)
