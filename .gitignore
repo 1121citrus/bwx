@@ -6,6 +6,7 @@
 
 # Editors
 *.swp
+.claude/
 
 # Environments
 .env
