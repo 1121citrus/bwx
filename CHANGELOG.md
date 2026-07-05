@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.2.0
+
+### Added
+
+- `bwx import` file-mode control for secrets mounted into non-root
+  containers:
+  - `-m`, `--mode MODE` — deferential octal mode applied only to
+    secrets whose note does not declare its own mode (also settable
+    via the `BWX_IMPORT_FILE_MODE` environment variable)
+  - `--force-mode MODE` — assertive octal mode applied to every
+    exported file, overriding any per-secret note mode
+  - `mode:` structured note field — per-secret octal mode, letting a
+    single secret opt out of the owner-only default without relaxing
+    the whole import
+- New reserved core note field `mode` in `include/note-parser`, with
+  octal validation (`_bwx_note_validate_mode`)
+
+### Changed
+
+- Exported files still default to `0600` (owner-only) and the
+  `.by-uuid` / `.raw` directories remain `0700`; the new knobs only
+  relax the per-file mode where explicitly requested. Effective
+  precedence (most specific wins): `--force-mode`, then the per-secret
+  `mode:` note field, then `--mode` / `BWX_IMPORT_FILE_MODE`, then
+  `0600`.
+
 ## 1.1.0
 
 ### Added

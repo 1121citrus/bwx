@@ -36,6 +36,67 @@ teardown() { bwx_test_teardown; }
     [[ "$(readlink "${out_dir}/test-secret-1")" == ".by-uuid/iiii-jjjj-kkkk-llll" ]]
 }
 
+# Portable file-mode read: GNU stat then BSD stat.
+_mode_of() {
+    stat -c '%a' "${1}" 2>/dev/null || stat -f '%Lp' "${1}"
+}
+
+@test "import writes secret files 0600 by default" {
+    local out_dir="${TEST_TMPDIR}/import-mode-default"
+    run "${BWX}" import test-tag-1 "${out_dir}" test-project
+    [[ "${status}" -eq 0 ]]
+    [[ "$(_mode_of "${out_dir}/.by-uuid/iiii-jjjj-kkkk-llll")" == "600" ]]
+}
+
+@test "import --mode sets the exported file mode, dir stays 0700" {
+    local out_dir="${TEST_TMPDIR}/import-mode-flag"
+    run "${BWX}" import --mode 0644 test-tag-1 "${out_dir}" test-project
+    [[ "${status}" -eq 0 ]]
+    [[ "$(_mode_of "${out_dir}/.by-uuid/iiii-jjjj-kkkk-llll")" == "644" ]]
+    [[ "$(_mode_of "${out_dir}/.by-uuid")" == "700" ]]
+}
+
+@test "import honors BWX_IMPORT_FILE_MODE" {
+    local out_dir="${TEST_TMPDIR}/import-mode-env"
+    export BWX_IMPORT_FILE_MODE=0644
+    run "${BWX}" import test-tag-1 "${out_dir}" test-project
+    unset BWX_IMPORT_FILE_MODE
+    [[ "${status}" -eq 0 ]]
+    [[ "$(_mode_of "${out_dir}/.by-uuid/iiii-jjjj-kkkk-llll")" == "644" ]]
+}
+
+@test "import rejects an invalid --mode" {
+    run "${BWX}" import --mode notoctal test-tag-1 "${TEST_TMPDIR}/x" test-project
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"octal"* ]]
+}
+
+@test "per-secret note mode: is applied and beats the --mode default" {
+    local out_dir="${TEST_TMPDIR}/import-note-mode"
+    run "${BWX}" import --mode 0644 test-tag-1 "${out_dir}" test-project
+    [[ "${status}" -eq 0 ]]
+    # the note-declared secret keeps its own 0640...
+    [[ "$(_mode_of "${out_dir}/.by-uuid/aaaa-mode-bbbb-cccc")" == "640" ]]
+    # ...while a secret with no note mode takes the --mode default
+    [[ "$(_mode_of "${out_dir}/.by-uuid/iiii-jjjj-kkkk-llll")" == "644" ]]
+}
+
+@test "note mode: applies with no CLI mode; other secrets stay 0600" {
+    local out_dir="${TEST_TMPDIR}/import-note-default"
+    run "${BWX}" import test-tag-1 "${out_dir}" test-project
+    [[ "${status}" -eq 0 ]]
+    [[ "$(_mode_of "${out_dir}/.by-uuid/aaaa-mode-bbbb-cccc")" == "640" ]]
+    [[ "$(_mode_of "${out_dir}/.by-uuid/iiii-jjjj-kkkk-llll")" == "600" ]]
+}
+
+@test "--force-mode overrides even a per-secret note mode:" {
+    local out_dir="${TEST_TMPDIR}/import-force-mode"
+    run "${BWX}" import --force-mode 0600 test-tag-1 "${out_dir}" test-project
+    [[ "${status}" -eq 0 ]]
+    [[ "$(_mode_of "${out_dir}/.by-uuid/aaaa-mode-bbbb-cccc")" == "600" ]]
+    [[ "$(_mode_of "${out_dir}/.by-uuid/iiii-jjjj-kkkk-llll")" == "600" ]]
+}
+
 @test "import is in the dispatch table" {
     run "${BWX}" bogus-import
     [[ "${output}" == *"import"* ]]

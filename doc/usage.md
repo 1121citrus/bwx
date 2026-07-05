@@ -904,6 +904,23 @@ and users can still inspect or consume the raw archive.
 | `OUTPUT_DIR` | Yes | Target directory for exported files |
 | `PROJECT` | No | Project name or UUID. Defaults to `BWX_DEFAULT_PROJECT`. |
 
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-m`, `--mode MODE` | Deferential octal file mode (e.g. `0644`), applied only to secrets whose note does not set its own `mode:` field. Also settable via `BWX_IMPORT_FILE_MODE`. |
+| `--force-mode MODE` | Assertive octal file mode applied to every exported file, overriding any per-secret `mode:` note. |
+
+**File modes.** Exported files default to `0600` (owner-only). A secret can
+declare its own mode with a `mode:` field in its note (see
+[Structured note metadata](#structured-note-metadata)) — useful when the
+file is mounted into a container that runs as a non-root user and must
+read it. Precedence, most specific first: `--force-mode`, then the
+per-secret `mode:` note field, then `--mode` / `BWX_IMPORT_FILE_MODE`,
+then `0600`. The `.by-uuid` / `.raw` directories are always `0700`
+regardless; the mode applies to the `.by-uuid/<id>` content file that
+each named symlink points to.
+
 **Example:**
 
 ```console
@@ -911,6 +928,9 @@ $ bwx import 2026.06.24.01 .secrets
 [INFO] Importing secrets from project 'my-project' [uuid] release '2026.06.24.01' to '.secrets'
 [INFO] Exported 'tailscale_authkey_v1' to '.secrets/tailscale-authkey'
 [INFO] Export completed
+
+# Make exported files group/world-readable (still inside a 0700 dir):
+$ bwx import --mode 0644 2026.06.24.01 .secrets
 ```
 
 [**↑ Contents**](#bwx-subcommand-reference)
@@ -1228,11 +1248,12 @@ pattern `key: value`.
 | `expires:` | Single-value | Expiration date for time-limited credentials (ISO 8601 date, for example `2026-09-20`). Used by `bwx check expiry` to detect upcoming expirations. |
 | `provider:` | Single-value | Rotation provider driver name (e.g., `tailscale-oauth`, `github-pat`). Used by `bwx rotate` to determine how to generate a new credential. Falls back to `prompt` if not set. |
 | `release-tag:` | Multi-value | One or more release identifiers binding the secret to specific deployments. Each tag is a separate `release-tag:` line. |
+| `mode:` | Single-value | Octal file mode (e.g., `0644`) applied to the exported file by `bwx import`. Use it when the secret is mounted into a container that runs as a non-root user and must read the file. Overridden by `bwx import --force-mode`; takes precedence over `--mode` / `BWX_IMPORT_FILE_MODE`. Defaults to `0600` when unset. |
 
 ### Field-naming convention
 
-Core field names (`file`, `note`, `expires`, `provider`, `release-tag`)
-are reserved for the bwx framework.  All other field names — including
+Core field names (`file`, `note`, `expires`, `provider`, `release-tag`,
+`mode`) are reserved for the bwx framework.  All other field names — including
 provider config fields and any custom metadata — must contain at least
 one hyphen.  This prevents provider fields from colliding with current
 or future core fields.
@@ -1284,9 +1305,9 @@ bwx secret get note my_secret_v1 | grep '^release-tag:' | awk '{print $2}'
 
 ### Multi-value vs single-value
 
-- **Single-value properties** (`file:`, `expires:`, `note:`) appear at most
-  once per note. When updated via `bwx secret set filename`, the existing
-  line is replaced.
+- **Single-value properties** (`file:`, `expires:`, `note:`, `mode:`) appear
+  at most once per note. When updated via `bwx secret set filename`, the
+  existing line is replaced.
 - **Multi-value properties** (`release-tag:`) can appear multiple times.
   Lines are deduplicated via `sort --unique` when written. Use
   `bwx tag add` and `bwx tag remove` to manage individual entries.
