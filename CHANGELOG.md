@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.2
+
+### Fixed
+
+- `bwx import` is now idempotent when a secret carries a read-only
+  `mode:` (e.g. `0444`). A prior run left the exported `.by-uuid` file
+  without a write bit, so the next import failed truncating it with
+  "Permission denied". The export now removes any prior file before
+  writing (the `.by-uuid` directory is `0700`, so the owner can always
+  replace it).
+
 ## 1.2.1
 
 ### Added
