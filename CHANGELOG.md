@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.1
+
+### Added
+
+- `bwx secret set mode SECRET MODE` — set the `mode:` note field
+  (octal, e.g. `0644`) with surgical note editing that preserves all
+  other fields and validates the value.
+- `bwx secret get mode SECRET` — read a secret's `mode:` note field.
+
+### Fixed
+
+- The `mode` note field introduced in 1.2.0 could be imported and
+  validated but not read or written through the `secret get` / `secret
+  set` property interface. Both now accept `mode`, completing the
+  feature.
+
 ## 1.2.0
 
 ### Added
