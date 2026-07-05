@@ -28,8 +28,8 @@ comes entirely from its runtime dependencies:
 | **bash** (4.0+) | System package | Always | OS-level updates; no bwx-specific risk |
 | **jq** | Native or Docker `apteno/alpine-jq` | Parsing BWS API JSON | Docker image may contain Alpine CVEs |
 | **bws** | Native or Docker `bitwarden/bws` | All BWS API operations | Docker image may contain OS/binary CVEs |
-| **curl** | Native or Docker `curlimages/curl` | Provider API calls, HTTP fallback | Docker image may contain Alpine CVEs |
-| **openssl** | Native or Docker `alpine/openssl` | TLS cert generation (`openssl-selfsigned`) | Docker image may contain Alpine CVEs |
+| **curl** | Native or Docker `curlimages/curl` | Provider calls, HTTP fallback | Docker image may contain Alpine CVEs |
+| **openssl** | Native or Docker `alpine/openssl` | Self-signed cert generation | Docker image may contain Alpine CVEs |
 | **aws** | Native or Docker `amazon/aws-cli` | IAM key rotation (`aws-iam`) | Docker image may contain AL2 CVEs |
 
 ### Docker image pins
