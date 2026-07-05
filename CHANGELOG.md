@@ -26,6 +26,11 @@
   `mode:` note field, then `--mode` / `BWX_IMPORT_FILE_MODE`, then
   `0600`.
 
+### Fixed
+
+- Wrapped two over-length dependency table rows in `SECURITY.md` to
+  satisfy markdownlint line-length checks (MD013)
+
 ## 1.1.0
 
 ### Added
