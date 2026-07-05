@@ -627,8 +627,8 @@ the "all ... subcommands are recognized" tests so the new name is verified.
     ```
 
 - **Note field-naming convention.** Unhyphenated single-word field names
-  (`file`, `note`, `expires`, `provider`, `release-tag`) are reserved for
-  the bwx framework. Provider config fields and custom metadata fields must
+  (`file`, `note`, `expires`, `provider`, `release-tag`, `mode`) are reserved
+  for the bwx framework. Provider config fields and custom metadata fields must
   contain at least one hyphen (e.g., `grafana-url`, `cert-days`, `app-owner`).
   `bwx note validate` enforces this convention.
 - **American English** in all messages, comments, and documentation.

@@ -70,9 +70,38 @@ functions. This is a bash CLI project, not a Docker image.
 - Use spaces instead of tabs except where semantically required
 - American English throughout
 
+## Note field-naming convention
+
+Unhyphenated single-word field names (`file`, `note`, `expires`,
+`provider`, `release-tag`) are reserved for the bwx framework. Provider
+config fields and custom metadata fields must contain at least one
+hyphen. `bwx note validate` enforces this convention.
+
+- **Good:** `grafana-url`, `cert-days`, `password-length`, `app-owner`
+- **Bad:** `role`, `url`, `length`, `owner` (looks like a core field)
+
+The reserved set is defined in `_BWX_NOTE_CORE_FIELDS` in
+`include/note-parser`. When adding a new provider, prefix all config
+fields with the provider's domain: `cert-cn`, `aws-iam-username`,
+`docker-hub-password`, etc.
+
 ## Public repo constraints
 
 This is a public repository under `1121citrus/bwx`. No commit message,
 documentation, or code comment may reference the private `1121-citrus`
 repository or any citrus-specific infrastructure. All language must be
 generic and self-contained.
+
+## Development toolchain
+
+The project requires only `docker`, `bash`, and POSIX core utilities.
+No additional tools need to be installed — `./build` encapsulates every
+`docker run` invocation needed to lint, build, test, and scan.
+
+- Use `./build` for all CI operations.
+- Do not run `brew install`, `apt install`, `apk add`, or any other host
+  package manager to obtain tools; use the `docker run` patterns in
+  `build` instead.
+- Do not search `PATH` or well-known system locations for tools not
+  already in `build`; propose adding a `docker run` invocation following
+  the existing pattern.

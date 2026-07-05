@@ -92,32 +92,11 @@
 
 set -euo pipefail
 
-# Bash version guard.
 if (( BASH_VERSINFO[0] < 4 )); then
-    echo "bwx build requires bash 4.0 or newer" >&2
+    printf 'build requires bash 4.0 or later (found %s)\n' \
+        "${BASH_VERSION}" >&2
     exit 1
 fi
-
-# Portable readlink implementation.
-_bwx_portable_readlink() {
-    if command -v readlink >/dev/null 2>&1; then
-        if readlink -f /dev/null >/dev/null 2>&1; then
-            readlink -f "$1"
-        else
-            local target
-            target=$(readlink "$1")
-            if [[ -z "${target}" ]]; then
-                printf '%s\n' "$1"
-            elif [[ "${target}" = /* ]]; then
-                printf '%s\n' "${target}"
-            else
-                printf '%s/%s\n' "$(dirname "$1")" "${target}"
-            fi
-        fi
-    else
-        printf '%s\n' "$1"
-    fi
-}
 
 # ---------------------------------------------------------------------------
 # Developer orientation
@@ -474,7 +453,17 @@ fi
 full_image="${IMAGE_NAME}"
 
 # Script directory for build context and relative paths.
-script_dir=$(dirname "$(_bwx_portable_readlink "$0")")
+# Portable absolute-path resolver (macOS BSD readlink lacks -f).
+_portable_readlink() {
+    if command -v realpath >/dev/null 2>&1; then
+        realpath "$1"
+    elif readlink -f "$1" >/dev/null 2>&1; then
+        readlink -f "$1"
+    else
+        (cd "$(dirname "$1")" && printf '%s/%s\n' "$(pwd -P)" "$(basename "$1")")
+    fi
+}
+script_dir=$(dirname "$(_portable_readlink "$0")")
 
 echo "Version:   ${VERSION}" >&2
 
@@ -487,20 +476,16 @@ if [[ "${LINT}" == "true" ]]; then
     _sc_targets=()
     while IFS= read -r -d "" _f; do
         _sc_targets+=("/src/${_f}")
-    done < <(cd "${script_dir}" && {
-        find bin/ include/ lib/ \
-            -type f \( -name "*.sh" -o -name "*.bash" -o -name "note-parser" -o ! -name "*.*" \) \
-            -print0 2>/dev/null
-        find lib/providers/ \
-            -type f \( -name "*.sh" -o -name "*.bash" -o ! -name "*.*" \) \
-            -print0 2>/dev/null
-    })
+    done < <(cd "${script_dir}" && find bin/ include/ lib/ \
+        -type f \( -name "*.sh" -o -name "*.bash" -o ! -name "*.*" \) \
+        -print0 2>/dev/null)
     if [[ ${#_sc_targets[@]} -gt 0 ]]; then
         (cd "${script_dir}" && run docker run --rm \
             -v "${script_dir}:/src:ro" \
             --workdir /src \
             "${SHELLCHECK_IMAGE}:${SHELLCHECK_TAG}" \
                 -S warning \
+ \
                 "${_sc_targets[@]}")
     fi
 
@@ -525,9 +510,25 @@ if [[ "${TEST}" == "true" ]]; then
         -w /code \
         bats/bats:1.13.0 \
             test/bin/bwx.bats \
-            test/bin/bwx-secret.bats \
+            test/bin/bwx-branding.bats \
+            test/bin/bwx-cache.bats \
+            test/bin/bwx-deep-review-regressions.bats \
+            test/bin/bwx-docker-wrapper.bats \
+            test/bin/bwx-http.bats \
+            test/bin/bwx-lifecycle.bats \
+            test/bin/bwx-misc.bats \
+            test/bin/bwx-mutations.bats \
+            test/bin/bwx-option-parsing.bats \
+            test/bin/bwx-portability.bats \
             test/bin/bwx-project.bats \
-            test/bin/bwx-tag.bats
+            test/bin/bwx-project-queries.bats \
+            test/bin/bwx-providers.bats \
+            test/bin/bwx-remediation-regressions.bats \
+            test/bin/bwx-secret.bats \
+            test/bin/bwx-secret-queries.bats \
+            test/bin/bwx-security.bats \
+            test/bin/bwx-tag.bats \
+            test/bin/bwx-tag-ops.bats
     fi
     write_build_report
 fi
@@ -624,64 +625,38 @@ fi
 if [[ "${ADVISE_COVERAGE}" == "true" ]]; then
     echo "==> Stage 5d: Coverage" >&2
 
-    _cov_test_files=(
-        test/bin/bwx.bats
-        test/bin/bwx-secret.bats
-        test/bin/bwx-secret-queries.bats
-        test/bin/bwx-project.bats
-        test/bin/bwx-project-queries.bats
-        test/bin/bwx-tag.bats
-        test/bin/bwx-tag-ops.bats
-        test/bin/bwx-mutations.bats
-        test/bin/bwx-http.bats
-        test/bin/bwx-providers.bats
-        test/bin/bwx-providers-extended.bats
-        test/bin/bwx-provider-config.bats
-        test/bin/bwx-lifecycle.bats
-        test/bin/bwx-security.bats
-        test/bin/bwx-misc.bats
-    )
-
     if [[ "${DRY_RUN}" == "true" ]]; then
         echo "[DRY RUN] docker run --rm --cap-add SYS_PTRACE --security-opt seccomp=unconfined \\" >&2
-        echo "[DRY RUN]   -v ${script_dir}:/code:ro -w /code ${BATS_KCOV_IMAGE}:${BATS_KCOV_TAG} kcov --merge ..." >&2
+        echo "[DRY RUN]   -v ${script_dir}:/code:ro -w /code ${BATS_KCOV_IMAGE}:${BATS_KCOV_TAG} bats-coverage <test files>" >&2
     else
-        # Run kcov per test file then merge — sourced lib files get correct
-        # per-file attribution instead of being absorbed into bin/bwx.
         docker run --rm \
             --cap-add SYS_PTRACE \
             --security-opt seccomp=unconfined \
             -v "${script_dir}:/code:ro" \
             -w /code \
             "${BATS_KCOV_IMAGE}:${BATS_KCOV_TAG}" \
-            bash -c '
-                _include="/code/lib,/code/bin,/code/include"
-                _src="/code/lib"
-                for f in "$@"; do
-                    name=$(basename "${f}" .bats)
-                    kcov --include-path="${_include}" \
-                         --bash-parse-files-in-dir="${_src}" \
-                         "/tmp/cov-${name}" \
-                         bats "${f}" >/dev/null 2>&1 || true
-                done
-                kcov --merge /tmp/cov-merged /tmp/cov-* 2>/dev/null
-                cov=$(find /tmp/cov-merged -name coverage.json | head -1)
-                [[ -n "${cov}" ]] || { echo "No coverage data" >&2; exit 0; }
-                jq -r --arg src "${_src}/" "
-                  .files[] |
-                  (.file | ltrimstr(\$src)) +
-                  \": \" + .percent_covered +
-                  \"% (\" + .covered_lines +
-                  \"/\" + .total_lines + \" lines)\"
-                " "${cov}"
-                jq -r "
-                  \"Overall: \" +
-                  (([.files[].covered_lines | tonumber] | add) | tostring) +
-                  \"/\" +
-                  (([.files[].total_lines | tonumber] | add) | tostring) +
-                  \" lines\"
-                " "${cov}"
-            ' _ "${_cov_test_files[@]}" \
+            bats-coverage \
+                --src /code/lib --include /code/lib,/code/bin,/code/include \
+                test/bin/bwx.bats \
+                test/bin/bwx-branding.bats \
+                test/bin/bwx-cache.bats \
+                test/bin/bwx-deep-review-regressions.bats \
+                test/bin/bwx-docker-wrapper.bats \
+                test/bin/bwx-http.bats \
+                test/bin/bwx-lifecycle.bats \
+                test/bin/bwx-misc.bats \
+                test/bin/bwx-mutations.bats \
+                test/bin/bwx-option-parsing.bats \
+                test/bin/bwx-portability.bats \
+                test/bin/bwx-project.bats \
+                test/bin/bwx-project-queries.bats \
+                test/bin/bwx-providers.bats \
+                test/bin/bwx-remediation-regressions.bats \
+                test/bin/bwx-secret.bats \
+                test/bin/bwx-secret-queries.bats \
+                test/bin/bwx-security.bats \
+                test/bin/bwx-tag.bats \
+                test/bin/bwx-tag-ops.bats \
             >&2 || echo "    Coverage run failed (advisory only)" >&2
     fi
 fi

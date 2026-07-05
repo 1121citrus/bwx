@@ -19,6 +19,19 @@ bwx-import() {
     # flow through this function and would leak via xtrace. Use
     # structured trace/debug calls for debugging.
 
+    # Exported secret files default to 0600 (owner-only) via the umask
+    # below. Two knobs relax this, per the design in
+    # dev/doc/1121citrus/bwx/*-import-file-permissions-design:
+    #   * a deferential default (--mode / BWX_IMPORT_FILE_MODE): applied
+    #     only to secrets whose note does not declare its own `mode:`;
+    #   * an assertive override (--force-mode): applied to every file,
+    #     overriding any per-secret `mode:` note field.
+    # Effective per-secret precedence (most specific wins):
+    #   --force-mode > note `mode:` > --mode / BWX_IMPORT_FILE_MODE > 0600.
+    # The containing directories always remain 0700 regardless.
+    local _mode_default="${BWX_IMPORT_FILE_MODE:-}"
+    local _mode_force=""
+
     while [[ $# -gt 0 && "${1}" == -* ]]; do
         case "${1}" in
             -l|--log-level)
@@ -26,6 +39,18 @@ bwx-import() {
                     error "${EXIT_USAGE}" "--log-level requires a value"
                 LOG_LEVEL="${2}"
                 export LOG_LEVEL
+                shift 2
+                ;;
+            -m|--mode)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--mode requires a value"
+                _mode_default="${2}"
+                shift 2
+                ;;
+            --force-mode)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--force-mode requires a value"
+                _mode_force="${2}"
                 shift 2
                 ;;
             -h|--help)
@@ -41,12 +66,22 @@ Arguments:
   PROJECT      Project name or UUID (default: \${BWX_DEFAULT_PROJECT})
 
 Options:
+  -m, --mode MODE        Deferential octal mode for exported files
+                         (e.g. 0644). Applied only to secrets whose note
+                         does not set its own 'mode:' field. Also settable
+                         via the BWX_IMPORT_FILE_MODE environment variable.
+      --force-mode MODE  Assertive octal mode applied to every exported
+                         file, overriding any per-secret 'mode:' note.
   -l, --log-level LEVEL  Set log level (default: info)
   -h, --help             Show this help and exit
 
 Each secret with a matching release-tag: note entry is exported as a
 file named by its file: property.  Secret values are stored in
 OUTPUT_DIR/.by-uuid/<id> with symlinks from the file names.
+
+File mode precedence (most specific wins): --force-mode, then a
+per-secret 'mode:' note field, then --mode / BWX_IMPORT_FILE_MODE, then
+the secure default 0600. Exported directories are always 0700.
 EOF
                 return "${EXIT_USAGE:-2}"
                 ;;
@@ -72,6 +107,14 @@ EOF
 
     [[ -n "${tag}" && -n "${output_dir}" && -n "${project}" ]] || \
         error "${EXIT_USAGE}" "TAG, OUTPUT_DIR, and PROJECT are required"
+
+    local _m
+    for _m in "${_mode_default}" "${_mode_force}"; do
+        [[ -z "${_m}" ]] && continue
+        [[ "${_m}" =~ ^0?[0-7]{3,4}$ ]] || \
+            error "${EXIT_USAGE}" \
+                "mode must be an octal file mode (e.g. 0644): '${_m}'"
+    done
 
     if [[ "${tag}" != "all" ]]; then
         [[ "${tag}" =~ ^[A-Za-z0-9._-]+$ ]] || \
@@ -149,6 +192,30 @@ EOF
                 esac
 
                 printf '%s' "${value}" > "${uuid_dir}/${id}"
+
+                # Resolve this secret's file mode by precedence:
+                # --force-mode > note `mode:` > --mode/env > 0600 default.
+                # The named export entry is a symlink to this .by-uuid
+                # file, so its mode is what a consumer (or container mount)
+                # actually sees; the .by-uuid directory stays 0700.
+                local _file_mode="${_mode_force}"
+                if [[ -z "${_file_mode}" ]]; then
+                    local _note_mode
+                    _note_mode="$(bwx-note-get-field mode "${note}" || true)"
+                    if [[ -n "${_note_mode}" ]]; then
+                        [[ "${_note_mode}" =~ ^0?[0-7]{3,4}$ ]] || \
+                            error "${EXIT_ERROR}" \
+                                "secret '${key}' has a non-octal mode: note field: '${_note_mode}'"
+                        _file_mode="${_note_mode}"
+                    else
+                        _file_mode="${_mode_default}"
+                    fi
+                fi
+                if [[ -n "${_file_mode}" ]]; then
+                    chmod "${_file_mode}" "${uuid_dir}/${id}"
+                    debug "applied mode ${_file_mode} to secret '${key}'"
+                fi
+
                 printf '%s' "${secret}" > "${raw_dir}/${id}"
                 printf '%s\t%s\n' "${id}" "${key}" >> "${raw_dir}/MANIFEST"
 
