@@ -11,10 +11,7 @@ class Bwx < Formula
   homepage "https://github.com/1121citrus/bwx"
   license "AGPL-3.0-or-later"
   url "https://github.com/1121citrus/bwx/archive/refs/tags/v1.2.2.tar.gz"
-  # Interim checksum (carried from v1.2.0) — finalized with the real
-  # v1.2.2 archive checksum after the tag is pushed. See the
-  # chore(homebrew) release step.
-  sha256 "2d1c9621dde87da39aeb017ae4eb0f37122888f48bd870af566d7dbe58e47f53"
+  sha256 "9a7d78108fd981293726be9d468bdcc508c5b9a8969bc34a5bfbcd28b84967f5"
   head "https://github.com/1121citrus/bwx.git", branch: "main"
 
   depends_on "bash" => :recommended
