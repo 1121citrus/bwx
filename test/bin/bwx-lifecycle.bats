@@ -97,6 +97,18 @@ _mode_of() {
     [[ "$(_mode_of "${out_dir}/.by-uuid/iiii-jjjj-kkkk-llll")" == "600" ]]
 }
 
+@test "re-import is idempotent over a read-only (0444) exported file" {
+    local out_dir="${TEST_TMPDIR}/import-reimport-ro"
+    run "${BWX}" import --force-mode 0444 test-tag-1 "${out_dir}" test-project
+    [[ "${status}" -eq 0 ]]
+    [[ "$(_mode_of "${out_dir}/.by-uuid/iiii-jjjj-kkkk-llll")" == "444" ]]
+    # The exported file is now read-only; a second import must replace it
+    # rather than fail truncating it with "Permission denied".
+    run "${BWX}" import --force-mode 0444 test-tag-1 "${out_dir}" test-project
+    [[ "${status}" -eq 0 ]]
+    [[ "$(_mode_of "${out_dir}/.by-uuid/iiii-jjjj-kkkk-llll")" == "444" ]]
+}
+
 @test "import is in the dispatch table" {
     run "${BWX}" bogus-import
     [[ "${output}" == *"import"* ]]

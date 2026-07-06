@@ -158,6 +158,18 @@ MOCK
     [[ -z "${output}" ]]
 }
 
+@test "3A: secret get mode returns 0 for secret without mode property" {
+    run "${BWX}" secret get mode secret_key_1
+    [[ "${status}" -eq 0 ]]
+    [[ -z "${output}" ]]
+}
+
+@test "3A: secret get mode returns the declared mode" {
+    run "${BWX}" secret get mode mode_secret
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == "0640" ]]
+}
+
 # =========================================================================
 # Phase 3B: centralized note parser unit tests
 # =========================================================================

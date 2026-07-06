@@ -60,6 +60,25 @@ teardown() { bwx_test_teardown; }
     [[ "${status}" -ne 0 ]]
 }
 
+# -- secret set mode --
+
+@test "secret set mode updates the mode property" {
+    run "${BWX}" secret set mode secret_key_3 0644
+    [[ "${status}" -eq 0 ]]
+    [[ "${output}" == *"Updated mode for 'secret_key_3' to '0644'"* ]]
+}
+
+@test "secret set mode rejects a non-octal value" {
+    run "${BWX}" secret set mode secret_key_3 notoctal
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"octal"* ]]
+}
+
+@test "secret set mode requires secret and mode args" {
+    run "${BWX}" secret set mode
+    [[ "${status}" -ne 0 ]]
+}
+
 # -- secret set empty value guard --
 
 @test "secret set value rejects empty argument" {
