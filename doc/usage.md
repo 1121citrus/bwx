@@ -229,6 +229,7 @@ Get a property of a secret.
 | `tags` | Release tags (one per line) |
 | `expires` | The `expires:` date from the note |
 | `provider` | The `provider:` name from the note |
+| `mode` | The `mode:` octal file mode from the note |
 
 **Arguments:**
 
@@ -429,6 +430,7 @@ Set a property of a secret.
 | `note` | Full note text (`--from-file` supported) |
 | `key` | Secret key name |
 | `filename` | The `file:` property in the note |
+| `mode` | The `mode:` octal file mode in the note (e.g. `0644`) |
 
 **Arguments:**
 

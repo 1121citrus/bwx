@@ -191,6 +191,13 @@ EOF
                         ;;
                 esac
 
+                # Remove any prior export first. A previous run may have
+                # applied a read-only mode (e.g. 0444) to this file, and the
+                # redirect below cannot truncate a file with no write bit —
+                # it would fail with "Permission denied", breaking a
+                # re-import. The .by-uuid directory is 0700, so the owner can
+                # always replace the entry regardless of the file's mode.
+                rm -f "${uuid_dir}/${id}"
                 printf '%s' "${value}" > "${uuid_dir}/${id}"
 
                 # Resolve this secret's file mode by precedence:

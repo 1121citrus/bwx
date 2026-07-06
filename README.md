@@ -120,8 +120,8 @@ bwx rotate --all                        # rotate what's due
 ### Secret commands
 
 ```text
-bwx secret get PROP SECRET   Get a property (value, note, id, key, filename, tags, ...)
-bwx secret set PROP SECRET V Set a property (value, note, key, filename)
+bwx secret get PROP SECRET   Get a property (value, note, id, key, filename, tags, mode, ...)
+bwx secret set PROP SECRET V Set a property (value, note, key, filename, mode)
 bwx secret list              List all secrets in a project (JSON)
 bwx secret show SECRET       Show full secret details (JSON)
 bwx secret ls                List secrets (summary format)
@@ -197,6 +197,7 @@ release-tag: 2026.07.01.01
 | `expires:` | Expiration date (checked by `bwx check expiry`) |
 | `provider:` | Rotation driver (used by `bwx rotate`) |
 | `release-tag:` | One or more deployment version bindings |
+| `mode:` | Octal file mode for `bwx import` (e.g. `0644` for a non-root container mount); defaults to `0600` |
 
 ## Installation
 
