@@ -2,7 +2,7 @@
 
 # bwx subcommand reference
 
-Complete reference for `bwx` 1.0.0, a Bitwarden Secrets Manager extended CLI.
+Complete command reference for the current `bwx` release.
 
 - [bwx subcommand reference](#bwx-subcommand-reference)
   - [Installation](#installation)
@@ -76,12 +76,15 @@ to make them permanent.
 
 ```bash
 brew tap 1121citrus/bwx https://github.com/1121citrus/bwx
-brew install --HEAD bwx
+brew install bwx
 eval "$(bwx completion bash)"
 ```
 
-The current Homebrew formula installs the `main` branch as `HEAD` until a
-versioned source archive is published.
+To install the latest `main` branch instead of the released tag, use:
+
+```bash
+brew install --HEAD bwx
+```
 
 macOS ships Bash 3.2, which is too old for `bwx`. Install an updated bash and put it first in `PATH`:
 
