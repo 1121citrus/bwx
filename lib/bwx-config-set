@@ -41,7 +41,7 @@ Options:
   -l, --log-level LEVEL  Set log level (default: info)
 
 Examples:
-  bwx config set bwx-default-project 4976359e-ffde-4c2a-9f8c-b3a80134e6be
+  bwx config set bwx-default-project 11111111-1111-1111-1111-111111111111
   pbpaste | bwx config set bws-access-token
 EOF
                 return "${EXIT_USAGE:-2}"

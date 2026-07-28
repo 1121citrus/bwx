@@ -595,6 +595,40 @@ MOCK
     [[ "${status}" -ne 0 ]]
 }
 
+@test "5D: published examples use placeholder UUIDs only" {
+    # Examples are copied from real sessions, so a genuine project or
+    # organization UUID reaches a public repository easily. Every UUID
+    # in shipped documentation and help text must be an obvious
+    # placeholder: one hex digit repeated through every group.
+    # Bash uses POSIX ERE, which has no backreferences, so "same digit
+    # throughout" is checked by deleting that digit and requiring an
+    # empty remainder rather than by a regex.
+    local uuid stripped digit remainder
+    while IFS= read -r uuid; do
+        [[ -n "${uuid}" ]] || continue
+        stripped="${uuid//-/}"
+        digit="${stripped:0:1}"
+        remainder="${stripped//${digit}/}"
+        [[ -z "${remainder}" ]] || {
+            printf 'non-placeholder UUID in published content: %s\n' \
+                "${uuid}" >&2
+            return 1
+        }
+    done < <(grep -rhoE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' \
+        "${BWX_ROOT}/doc" "${BWX_ROOT}/lib" "${BWX_ROOT}/man" \
+        "${BWX_ROOT}/README.md" "${BWX_ROOT}/CHANGELOG.md" \
+        "${BWX_ROOT}/SECURITY.md" 2>/dev/null | sort -u)
+}
+
+@test "5D: published examples use no real home directory" {
+    # A deployment account name in an example path identifies the
+    # system the example was captured on.
+    run grep -rE '/(home|Users)/(citrus|jim)' \
+        "${BWX_ROOT}/doc" "${BWX_ROOT}/lib" "${BWX_ROOT}/man" \
+        "${BWX_ROOT}/README.md" "${BWX_ROOT}/SECURITY.md"
+    [[ "${status}" -ne 0 ]]
+}
+
 # =========================================================================
 # Phase 6A: bwx-secret-clone follows standard module pattern
 # =========================================================================

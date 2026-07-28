@@ -689,7 +689,7 @@ report.
 
 ```console
 $ bwx config list
-Configuration directory: /home/citrus/.config/bwx
+Configuration directory: /home/user/.config/bwx
 
 NAME                   VARIABLE               CLASS    STORED  MODE   EFFECTIVE
 bws-access-token       BWS_ACCESS_TOKEN       secret   yes     600    file
@@ -715,9 +715,9 @@ host where `bwx` has not yet run.
 
 ```console
 $ bwx config path
-/home/citrus/.config/bwx
+/home/user/.config/bwx
 $ bwx config path bws-access-token
-/home/citrus/.config/bwx/bws-access-token
+/home/user/.config/bwx/bws-access-token
 ```
 
 [**↑ Contents**](#bwx-subcommand-reference)
@@ -742,7 +742,7 @@ rather than served — see
 
 ```console
 $ bwx config get bwx-default-project
-4976359e-ffde-4c2a-9f8c-b3a80134e6be
+11111111-1111-1111-1111-111111111111
 ```
 
 [**↑ Contents**](#bwx-subcommand-reference)
@@ -770,10 +770,10 @@ into place, so a concurrent reader never observes a partial value.
 **Example:**
 
 ```console
-$ bwx config set bwx-default-project 4976359e-ffde-4c2a-9f8c-b3a80134e6be
-[INFO] Stored 'bwx-default-project' at '/home/citrus/.config/bwx/bwx-default-project'
+$ bwx config set bwx-default-project 11111111-1111-1111-1111-111111111111
+[INFO] Stored 'bwx-default-project' at '/home/user/.config/bwx/bwx-default-project'
 $ pbpaste | bwx config set bws-access-token
-[INFO] Stored 'bws-access-token' at '/home/citrus/.config/bwx/bws-access-token'
+[INFO] Stored 'bws-access-token' at '/home/user/.config/bwx/bws-access-token'
 ```
 
 [**↑ Contents**](#bwx-subcommand-reference)
@@ -1532,9 +1532,9 @@ the same spirit as `ssh` rejecting a world-readable private key:
 
 ```console
 $ bwx config get bws-access-token
-[ERROR] Configuration file '/home/citrus/.config/bwx/bws-access-token' is accessible to other users (mode 644)
+[ERROR] Configuration file '/home/user/.config/bwx/bws-access-token' is accessible to other users (mode 644)
 [ERROR] It holds credential material and must not be group- or world-readable
-[ERROR] Fix it with: chmod 600 '/home/citrus/.config/bwx/bws-access-token'
+[ERROR] Fix it with: chmod 600 '/home/user/.config/bwx/bws-access-token'
 ```
 
 The check runs only when the file is actually read. If the environment
