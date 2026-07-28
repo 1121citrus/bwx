@@ -82,16 +82,43 @@ via environment variable.  This means:
   is running (Docker wrapper only).
 - The token is visible in `/proc/<pid>/environ` on Linux to
   processes running as the same user.
-- The token is **not** written to disk by `bwx` itself.
+- The token is written to disk by `bwx` only when you ask for it,
+  via `bwx config set bws-access-token`.
 
 **Recommendations:**
 
 - On shared hosts, prefer a native `bws` install over the Docker
   wrapper to avoid `docker inspect` exposure.
-- Set `BWS_ACCESS_TOKEN` in the current shell session only; do not
-  persist it in `.bashrc` or `.profile`.
+- Never persist the token in `.bashrc`, `.profile`, or any other
+  shell startup file.  Those files are frequently mode `0644`, they
+  are read by every interactive shell, and they are easy to commit to
+  a dotfiles repository by accident.  Use `bwx config set` instead.
+- Pipe the token into `bwx config set` rather than passing it as an
+  argument: an argument is visible in the process table and is
+  recorded in shell history.
 - Use Bitwarden machine account tokens scoped to the minimum
   required project.
+
+### Stored credential files
+
+`bwx config set` writes to
+`${BWX_CONFIG_DIR:-${XDG_CONFIG_HOME:-${HOME}/.config}/bwx}`.  Files
+holding credential material:
+
+- Are written with mode `0600` inside a directory with mode `0700`.
+- Are written through a temporary file and renamed into place, so a
+  concurrent reader never observes a partial value.
+- Are **refused** on read when group or other holds any permission
+  bit, in the same spirit as `ssh` rejecting a world-readable private
+  key.  The refusal names the file and the fix.
+
+The permission check runs only when a file is actually read.  When the
+environment already supplies the value, the file is never opened and
+never inspected, so a stale over-permissive file cannot break a caller
+that does not depend on it.
+
+Non-credential entries (currently `bwx-default-project`, a project
+identifier) are classified separately and are not mode-enforced.
 
 ---
 

@@ -115,6 +115,16 @@ bwx check expiry                        # any expiring?
 bwx rotate --all                        # rotate what's due
 ```
 
+For unattended callers (cron, `ssh host command`, systemd), store the
+token instead of exporting it — a non-interactive shell never reads
+past the interactive guard in `~/.bashrc`, so an exported token is
+invisible to exactly the automation that needs it:
+
+```bash
+pbpaste | bwx config set bws-access-token   # stored at mode 0600
+bwx config list                             # what resolves from where
+```
+
 ## Commands
 
 ### Secret commands
@@ -168,6 +178,15 @@ bwx rotate --all             Rotate all expiring secrets
 ```text
 bwx provider info NAME       Show expected config fields for a provider
 bwx provider info --list     List all available providers
+```
+
+### Config commands
+
+```text
+bwx config list              Show entries and which source is effective
+bwx config path [NAME]       Print the config directory or one file path
+bwx config get NAME          Print a stored value
+bwx config set NAME [VALUE]  Store a value (reads stdin when VALUE omitted)
 ```
 
 ### Other commands

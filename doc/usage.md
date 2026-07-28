@@ -27,6 +27,11 @@ Complete command reference for the current `bwx` release.
       - [`bwx project ls`](#bwx-project-ls)
       - [`bwx project default id`](#bwx-project-default-id)
       - [`bwx project default name`](#bwx-project-default-name)
+    - [`config` family](#config-family)
+      - [`bwx config list`](#bwx-config-list)
+      - [`bwx config path`](#bwx-config-path)
+      - [`bwx config get`](#bwx-config-get)
+      - [`bwx config set`](#bwx-config-set)
     - [`tag` family](#tag-family)
       - [`bwx tag list`](#bwx-tag-list)
       - [`bwx tag secrets`](#bwx-tag-secrets)
@@ -57,6 +62,9 @@ Complete command reference for the current `bwx` release.
     - [TTL](#ttl)
     - [Forced refresh](#forced-refresh)
     - [Cache file permissions](#cache-file-permissions)
+  - [Credential resolution](#credential-resolution)
+    - [Why a file layer exists](#why-a-file-layer-exists)
+    - [Credential file permissions](#credential-file-permissions)
   - [Environment variables](#environment-variables)
 
 ## Installation
@@ -650,6 +658,122 @@ Print the name of the default project (the value of
 ```console
 $ bwx project default name
 test-project
+```
+
+[**↑ Contents**](#bwx-subcommand-reference)
+
+---
+
+### `config` family
+
+Commands for storing credentials outside the environment. See
+[Credential resolution](#credential-resolution) for why the file layer
+exists and how precedence works.
+
+---
+
+#### `bwx config list`
+
+```text
+bwx config list
+```
+
+Summarize every recognized configuration entry: the environment
+variable it populates, its sensitivity class, whether a file is stored,
+that file's mode, and which source currently takes effect.
+
+Values are never printed, so the output is safe to paste into a bug
+report.
+
+**Example:**
+
+```console
+$ bwx config list
+Configuration directory: /home/citrus/.config/bwx
+
+NAME                   VARIABLE               CLASS    STORED  MODE   EFFECTIVE
+bws-access-token       BWS_ACCESS_TOKEN       secret   yes     600    file
+bwx-default-project    BWX_DEFAULT_PROJECT    plain    yes     644    file
+```
+
+[**↑ Contents**](#bwx-subcommand-reference)
+
+---
+
+#### `bwx config path`
+
+```text
+bwx config path [NAME]
+```
+
+Print the configuration directory, or one entry's full file path when
+`NAME` is given. Nothing is created and the path need not exist yet, so
+deployment tooling can use this to decide where to place a file on a
+host where `bwx` has not yet run.
+
+**Example:**
+
+```console
+$ bwx config path
+/home/citrus/.config/bwx
+$ bwx config path bws-access-token
+/home/citrus/.config/bwx/bws-access-token
+```
+
+[**↑ Contents**](#bwx-subcommand-reference)
+
+---
+
+#### `bwx config get`
+
+```text
+bwx config get NAME
+```
+
+Print a stored configuration value. Reports the stored value, not the
+effective one: an environment variable of the same purpose overrides
+the file at run time but is not consulted here.
+
+Reading a secret-class file that other users can also read is refused
+rather than served — see
+[Credential file permissions](#credential-file-permissions).
+
+**Example:**
+
+```console
+$ bwx config get bwx-default-project
+4976359e-ffde-4c2a-9f8c-b3a80134e6be
+```
+
+[**↑ Contents**](#bwx-subcommand-reference)
+
+---
+
+#### `bwx config set`
+
+```text
+bwx config set NAME [VALUE]
+command-producing-value | bwx config set NAME
+```
+
+Store a configuration value. When `VALUE` is omitted it is read from
+standard input.
+
+Prefer the piped form for credentials: a value passed as an argument is
+visible in the process table and in shell history, a value piped in is
+not.
+
+Secret-class entries are written with mode `0600` inside a directory
+with mode `0700`. Writes go through a temporary file and are renamed
+into place, so a concurrent reader never observes a partial value.
+
+**Example:**
+
+```console
+$ bwx config set bwx-default-project 4976359e-ffde-4c2a-9f8c-b3a80134e6be
+[INFO] Stored 'bwx-default-project' at '/home/citrus/.config/bwx/bwx-default-project'
+$ pbpaste | bwx config set bws-access-token
+[INFO] Stored 'bws-access-token' at '/home/citrus/.config/bwx/bws-access-token'
 ```
 
 [**↑ Contents**](#bwx-subcommand-reference)
@@ -1362,6 +1486,64 @@ automatically refresh the cache after a successful update.
 Cache files are created with mode `0600` inside a directory with mode
 `0700`. The cache directory is created automatically on first use.
 
+## Credential resolution
+
+`BWS_ACCESS_TOKEN` and `BWX_DEFAULT_PROJECT` resolve from two sources,
+in order:
+
+1. **The environment.** An exported variable always wins. Explicit
+   exports, CI job variables, and one-off overrides keep working
+   exactly as before.
+2. **A file** in the configuration directory, named for the value it
+   holds: `bws-access-token` and `bwx-default-project`.
+
+The configuration directory is `${XDG_CONFIG_HOME:-$HOME/.config}/bwx`,
+overridable with `BWX_CONFIG_DIR`.
+
+### Why a file layer exists
+
+Exporting a token from a login profile is not enough for unattended
+callers. A non-interactive shell returns from `~/.bashrc` before
+reaching anything below the standard guard:
+
+```bash
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+```
+
+So a token exported further down that file is invisible to `cron`,
+`ssh host command`, and `systemd` — exactly the automated callers that
+most need it, and the failure is silent because interactive logins keep
+working. A file under `$HOME` is visible to all of them.
+
+A file also survives redeployment. Storing credentials inside a working
+tree, or in a directory that a deployment tool replaces wholesale, means
+losing them on the next release.
+
+### Credential file permissions
+
+Entries are classified `secret` or `plain`. `bws-access-token` is
+`secret`; `bwx-default-project` is a project identifier and is `plain`.
+
+A `secret` file that is readable by group or others is **refused**, in
+the same spirit as `ssh` rejecting a world-readable private key:
+
+```console
+$ bwx config get bws-access-token
+[ERROR] Configuration file '/home/citrus/.config/bwx/bws-access-token' is accessible to other users (mode 644)
+[ERROR] It holds credential material and must not be group- or world-readable
+[ERROR] Fix it with: chmod 600 '/home/citrus/.config/bwx/bws-access-token'
+```
+
+The check runs only when the file is actually read. If the environment
+already supplies the value, the file is never opened and never
+inspected.
+
+Use `bwx config set` to write these files; it applies the correct mode
+without further intervention.
+
 ## Environment variables
 
 | Variable | Default | Description |
@@ -1372,6 +1554,7 @@ Cache files are created with mode `0600` inside a directory with mode
 | `BWX_SECRET_LIST_CACHE_TTL_SECONDS` | `300` | TTL in seconds for secret-list and project-list file caches. Set to `0` to disable file caching. |
 | `BWX_VALIDATE_ACCESS_TTL_SECONDS` | `300` | TTL in seconds for caching access-token validation results. |
 | `BWX_CACHE_DIR` | `${XDG_CACHE_HOME:-$HOME/.cache}/bwx` | Override the cache directory location. |
+| `BWX_CONFIG_DIR` | `${XDG_CONFIG_HOME:-$HOME/.config}/bwx` | Override the configuration directory location. See [Credential resolution](#credential-resolution). |
 | `BWX_JQ_IMAGE` | `apteno/alpine-jq` | Docker image used for `jq` when `jq` is not natively installed. |
 | `BWX_BWS_IMAGE` | `bitwarden/bws:latest` | Docker image used for `bws` when `bws` is not natively installed. |
 | `BWS_IMAGE` | `bitwarden/bws` | Docker image name used by the internal `bws` wrapper (without tag). |

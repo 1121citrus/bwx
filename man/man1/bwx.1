@@ -221,6 +221,43 @@ Print the UUID of the default project (resolved from
 .B bwx project default name
 Print the name of the default project.
 .\"
+.SS "config family"
+Commands for storing credentials outside the environment.
+See
+.B CREDENTIAL RESOLUTION
+for precedence and permission rules.
+.\"
+.TP
+.B "bwx config list"
+Summarize every recognized configuration entry: the environment
+variable it populates, its sensitivity class, whether a file is
+stored, that file's mode, and which source currently takes effect.
+Values are never printed.
+.\"
+.TP
+.BI "bwx config path " "[NAME]"
+Print the configuration directory, or one entry's full file path when
+.I NAME
+is given.
+Nothing is created and the path need not exist yet.
+.\"
+.TP
+.BI "bwx config get " NAME
+Print a stored configuration value.
+Reports the stored value, not the effective one: an environment
+variable of the same purpose overrides the file at run time but is not
+consulted here.
+.\"
+.TP
+.BI "bwx config set " "NAME [VALUE]"
+Store a configuration value.
+When
+.I VALUE
+is omitted it is read from standard input.
+Prefer the piped form for credentials: a value passed as an argument
+is visible in the process table and in shell history, a value piped in
+is not.
+.\"
 .SS "tag family"
 Commands for managing release tags.
 Release tags are stored as
@@ -490,12 +527,16 @@ Bitwarden Secrets Manager machine-account access token.
 Validated on first API call; the result is cached for
 .B BWX_VALIDATE_ACCESS_TTL_SECONDS
 seconds.
+Falls back to a file when unset; see
+.BR "CREDENTIAL RESOLUTION" .
 .TP
 .B BWX_DEFAULT_PROJECT
 Default project name for all commands.
 When set, the
 .RI [ PROJECT ]
 argument can be omitted from every subcommand.
+Falls back to a file when unset; see
+.BR "CREDENTIAL RESOLUTION" .
 .TP
 .B BWS_SERVER_BASE_URL
 Bitwarden server URL.
@@ -518,6 +559,13 @@ Default:
 .BR $XDG_CACHE_HOME/bwx
 (or
 .BR $HOME/.cache/bwx ).
+.TP
+.B BWX_CONFIG_DIR
+Override the configuration directory location.
+Default:
+.BR $XDG_CONFIG_HOME/bwx
+(or
+.BR $HOME/.config/bwx ).
 .TP
 .B BWX_JQ_IMAGE
 Docker image for
@@ -615,10 +663,60 @@ command to bypass both cache layers.
 Mutating commands automatically refresh the cache after a successful
 update.
 .\"
+.SH CREDENTIAL RESOLUTION
+.B BWS_ACCESS_TOKEN
+and
+.B BWX_DEFAULT_PROJECT
+resolve from the environment first, then from a file in the
+configuration directory named for the value it holds
+.RB ( bws\-access\-token
+and
+.BR bwx\-default\-project ).
+An exported variable always wins.
+.PP
+The file layer exists because a non-interactive shell returns from
+.I ~/.bashrc
+before reaching anything below the standard
+.B "case $\- in *i*) ;; *) return;; esac"
+guard.
+A token exported further down that file is therefore invisible to
+.BR cron ,
+.BR "ssh host command" ,
+and
+.BR systemd ,
+and the failure is silent because interactive logins keep working.
+A file under
+.I $HOME
+is visible to all of them, and survives redeployment of any working
+tree.
+.PP
+Entries are classified
+.B secret
+or
+.BR plain .
+A
+.B secret
+file readable by group or others is refused on read, in the same
+spirit as
+.BR ssh (1)
+rejecting a world-readable private key.
+The check runs only when the file is actually read: when the
+environment already supplies the value, the file is never opened.
+Use
+.B "bwx config set"
+to write these files with the correct mode.
+.\"
 .SH FILES
 .TP
 .I $BWX_CACHE_DIR/
 File-based cache for API responses.
+.TP
+.I $BWX_CONFIG_DIR/bws\-access\-token
+Stored access token, mode
+.BR 0600 .
+.TP
+.I $BWX_CONFIG_DIR/bwx\-default\-project
+Stored default project identifier.
 .TP
 .I $BWX_SECRETS_DIR/
 Directory for rotation provider files (default:
