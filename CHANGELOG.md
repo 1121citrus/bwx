@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.3.0
+
+### Added
+
+- Credential files. `BWS_ACCESS_TOKEN` and `BWX_DEFAULT_PROJECT` now
+  fall back to `bws-access-token` and `bwx-default-project` under
+  `${BWX_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/bwx}` when the
+  environment does not supply them. An exported variable still wins, so
+  existing setups are unaffected.
+
+  This closes a gap that every unattended caller had to work around
+  privately: a non-interactive shell returns from `~/.bashrc` before
+  reaching anything below its `case $- in *i*) ;; *) return;; esac`
+  guard, so a token exported from a login profile is invisible to
+  `cron`, `ssh host command`, and `systemd` — and the failure is silent,
+  because interactive logins keep working.
+- `bwx config` command family: `list`, `path`, `get`, and `set`.
+  `bwx config set` reads the value from standard input when no `VALUE`
+  argument is given, keeping credential material out of the process
+  table and shell history.
+- `BWX_CONFIG_DIR` environment variable, mirroring `BWX_CACHE_DIR`.
+
+### Security
+
+- Secret-class credential files are refused on read when group or other
+  holds any permission bit, in the same spirit as `ssh` rejecting a
+  world-readable private key. The refusal names the file, its mode, and
+  the `chmod` that fixes it. The check runs only when a file is actually
+  read, so an over-permissive file cannot break a caller whose value
+  comes from the environment.
+- `bwx config set` writes secret-class entries at mode `0600` inside a
+  directory at mode `0700`, through a temporary file renamed into place
+  so a concurrent reader never observes a partial value.
+- `SECURITY.md` now recommends against persisting the token in
+  `.bashrc` or `.profile` — those files are frequently mode `0644` and
+  are easy to commit to a dotfiles repository by accident.
+
+### Fixed
+
+- The "no access token" error now names both ways to supply one instead
+  of mentioning only the environment variable.
+
 ## 1.2.2
 
 ### Fixed
