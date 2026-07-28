@@ -133,7 +133,7 @@ EOF
     function bwx-validate-access() {
         local token="${BWS_ACCESS_TOKEN:=}"
         [[ -z "${token}" ]] && \
-            fatal "${EXIT_USAGE}" "Bitwarden Secrets Manager API access token environment variable BWS_ACCESS_TOKEN is not defined"
+            fatal "${EXIT_USAGE}" "No Bitwarden Secrets Manager access token: set BWS_ACCESS_TOKEN or run 'bwx config set bws-access-token'"
 
         # Validate format (starts with "0." for machine accounts)
         [[ "${token}" =~ ^0\. ]] || \
@@ -176,7 +176,7 @@ EOF
     esac
 
     [[ -z "${BWS_ACCESS_TOKEN:=}" ]] && \
-        fatal "${EXIT_USAGE}" "Bitwarden Secrets Manager API access token environment variable BWS_ACCESS_TOKEN is not set"
+        fatal "${EXIT_USAGE}" "No Bitwarden Secrets Manager access token: set BWS_ACCESS_TOKEN or run 'bwx config set bws-access-token'"
 
     is-true "${BWX_ACCESS_TOKEN_VALIDATED:-false}" || {
         BWX_ACCESS_TOKEN_VALIDATED=

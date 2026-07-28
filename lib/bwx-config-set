@@ -1,0 +1,112 @@
+# shellcheck shell=bash
+# shellcheck disable=SC1090,SC1091
+
+# Copyright © 2026 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+
+# Store a configuration value under the bwx configuration directory.
+# With no VALUE argument the value is read from standard input, which
+# keeps credential material out of the process table and shell history.
+# Args:
+#   $1 — configuration name
+#   $2 — value (optional; read from stdin when omitted)
+# Returns:
+#   0 on success; EXIT_USAGE for an unknown name or missing value
+bwx-config-set() {
+    set -o errexit -o errtrace -o nounset -o pipefail
+    # DEBUG xtrace omitted — secret values flow through this function
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                cat <<EOF
+Usage: bwx config set [options] NAME [VALUE]
+       command-producing-value | bwx config set NAME
+
+Store a configuration value under the bwx configuration directory.
+
+When VALUE is omitted it is read from standard input. Prefer that form
+for credentials: a value passed as an argument is visible in the
+process table and in shell history, a value piped in is not.
+
+Secret-class entries are written with mode 0600 inside a directory with
+mode 0700. Writes are atomic, so a concurrent reader never observes a
+partial value.
+
+Arguments:
+  NAME   Configuration name (see 'bwx config list')
+  VALUE  Value to store (optional; read from stdin when omitted)
+
+Options:
+  -h, --help             Display this help message
+  -l, --log-level LEVEL  Set log level (default: info)
+
+Examples:
+  bwx config set bwx-default-project 4976359e-ffde-4c2a-9f8c-b3a80134e6be
+  pbpaste | bwx config set bws-access-token
+EOF
+                return "${EXIT_USAGE:-2}"
+                ;;
+            -l|--log-level)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--log-level requires a value"
+                LOG_LEVEL="${2}"
+                export LOG_LEVEL
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            -*)
+                declare -F error >/dev/null 2>&1 || \
+                    source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+                error "${EXIT_USAGE:-2}" "Unknown option '${1}'"
+                break
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    declare -F error >/dev/null 2>&1 || \
+        source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+    declare -F bwx-config-write >/dev/null 2>&1 || \
+        source "$(dirname "${BASH_SOURCE[0]}")/../include/bwx-config"
+
+    local name="${1:-}"
+    [[ -n "${name}" ]] || error "${EXIT_USAGE}" "A configuration name is required"
+    shift
+
+    bwx-config-entry-variable "${name}" >/dev/null 2>&1 || \
+        error "${EXIT_USAGE}" \
+            "Unknown configuration name '${name}': valid names are $(bwx-config-names | tr '\n' ' ')"
+
+    # Read from stdin when no value argument is present. Trailing
+    # newlines are stripped so a piped 'echo' and a typed argument
+    # produce byte-identical stored values.
+    local value
+    if [[ "${#@}" -gt 0 ]]; then
+        value="${1}"
+        shift
+        [[ "${#@}" -gt 0 ]] && error "${EXIT_USAGE}" "Too many arguments"
+    else
+        [[ -t 0 ]] && \
+            error "${EXIT_USAGE}" \
+                "No value given: pass one as an argument or pipe it on stdin"
+        value="$(cat)"
+    fi
+
+    [[ -n "${value}" ]] || error "${EXIT_USAGE}" "Refusing to store an empty value for '${name}'"
+
+    bwx-config-write "${name}" "${value}" || \
+        error "${EXIT_ERROR}" "Failed to store '${name}'"
+
+    local file
+    file="$(bwx-config-file "${name}")"
+    info "Stored '${name}' at '${file}'"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bwx-config-set "$@"
+fi

@@ -1,0 +1,299 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+
+# Configuration-file helpers for bwx.
+#
+# Credentials resolve from the environment first and fall back to
+# per-value files under an XDG configuration directory. The file layer
+# exists because a non-interactive shell never sources ~/.bashrc past
+# its interactive guard, so a token exported from a login profile is
+# invisible to cron, `ssh host command`, and systemd -- exactly the
+# unattended callers that most need it. A file under $HOME is visible
+# to all of them and survives redeployment of any working tree.
+
+# Copyright © 2026 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+
+declare -F bwx-config-dir >/dev/null 2>&1 || {
+
+    # Recognized configuration entries: name -> "VARIABLE class".
+    #
+    # Single source of truth for the whole module. "secret" entries hold
+    # live credential material and are mode-enforced on read; "plain"
+    # entries are non-sensitive identifiers. Adding an entry here is the
+    # only change needed to support a new configuration file.
+    declare -gA _BWX_CONFIG_ENTRIES=(
+        [bws-access-token]='BWS_ACCESS_TOKEN secret'
+        [bwx-default-project]='BWX_DEFAULT_PROJECT plain'
+    )
+
+    # Report whether a secret-class file is protected from other users.
+    #
+    # Logs and returns non-zero rather than exiting: callers decide
+    # whether a violation is fatal, and a fatal raised from inside a
+    # command substitution would terminate only that subshell.
+    # Args:
+    #   $1 — configuration name
+    #   $2 — path to the configuration file
+    # Returns:
+    #   0 when the mode is acceptable or the entry is not secret-class;
+    #   1 when group or other holds any permission bit
+    bwx-config-assert-mode() {
+        local name="${1:?name required}"
+        local file="${2:?file required}"
+
+        [[ "$(bwx-config-entry-class "${name}")" == "secret" ]] || return 0
+
+        local mode
+        mode="$(bwx-config-mode "${file}")" || mode=""
+
+        # An inconclusive check is reported rather than silently
+        # ignored: refusing outright would break any platform whose
+        # stat lacks both spellings, but staying quiet would disable
+        # the protection without anyone noticing.
+        if [[ ! "${mode}" =~ ^[0-7]+$ ]]; then
+            warn "Unable to determine the mode of '${file}'; permission check skipped"
+            return 0
+        fi
+
+        (( 8#${mode} & 8#77 )) || return 0
+
+        log ERROR "Configuration file '${file}' is accessible to other users (mode ${mode})"
+        log ERROR "It holds credential material and must not be group- or world-readable"
+        log ERROR "Fix it with: chmod 600 '${file}'"
+        return 1
+    }
+
+    # Return the bwx configuration directory path.
+    #
+    # Honors BWX_CONFIG_DIR, then XDG_CONFIG_HOME, then ~/.config/bwx.
+    # Does not create the directory: reading configuration should not
+    # leave directories behind on hosts that have none.
+    # Args:
+    #   None
+    # Returns:
+    #   0 and writes the directory path to stdout; 1 when no location
+    #   can be determined (neither override set and HOME is unset)
+    bwx-config-dir() {
+        if [[ -n "${BWX_CONFIG_DIR:-}" ]]; then
+            printf '%s\n' "${BWX_CONFIG_DIR}"
+            return 0
+        fi
+        if [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
+            printf '%s\n' "${XDG_CONFIG_HOME}/bwx"
+            return 0
+        fi
+        [[ -n "${HOME:-}" ]] || return 1
+        printf '%s\n' "${HOME}/.config/bwx"
+    }
+
+    # Print the sensitivity class of a configuration entry.
+    # Args:
+    #   $1 — configuration name
+    # Returns:
+    #   0 and writes "secret" or "plain" to stdout; 1 for unknown names
+    bwx-config-entry-class() {
+        local name="${1:?name required}"
+        local entry="${_BWX_CONFIG_ENTRIES[${name}]:-}"
+        [[ -n "${entry}" ]] || return 1
+        printf '%s\n' "${entry##* }"
+    }
+
+    # Print the environment variable a configuration entry populates.
+    # Args:
+    #   $1 — configuration name
+    # Returns:
+    #   0 and writes the variable name to stdout; 1 for unknown names
+    bwx-config-entry-variable() {
+        local name="${1:?name required}"
+        local entry="${_BWX_CONFIG_ENTRIES[${name}]:-}"
+        [[ -n "${entry}" ]] || return 1
+        printf '%s\n' "${entry%% *}"
+    }
+
+    # Print the absolute path of a configuration file.
+    # Args:
+    #   $1 — configuration name
+    # Returns:
+    #   0 and writes the path to stdout; 1 for unknown names or when no
+    #   configuration directory can be determined
+    bwx-config-file() {
+        local name="${1:?name required}"
+        bwx-config-entry-variable "${name}" >/dev/null || return 1
+
+        local dir
+        dir="$(bwx-config-dir)" || return 1
+        printf '%s\n' "${dir}/${name}"
+    }
+
+    # Populate credential environment variables from configuration files.
+    #
+    # The environment always wins: a variable that already holds a value
+    # is left untouched, so explicit exports and CI overrides continue to
+    # take precedence and the file layer is a fallback only. Runs at most
+    # once per process.
+    #
+    # Must be called from the caller's own shell, never inside a command
+    # substitution -- the mode violation below terminates the process,
+    # and a subshell would swallow that.
+    # Args:
+    #   None
+    # Returns:
+    #   0 when loading completes; terminates the process when a
+    #   secret-class file is readable by other users
+    bwx-config-load() {
+        is-true "${_BWX_CONFIG_LOADED:-false}" && return 0
+        _BWX_CONFIG_LOADED=true
+
+        local name variable file value
+        for name in "${!_BWX_CONFIG_ENTRIES[@]}"; do
+            variable="$(bwx-config-entry-variable "${name}")"
+
+            # Environment wins; the file is never consulted, and never
+            # mode-checked, when the variable is already set.
+            [[ -n "${!variable:-}" ]] && continue
+
+            file="$(bwx-config-file "${name}" 2>/dev/null)" || continue
+            [[ -f "${file}" && -r "${file}" ]] || continue
+
+            bwx-config-assert-mode "${name}" "${file}" || \
+                fatal "${EXIT_CONFIG}" \
+                    "Refusing to read '${name}' from an over-permissive file"
+
+            value="$(<"${file}")"
+            [[ -n "${value}" ]] || continue
+            export "${variable}=${value}"
+
+            # Remember the provenance. Once loading has exported the
+            # value, an inspecting caller can no longer tell a file
+            # value from one the user exported, and every entry would
+            # otherwise report itself as coming from the environment.
+            _BWX_CONFIG_FROM_FILE="${_BWX_CONFIG_FROM_FILE:-} ${variable}"
+            trace "Loaded ${variable} from ${file}"
+        done
+        return 0
+    }
+
+    # Print a file's permission bits in octal.
+    #
+    # '-c' first, because both GNU coreutils and busybox accept it;
+    # '-f' second for BSD and macOS. The long '--format' spelling is
+    # deliberately not used: busybox rejects it, and busybox's own '-f'
+    # means "filesystem status" and would answer with unrelated output
+    # that reads like success.
+    # Args:
+    #   $1 — path to inspect
+    # Returns:
+    #   0 and writes octal permission bits to stdout; 1 when neither
+    #   stat spelling works
+    bwx-config-mode() {
+        local path="${1:?path required}"
+        stat -c '%a' "${path}" 2>/dev/null || \
+            stat -f '%Lp' "${path}" 2>/dev/null
+    }
+
+    # List every recognized configuration name, one per line, sorted.
+    # Args:
+    #   None
+    # Returns:
+    #   0 and writes names to stdout
+    bwx-config-names() {
+        printf '%s\n' "${!_BWX_CONFIG_ENTRIES[@]}" | sort
+    }
+
+    # Report where an entry's effective value comes from.
+    #
+    # Distinguishes a value the user exported from one bwx-config-load
+    # read out of a file, which is otherwise indistinguishable after
+    # loading has exported it.
+    # Args:
+    #   $1 — configuration name
+    # Returns:
+    #   0 and writes "environment", "file", or "unset" to stdout;
+    #   1 for unknown names
+    bwx-config-source() {
+        local name="${1:?name required}"
+
+        local variable
+        variable="$(bwx-config-entry-variable "${name}")" || return 1
+
+        if [[ -n "${!variable:-}" ]]; then
+            case " ${_BWX_CONFIG_FROM_FILE:-} " in
+                *" ${variable} "*) printf 'file\n' ;;
+                *)                 printf 'environment\n' ;;
+            esac
+            return 0
+        fi
+
+        # Nothing loaded yet (a direct library call, or loading ran
+        # before the file appeared): fall back to what is on disk.
+        local file
+        if file="$(bwx-config-file "${name}" 2>/dev/null)" && [[ -f "${file}" ]]; then
+            printf 'file\n'
+        else
+            printf 'unset\n'
+        fi
+        return 0
+    }
+
+    # Read a configuration value from its file.
+    #
+    # Trailing newlines are stripped, so a file written with a trailing
+    # newline yields the same value as one written without.
+    # Args:
+    #   $1 — configuration name
+    # Returns:
+    #   0 and writes the value to stdout; 1 when the name is unknown,
+    #   the file is absent, or a secret-class file is over-permissive
+    bwx-config-read() {
+        local name="${1:?name required}"
+
+        local file
+        file="$(bwx-config-file "${name}")" || return 1
+        [[ -f "${file}" && -r "${file}" ]] || return 1
+        bwx-config-assert-mode "${name}" "${file}" || return 1
+
+        printf '%s\n' "$(<"${file}")"
+    }
+
+    # Write a configuration value to its file.
+    #
+    # Writes through a temporary file in the same directory and renames
+    # it into place, so a concurrent reader never observes a partial
+    # value. Secret-class entries land at 0600; the directory is 0700
+    # regardless, matching the cache directory's posture.
+    # Args:
+    #   $1 — configuration name
+    #   $2 — value to store
+    # Returns:
+    #   0 on success; 1 for unknown names or when the write fails
+    bwx-config-write() {
+        local name="${1:?name required}"
+        local value="${2-}"
+
+        local file dir
+        file="$(bwx-config-file "${name}")" || return 1
+        dir="$(dirname "${file}")"
+
+        mkdir -p "${dir}" || return 1
+        chmod 700 "${dir}" 2>/dev/null || :
+
+        local mode=0644
+        [[ "$(bwx-config-entry-class "${name}")" == "secret" ]] && mode=0600
+
+        local temp_file
+        temp_file="$(umask 077; mktemp "${dir}/.${name}.XXXXXX")" || return 1
+        printf '%s\n' "${value}" > "${temp_file}" || {
+            rm -f "${temp_file}"
+            return 1
+        }
+        chmod "${mode}" "${temp_file}" || {
+            rm -f "${temp_file}"
+            return 1
+        }
+        mv -f "${temp_file}" "${file}" || {
+            rm -f "${temp_file}"
+            return 1
+        }
+        return 0
+    }
+}

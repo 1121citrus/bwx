@@ -62,6 +62,7 @@ readonly BWX_ROOT
 source "${BWX_ROOT}/include/path"
 source "${BWX_ROOT}/include/logging"
 source "${BWX_ROOT}/include/bwx-cache"
+source "${BWX_ROOT}/include/bwx-config"
 source "${BWX_ROOT}/include/tools"
 source "${BWX_ROOT}/include/http"
 source "${BWX_ROOT}/include/note-parser"
@@ -102,6 +103,11 @@ declare -A _BWX_COMMANDS=(
     [tag/remove]=bwx-secret-remove-release-tag
     [tag/secrets]=bwx-release-tag-secrets
     [tag/unproject]=bwx-untag-project
+    # config family
+    [config/get]=bwx-config-get
+    [config/list]=bwx-config-list
+    [config/path]=bwx-config-path
+    [config/set]=bwx-config-set
     # lifecycle
     [import]=bwx-import
     [check/expiry]=bwx-check-expiry
@@ -335,6 +341,7 @@ Usage: bwx <command> [subcommand] [args...]
 Commands:
     secret       Query and mutate secrets
     project      Query projects
+    config       Store credentials outside the environment
     tag          Manage release tags
     import       Export secrets by release tag to a directory
     check        Check secret metadata (expiry dates)
@@ -373,6 +380,12 @@ Tag commands:
     bwx tag project TAG          Tag all secrets in the project
     bwx tag unproject TAG        Remove tag from all secrets
 
+Config commands:
+    bwx config list              Show configuration entries and their sources
+    bwx config path [NAME]       Print the config directory or one file path
+    bwx config get NAME          Print a stored value
+    bwx config set NAME [VALUE]  Store a value (reads stdin when VALUE is omitted)
+
 Lifecycle commands:
     bwx import TAG DIR [PROJECT]     Export secrets by release tag
     bwx check expiry [--exit-on-expiring]  Check for expiring secrets
@@ -396,6 +409,11 @@ Environment:
     BWS_ACCESS_TOKEN             Bitwarden Secrets Manager access token (required)
     BWX_DEFAULT_PROJECT          Default project name
     BWS_SERVER_BASE_URL          Bitwarden server URL
+    BWX_CONFIG_DIR               Config directory (default: \$XDG_CONFIG_HOME/bwx)
+
+BWS_ACCESS_TOKEN and BWX_DEFAULT_PROJECT fall back to files under the
+config directory when unset, so unattended callers (cron, ssh, systemd)
+work without a login shell. See 'bwx config list'.
 EOF
 }
 
@@ -418,6 +436,12 @@ main() {
             return 0
             ;;
     esac
+
+    # Fill in credentials from the configuration directory before any
+    # subcommand runs. Called here, in main's own shell, so that a
+    # refusal over file permissions terminates the process rather than
+    # a command substitution somewhere further down.
+    bwx-config-load
 
     _bwx_dispatch "$@"
 }

@@ -1,0 +1,93 @@
+# shellcheck shell=bash
+# shellcheck disable=SC1090,SC1091
+
+# Copyright © 2026 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+
+# Summarize every recognized configuration entry.
+# Reports where each value would be read from, whether a file is
+# present, its mode, and which source currently wins. Values are never
+# printed, so the output is safe to paste into a bug report.
+# Args:
+#   None
+# Returns:
+#   0 and writes a table to stdout
+bwx-config-list() {
+    set -o errexit -o errtrace -o nounset -o pipefail
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                cat <<EOF
+Usage: bwx config list [options]
+
+Summarize every recognized configuration entry: the environment
+variable it populates, whether a file is stored, that file's mode, and
+which source currently takes effect.
+
+Values are never printed, so the output is safe to share.
+
+The EFFECTIVE column shows where the value in force comes from:
+  environment  an exported variable is set and overrides any file
+  file         no variable is set; the stored file supplies the value
+  unset        neither source supplies a value
+
+Options:
+  -h, --help             Display this help message
+  -l, --log-level LEVEL  Set log level (default: info)
+EOF
+                return "${EXIT_USAGE:-2}"
+                ;;
+            -l|--log-level)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--log-level requires a value"
+                LOG_LEVEL="${2}"
+                export LOG_LEVEL
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                declare -F error >/dev/null 2>&1 || \
+                    source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+                error "${EXIT_USAGE:-2}" "Too many arguments '${*}'"
+                ;;
+        esac
+    done
+
+    declare -F error >/dev/null 2>&1 || \
+        source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+    declare -F bwx-config-names >/dev/null 2>&1 || \
+        source "$(dirname "${BASH_SOURCE[0]}")/../include/bwx-config"
+
+    local dir
+    dir="$(bwx-config-dir 2>/dev/null || printf '(undetermined)\n')"
+    printf 'Configuration directory: %s\n\n' "${dir}"
+
+    printf '%-22s %-22s %-8s %-7s %-6s %s\n' \
+        NAME VARIABLE CLASS STORED MODE EFFECTIVE
+
+    local name variable class file stored mode effective
+    while IFS= read -r name; do
+        variable="$(bwx-config-entry-variable "${name}")"
+        class="$(bwx-config-entry-class "${name}")"
+
+        file="$(bwx-config-file "${name}" 2>/dev/null || printf '\n')"
+        stored=no
+        mode='-'
+        if [[ -n "${file}" && -f "${file}" ]]; then
+            stored=yes
+            mode="$(bwx-config-mode "${file}" 2>/dev/null || printf '?\n')"
+        fi
+
+        effective="$(bwx-config-source "${name}")"
+
+        printf '%-22s %-22s %-8s %-7s %-6s %s\n' \
+            "${name}" "${variable}" "${class}" "${stored}" "${mode}" "${effective}"
+    done < <(bwx-config-names)
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bwx-config-list "$@"
+fi

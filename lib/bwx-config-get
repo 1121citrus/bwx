@@ -1,0 +1,94 @@
+# shellcheck shell=bash
+# shellcheck disable=SC1090,SC1091
+
+# Copyright © 2026 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+
+# Print a stored configuration value.
+# Reads the file only; the environment variable that would override it
+# at run time is deliberately ignored so that this reports what is
+# stored rather than what is currently in effect.
+# Args:
+#   $1 — configuration name
+# Returns:
+#   0 and writes the value to stdout; EXIT_USAGE for an unknown name;
+#   EXIT_NOTFOUND when nothing is stored
+bwx-config-get() {
+    set -o errexit -o errtrace -o nounset -o pipefail
+    # DEBUG xtrace omitted — secret values flow through this function
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                cat <<EOF
+Usage: bwx config get [options] NAME
+
+Print a configuration value stored under the bwx configuration
+directory. Reports the stored value, not the effective one: an
+environment variable of the same purpose overrides the file at run
+time but is not consulted here.
+
+Arguments:
+  NAME  Configuration name (see 'bwx config list')
+
+Options:
+  -h, --help             Display this help message
+  -l, --log-level LEVEL  Set log level (default: info)
+EOF
+                return "${EXIT_USAGE:-2}"
+                ;;
+            -l|--log-level)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--log-level requires a value"
+                LOG_LEVEL="${2}"
+                export LOG_LEVEL
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            -*)
+                declare -F error >/dev/null 2>&1 || \
+                    source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+                error "${EXIT_USAGE:-2}" "Unknown option '${1}'"
+                break
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    declare -F error >/dev/null 2>&1 || \
+        source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+    declare -F bwx-config-read >/dev/null 2>&1 || \
+        source "$(dirname "${BASH_SOURCE[0]}")/../include/bwx-config"
+
+    local name="${1:-}"
+    [[ -n "${name}" ]] || error "${EXIT_USAGE}" "A configuration name is required"
+    shift
+    [[ "${#@}" -gt 0 ]] && error "${EXIT_USAGE}" "Too many arguments"
+
+    bwx-config-entry-variable "${name}" >/dev/null 2>&1 || \
+        error "${EXIT_USAGE}" \
+            "Unknown configuration name '${name}': valid names are $(bwx-config-names | tr '\n' ' ')"
+
+    local file
+    file="$(bwx-config-file "${name}")" || \
+        error "${EXIT_CONFIG}" "Unable to determine the bwx configuration directory"
+
+    [[ -f "${file}" ]] || \
+        error "${EXIT_NOTFOUND}" "No value stored for '${name}' at '${file}'"
+
+    # A mode violation is reported by bwx-config-assert-mode and must
+    # stop the read: printing a credential that other users can already
+    # read would reward the misconfiguration instead of surfacing it.
+    bwx-config-assert-mode "${name}" "${file}" || \
+        error "${EXIT_CONFIG}" "Refusing to read '${name}' from an over-permissive file"
+
+    bwx-config-read "${name}"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bwx-config-get "$@"
+fi

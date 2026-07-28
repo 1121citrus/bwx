@@ -24,6 +24,11 @@ bwx_test_setup() {
     export BWS_ACCESS_TOKEN="test-token"
     export BWX_DEFAULT_PROJECT="test-project"
 
+    # Point the config directory at per-test scratch space. Without
+    # this, a developer's real ~/.config/bwx would be readable by the
+    # suite, and a mode-enforcement test could fail on their live token.
+    export BWX_CONFIG_DIR="${TEST_TMPDIR}/config"
+
     # Tell lib/bwx to preserve the mock bws function instead of
     # redefining it with the Docker wrapper and token validation.
     export CITRUS_ENABLE_MOCK_COMMANDS=true

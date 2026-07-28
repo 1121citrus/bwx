@@ -1,0 +1,91 @@
+# shellcheck shell=bash
+# shellcheck disable=SC1090,SC1091
+
+# Copyright © 2026 James Hanlon [mailto:jim@hanlonsoftware.com]. Licensed under AGPL-3.0-or-later.
+
+# Print the configuration directory, or one entry's file path.
+# Resolution does not create anything and does not require the path to
+# exist, so the output is usable by deployment tooling that needs to
+# place a file before bwx has ever run on the host.
+# Args:
+#   $1 — configuration name (optional; directory path when omitted)
+# Returns:
+#   0 and writes a path to stdout; EXIT_USAGE for an unknown name;
+#   EXIT_CONFIG when no configuration directory can be determined
+bwx-config-path() {
+    set -o errexit -o errtrace -o nounset -o pipefail
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                cat <<EOF
+Usage: bwx config path [options] [NAME]
+
+Print the bwx configuration directory, or the full path of one entry's
+file when NAME is given.
+
+Nothing is created and the path need not exist yet, so deployment
+tooling can use this to decide where to place a file on a host where
+bwx has not yet run.
+
+Arguments:
+  NAME  Configuration name (optional; see 'bwx config list')
+
+Options:
+  -h, --help             Display this help message
+  -l, --log-level LEVEL  Set log level (default: info)
+
+Examples:
+  bwx config path
+  bwx config path bws-access-token
+EOF
+                return "${EXIT_USAGE:-2}"
+                ;;
+            -l|--log-level)
+                [[ -n "${2:-}" && "${2}" != -* ]] || \
+                    error "${EXIT_USAGE}" "--log-level requires a value"
+                LOG_LEVEL="${2}"
+                export LOG_LEVEL
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            -*)
+                declare -F error >/dev/null 2>&1 || \
+                    source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+                error "${EXIT_USAGE:-2}" "Unknown option '${1}'"
+                break
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    declare -F error >/dev/null 2>&1 || \
+        source "$(dirname "${BASH_SOURCE[0]}")/../include/logging"
+    declare -F bwx-config-dir >/dev/null 2>&1 || \
+        source "$(dirname "${BASH_SOURCE[0]}")/../include/bwx-config"
+
+    local name="${1:-}"
+    [[ "${#@}" -gt 1 ]] && error "${EXIT_USAGE}" "Too many arguments"
+
+    if [[ -z "${name}" ]]; then
+        bwx-config-dir || \
+            error "${EXIT_CONFIG}" "Unable to determine the bwx configuration directory"
+        return 0
+    fi
+
+    bwx-config-entry-variable "${name}" >/dev/null 2>&1 || \
+        error "${EXIT_USAGE}" \
+            "Unknown configuration name '${name}': valid names are $(bwx-config-names | tr '\n' ' ')"
+
+    bwx-config-file "${name}" || \
+        error "${EXIT_CONFIG}" "Unable to determine the bwx configuration directory"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bwx-config-path "$@"
+fi
