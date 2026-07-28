@@ -12,8 +12,8 @@ Do not open a public GitHub issue for security vulnerabilities.
 
 | Version | Supported |
 | ------- | --------- |
-| 1.2.x   | Yes       |
-| 1.1.x   | No — upgrade to 1.2.x |
+| 1.3.x   | Yes       |
+| 1.2.x   | No — upgrade to 1.3.x |
 | Older   | No — upgrade to latest |
 
 ---
