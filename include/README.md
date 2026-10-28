@@ -128,7 +128,7 @@ is defined only when the native command is absent from `PATH`.
 
 | Function | Condition | Docker image |
 |----------|-----------|--------------|
-| `jq` | `jq` not found | `apteno/alpine-jq` (override: `BWX_JQ_IMAGE`) |
+| `jq` | `jq` not found | `ghcr.io/jqlang/jq:1.8.2` (override: `BWX_JQ_IMAGE`) |
 | `curl` | `curl` not found | `curlimages/curl` (override: `BWX_CURL_IMAGE`) |
 | `openssl` | `openssl` not found | `alpine/openssl` (override: `BWX_OPENSSL_IMAGE`) |
 | `aws` | `aws` not found | `amazon/aws-cli` (override: `BWX_AWS_IMAGE`) |

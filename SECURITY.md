@@ -26,7 +26,7 @@ comes entirely from its runtime dependencies:
 | Dependency | Source | Used when | Security concern |
 | ---------- | ------ | --------- | ---------------- |
 | **bash** (4.0+) | System package | Always | OS-level updates; no bwx-specific risk |
-| **jq** | Native or Docker `apteno/alpine-jq` | Parsing BWS API JSON | Docker image may contain Alpine CVEs |
+| **jq** | Native or Docker `ghcr.io/jqlang/jq` | Parsing BWS API JSON | Docker image may contain Alpine CVEs |
 | **bws** | Native or Docker `bitwarden/bws` | All BWS API operations | Docker image may contain OS/binary CVEs |
 | **curl** | Native or Docker `curlimages/curl` | Provider calls, HTTP fallback | Docker image may contain Alpine CVEs |
 | **openssl** | Native or Docker `alpine/openssl` | Self-signed cert generation | Docker image may contain Alpine CVEs |
@@ -39,7 +39,7 @@ to Docker-wrapped alternatives.  The default image references are:
 
 | Variable | Default | Purpose |
 | -------- | ------- | ------- |
-| `BWX_JQ_IMAGE` | `apteno/alpine-jq` | jq wrapper |
+| `BWX_JQ_IMAGE` | `ghcr.io/jqlang/jq:1.8.2` | jq wrapper |
 | `BWX_BWS_IMAGE` | `bitwarden/bws:latest` | Bitwarden CLI wrapper |
 | `BWX_CURL_IMAGE` | `curlimages/curl` | HTTP client and provider API calls |
 | `BWX_OPENSSL_IMAGE` | `alpine/openssl` | TLS certificate generation |
@@ -48,7 +48,7 @@ to Docker-wrapped alternatives.  The default image references are:
 To pin a specific image version (recommended for production):
 
 ```bash
-export BWX_JQ_IMAGE="apteno/alpine-jq:2023-01-01"
+export BWX_JQ_IMAGE="ghcr.io/jqlang/jq:1.8.2"
 export BWX_BWS_IMAGE="bitwarden/bws:2025.1.0"
 export BWX_CURL_IMAGE="curlimages/curl:8.11.1"
 export BWX_OPENSSL_IMAGE="alpine/openssl:3.4.1"

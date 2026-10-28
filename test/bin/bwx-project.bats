@@ -31,7 +31,7 @@ STUB
     if ! command -v jq >/dev/null 2>&1; then
         cat > "${TEST_TMPDIR}/stub-bin/jq" <<'JQ'
 #!/usr/bin/env sh
-docker run --rm -i apteno/alpine-jq "$@"
+docker run --rm -i ghcr.io/jqlang/jq:1.8.2 "$@"
 JQ
         chmod +x "${TEST_TMPDIR}/stub-bin/jq"
     fi

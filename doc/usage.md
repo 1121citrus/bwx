@@ -1555,7 +1555,7 @@ without further intervention.
 | `BWX_VALIDATE_ACCESS_TTL_SECONDS` | `300` | TTL in seconds for caching access-token validation results. |
 | `BWX_CACHE_DIR` | `${XDG_CACHE_HOME:-$HOME/.cache}/bwx` | Override the cache directory location. |
 | `BWX_CONFIG_DIR` | `${XDG_CONFIG_HOME:-$HOME/.config}/bwx` | Override the configuration directory location. See [Credential resolution](#credential-resolution). |
-| `BWX_JQ_IMAGE` | `apteno/alpine-jq` | Docker image used for `jq` when `jq` is not natively installed. |
+| `BWX_JQ_IMAGE` | `ghcr.io/jqlang/jq:1.8.2` | Docker image used for `jq` when `jq` is not natively installed. |
 | `BWX_BWS_IMAGE` | `bitwarden/bws:latest` | Docker image used for `bws` when `bws` is not natively installed. |
 | `BWS_IMAGE` | `bitwarden/bws` | Docker image name used by the internal `bws` wrapper (without tag). |
 | `BWS_IMAGE_TAG` | `latest` | Docker image tag used by the internal `bws` wrapper. |

@@ -17,7 +17,7 @@
 if ! command -v jq >/dev/null 2>&1; then
     jq() {
         docker run --rm -i \
-            "${BWX_JQ_IMAGE:-apteno/alpine-jq}" \
+            "${BWX_JQ_IMAGE:-ghcr.io/jqlang/jq:1.8.2}" \
             "$@"
     }
 fi

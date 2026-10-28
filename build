@@ -554,9 +554,9 @@ if [[ "${SCAN}" == "true" ]]; then
     echo "==> Stage 4: Scan dependency images" >&2
     _dep_scan_failed=0
 
-    echo "    scanning apteno/alpine-jq" >&2
+    echo "    scanning ghcr.io/jqlang/jq:1.8.2" >&2
     if [[ "${DRY_RUN}" == "true" ]]; then
-        echo "[DRY RUN] trivy image apteno/alpine-jq" >&2
+        echo "[DRY RUN] trivy image ghcr.io/jqlang/jq:1.8.2" >&2
     else
         run docker run --rm \
             -v "${TRIVY_CACHE_VOLUME}:/root/.cache/trivy" \
@@ -566,8 +566,8 @@ if [[ "${SCAN}" == "true" ]]; then
                 --ignore-unfixed \
                 --severity HIGH,CRITICAL \
                 --timeout 5m \
-                "apteno/alpine-jq" || {
-            echo "    WARN: apteno/alpine-jq has HIGH/CRITICAL CVEs" >&2
+                "ghcr.io/jqlang/jq:1.8.2" || {
+            echo "    WARN: ghcr.io/jqlang/jq:1.8.2 has HIGH/CRITICAL CVEs" >&2
             _dep_scan_failed=1
         }
     fi
