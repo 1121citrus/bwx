@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- `man bwx` brought current with the 1.3.0 command surface. The page
+  now documents the `note validate` and `provider info` commands, the
+  `mode:` note field and its `--mode`/`--force-mode` precedence in
+  `bwx import`, the `--description` flag on `secret create` (with
+  `--note` marked deprecated), the `[PROJECT]` argument to
+  `check expiry`, all 13 rotation providers grouped as automated or
+  interactive with their note fields, the four credential reference
+  forms, and the `BWX_SECRETS_DIR`, `BWX_IMPORT_FILE_MODE`,
+  `BWX_CURL_IMAGE`, `BWX_OPENSSL_IMAGE`, and `BWX_AWS_IMAGE`
+  environment variables.
+
 ## 1.3.0
 
 ### Added
