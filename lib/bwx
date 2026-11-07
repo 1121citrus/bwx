@@ -121,8 +121,20 @@ state_opt_out = "true"
 EOF
             chmod 600 "${config_file}"
         }
-        trace "docker run --rm --interactive -v '${config_file}:/home/app/.config/bws/config' --env BWS_ACCESS_TOKEN '${image}:${tag}' <redacted-args>"
+        # --user matches this image's own "app" user by UID, not name:
+        # the config_file bind mount above is chmod 600 (M5; it never
+        # holds the access token itself -- that's the env var below --
+        # but stays restrictive on principle), so it is readable only
+        # by whichever UID owns it. mktemp creates it as the invoking
+        # host user; without --user, the container's own "app" account
+        # is whatever UID the image happened to bake in, and the two
+        # rarely match (observed on citrus-2: host UID 1001 vs this
+        # image's baked-in "app" UID 1000), making the mount
+        # unreadable ("Permission denied (os error 13)" from bws
+        # itself) even though the file and the token are both fine.
+        trace "docker run --rm --interactive --user '$(id -u):$(id -g)' -v '${config_file}:/home/app/.config/bws/config' --env BWS_ACCESS_TOKEN '${image}:${tag}' <redacted-args>"
         docker run --rm --interactive \
+            --user "$(id -u):$(id -g)" \
             -v "${config_file}:/home/app/.config/bws/config" \
             --env BWS_ACCESS_TOKEN \
             "${image}:${tag}" "$@"
