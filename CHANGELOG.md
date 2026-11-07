@@ -2,8 +2,21 @@
 
 ## Unreleased
 
+## 1.3.1
+
+### Fixed
+
+- `bwx import` no longer swallows the real project-resolution error
+  when no `PROJECT` argument is given. A missing `BWS_ACCESS_TOKEN` or
+  an unresolvable `BWX_DEFAULT_PROJECT` previously surfaced as the
+  generic, misleading "TAG, OUTPUT_DIR, and PROJECT are required"
+  instead of the actual cause.
+
 ### Changed
 
+- `bwx-default-project-name`'s docstring corrected to match its actual
+  behavior: a plain `BWX_DEFAULT_PROJECT` passthrough, with no query of
+  the BWS project list and no fallback selection.
 - `man bwx` brought current with the 1.3.0 command surface. The page
   now documents the `note validate` and `provider info` commands, the
   `mode:` note field and its `--mode`/`--force-mode` precedence in
