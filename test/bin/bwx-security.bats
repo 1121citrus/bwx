@@ -152,6 +152,20 @@ teardown() { bwx_test_teardown; }
     [[ "${status}" -eq 0 ]]
 }
 
+# =========================================================================
+# M5: import surfaces the real project-resolution error instead of
+# masking it behind a generic "arguments required" message
+# =========================================================================
+
+@test "security: import with no default project surfaces bwx-default-project-id's own error" {
+    local outdir="${TEST_TMPDIR}/import-no-default-project"
+    unset BWX_DEFAULT_PROJECT
+    run "${BWX}" import test-tag-1 "${outdir}"
+    [[ "${status}" -ne 0 ]]
+    [[ "${output}" == *"BWS Default project"* ]]
+    [[ "${output}" != *"TAG, OUTPUT_DIR, and PROJECT are required"* ]]
+}
+
 @test "security: import rejects secret file metadata with path traversal" {
     local outdir="${TEST_TMPDIR}/import-path-traversal"
     rm -f "${TEST_TMPDIR}/stub-bin/bws"

@@ -100,13 +100,24 @@ EOF
 
     local tag="${1:-}"
     local output_dir="${2:-}"
-    local project="${3:-$(bwx-default-project-id 2>/dev/null || echo "")}"
+    local project="${3:-}"
 
     local DOT_BY_UUID=".by-uuid"
     local DOT_RAW=".raw"
 
-    [[ -n "${tag}" && -n "${output_dir}" && -n "${project}" ]] || \
-        error "${EXIT_USAGE}" "TAG, OUTPUT_DIR, and PROJECT are required"
+    [[ -n "${tag}" && -n "${output_dir}" ]] || \
+        error "${EXIT_USAGE}" "TAG and OUTPUT_DIR are required"
+
+    # No PROJECT argument: resolve BWX_DEFAULT_PROJECT. Let a missing
+    # token or unresolvable default surface bwx-default-project-id's own
+    # fatal message — swallowing it here (as a prior version did, via
+    # `2>/dev/null || echo ""`) turned a specific diagnostic into the
+    # generic "PROJECT is required" below, which reads like a missing
+    # argument rather than a configuration problem.
+    [[ -n "${project}" ]] || project=$(bwx-default-project-id)
+
+    [[ -n "${project}" ]] || \
+        error "${EXIT_USAGE}" "PROJECT is required (no default resolved)"
 
     local _m
     for _m in "${_mode_default}" "${_mode_force}"; do
