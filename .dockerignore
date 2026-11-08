@@ -1,0 +1,11 @@
+.git
+.github
+.claude
+.env
+.env.*
+.secrets
+**/.secrets
+coverage
+vendor
+*.swp
+.DS_Store

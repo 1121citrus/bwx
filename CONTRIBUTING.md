@@ -2,11 +2,8 @@
 
 ## Prerequisites
 
-- Bash 4.0+ (macOS ships 3.2 — install via Homebrew or pkgin)
-  - Homebrew: `brew install bash`
-  - pkgsrc/pkgin: `pkgin install bash`
-- Docker (used to run `jq`, `bws`, and other wrapped tools — no local
-  installation of these tools is required)
+- Bash 4.0+ for development scripts and direct source-checkout runs
+- Docker with Buildx for image builds and tests
 
 ## Development workflow
 
@@ -51,11 +48,15 @@ modules under `bin/`, `include/`, and `lib/`.
 
 ## Release process
 
-Releases are tag-driven:
+Releases are tag-driven. A `v*` tag runs the shared CI pipeline, which
+builds the image, tests and scans it, then publishes multi-platform
+version and `latest` tags to Docker Hub:
 
 ```bash
-git tag v1.2.3
-git push origin v1.2.3
+git tag v1.3.3
+git push origin v1.3.3
 ```
 
-Pushing a version tag triggers the GitHub Actions workflow.
+The repository must have `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`
+actions secrets configured. The `bwx` Homebrew formula is no longer
+maintained; Docker Hub is the supported binary distribution.

@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+
+# Host launcher for the Docker-distributed bwx CLI.
+
+set -euo pipefail
+
+# Bind an explicitly configured credential file when it is outside
+# the working directory and the standard AWS credential directory.
+# Args:
+#   $1 — credential file path
+# Returns:
+#   0; appends a read-only bind mount when needed
+mount_external_file() {
+    local path="$1"
+    [[ -n "${path}" && -f "${path}" ]] || return 0
+    [[ "${path}" == /* ]] || path="${workdir}/${path}"
+    case "${path}" in
+        "${workdir}/"*|"${home}/.aws/"*) return 0 ;;
+    esac
+    docker_args+=(--volume "${path}:${path}:ro")
+}
+
+# Resolve the selected directory, creating it for config and cache use.
+# Args:
+#   $1 — directory path, absolute or relative to the working directory
+# Returns:
+#   0; writes the physical absolute path to stdout
+resolve_dir() {
+    local path="$1"
+    [[ "${path}" == /* ]] || path="${workdir}/${path}"
+    mkdir -p "${path}"
+    (cd "${path}" && pwd -P)
+}
+
+if ! command -v docker >/dev/null 2>&1; then
+    printf 'bwx: Docker is required; install Docker Desktop or Docker Engine\n' >&2
+    exit 127
+fi
+
+if [[ -z "${HOME:-}" ]]; then
+    printf 'bwx: HOME must be set\n' >&2
+    exit 1
+fi
+
+workdir="$(pwd -P)"
+home="$(cd "${HOME}" && pwd -P)"
+config_dir="${BWX_CONFIG_DIR:-${XDG_CONFIG_HOME:-${home}/.config}/bwx}"
+cache_dir="${BWX_CACHE_DIR:-${XDG_CACHE_HOME:-${home}/.cache}/bwx}"
+
+config_dir="$(resolve_dir "${config_dir}")"
+cache_dir="$(resolve_dir "${cache_dir}")"
+image="${BWX_DOCKER_IMAGE:-1121citrus/bwx:latest}"
+
+if [[ -n "${BWX_DOCKER_ENV_FILE:-}" \
+        && ! -r "${BWX_DOCKER_ENV_FILE}" ]]; then
+    printf 'bwx: cannot read BWX_DOCKER_ENV_FILE: %s\n' \
+        "${BWX_DOCKER_ENV_FILE}" >&2
+    exit 1
+fi
+
+docker_args=(
+    run
+    --rm
+    --interactive
+    --user "$(id -u):$(id -g)"
+    --workdir "${workdir}"
+    --volume "${workdir}:${workdir}"
+    --volume "${config_dir}:${config_dir}"
+    --volume "${cache_dir}:${cache_dir}"
+)
+
+if [[ -n "${BWX_DOCKER_ENV_FILE:-}" ]]; then
+    docker_args+=(--env-file "${BWX_DOCKER_ENV_FILE}")
+fi
+
+docker_args+=(
+    --env "HOME=${home}"
+    --env "BWX_CONFIG_DIR=${config_dir}"
+    --env "BWX_CACHE_DIR=${cache_dir}"
+)
+
+if [[ -t 0 && -t 1 ]]; then
+    docker_args+=(--tty)
+fi
+
+if [[ -d "${home}/.aws" ]]; then
+    docker_args+=(--volume "${home}/.aws:${home}/.aws:ro")
+fi
+
+env_names=(
+    BWS_ACCESS_TOKEN
+    BWS_CONFIG_FILE
+    BWS_SERVER_BASE_URL
+    BWX_ALLOWED_PROVIDER_HOSTS
+    BWX_DEFAULT_PROJECT
+    BWX_IMPORT_FILE_MODE
+    BWX_SECRETS_DIR
+    BWX_SECRET_LIST_CACHE_TTL_SECONDS
+    BWX_VALIDATE_ACCESS_TTL_SECONDS
+    LOG_DATE_FORMAT
+    LOG_LEVEL
+    LOGGING_INCLUDE_ALL
+    LOGGING_INCLUDE_COMMAND
+    LOGGING_INCLUDE_LOCATION
+    LOGGING_INCLUDE_LOCATION_FILE
+    LOGGING_INCLUDE_TIMESTAMP
+    AWS_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY
+    AWS_SESSION_TOKEN
+    AWS_DEFAULT_REGION
+    AWS_REGION
+    AWS_DEFAULT_OUTPUT
+    AWS_PROFILE
+    AWS_CONFIG_FILE
+    AWS_SHARED_CREDENTIALS_FILE
+    AWS_WEB_IDENTITY_TOKEN_FILE
+    AWS_ROLE_ARN
+    AWS_ROLE_SESSION_NAME
+    AWS_CA_BUNDLE
+)
+
+for name in "${env_names[@]}"; do
+    if printenv "${name}" >/dev/null 2>&1; then
+        docker_args+=(--env "${name}")
+    fi
+done
+
+mount_external_file "${BWS_CONFIG_FILE:-}"
+mount_external_file "${AWS_CONFIG_FILE:-}"
+mount_external_file "${AWS_SHARED_CREDENTIALS_FILE:-}"
+mount_external_file "${AWS_WEB_IDENTITY_TOKEN_FILE:-}"
+mount_external_file "${AWS_CA_BUNDLE:-}"
+
+if [[ -n "${BWX_SECRETS_DIR:-}" \
+        && "${BWX_SECRETS_DIR}" == /* \
+        && -d "${BWX_SECRETS_DIR}" ]]; then
+    case "${BWX_SECRETS_DIR}" in
+        "${workdir}/"*|"${home}/.aws/"*) ;;
+        *) docker_args+=(--volume \
+            "${BWX_SECRETS_DIR}:${BWX_SECRETS_DIR}:ro") ;;
+    esac
+fi
+
+exec docker "${docker_args[@]}" "${image}" "$@"

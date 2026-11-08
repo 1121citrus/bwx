@@ -46,17 +46,13 @@ The dispatch layer accepts up to three positional words to resolve a
 subcommand (for example,
 .BR "bwx project default id" ).
 .PP
+The Docker Hub image includes Bash, bws, jq, curl, OpenSSL, and the AWS
+CLI. The
+.B install/bwx
+wrapper runs the image and does not require Bash 4 on the host.
+Running
 .B bwx
-requires Bash 4.0 or newer.
-macOS ships Bash 3.2; install an updated version via Homebrew or pkgsrc.
-.PP
-When
-.BR jq (1)
-or
-.B bws
-are not installed natively,
-.B bwx
-falls back to Docker-wrapped equivalents automatically.
+from a source checkout requires Bash 4.0 or newer.
 .\"
 .SH OPTIONS
 .TP

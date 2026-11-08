@@ -545,29 +545,11 @@ MOCK
     grep -q 'LOG_LEVEL=debug' "${BWX_ROOT}/doc/extending.md"
 }
 
-@test "5C: Homebrew formula has no placeholder release checksum" {
-    local formula="${BWX_ROOT}/install/homebrew/Formula/bwx.rb"
-    run grep -q 'sha256 "0000000000000000000000000000000000000000000000000000000000000000"' \
-        "${formula}"
-    [[ "${status}" -ne 0 ]]
-    grep -q 'head "https://github.com/1121citrus/bwx.git"' "${formula}"
-    grep -q -- '--HEAD' "${BWX_ROOT}/doc/usage.md"
-}
-
-@test "5C: Homebrew formula carries tagged release archive checksum" {
-    local formula="${BWX_ROOT}/install/homebrew/Formula/bwx.rb"
-    local version
-    version="$(<"${BWX_ROOT}/version.txt")"
-    grep -q "url \"https://github.com/1121citrus/bwx/archive/refs/tags/v${version}.tar.gz\"" \
-        "${formula}"
-    grep -Eq 'sha256 "[0-9a-f]{64}"' "${formula}"
-}
-
-@test "5C: Homebrew test does not compare CLI version to HEAD version" {
-    local formula="${BWX_ROOT}/install/homebrew/Formula/bwx.rb"
-    run grep -q 'version.to_s' "${formula}"
-    [[ "${status}" -ne 0 ]]
-    grep -q 'assert_match.*\\d+\\.\\d+\\.\\d+' "${formula}"
+@test "5C: Docker image distribution is configured for Docker Hub" {
+    grep -q 'image: 1121citrus/bwx' \
+        "${BWX_ROOT}/.github/workflows/ci.yml"
+    grep -q '1121citrus/bwx:latest' "${BWX_ROOT}/README.md"
+    [[ ! -d "${BWX_ROOT}/install/homebrew" ]]
 }
 
 @test "5C: tag commands use centralized note parser" {

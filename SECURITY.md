@@ -20,66 +20,41 @@ Do not open a public GitHub issue for security vulnerabilities.
 
 ## Attack surface
 
-`bwx` is a pure-bash CLI with no compiled code.  Its attack surface
-comes entirely from its runtime dependencies:
+`bwx` is a Bash CLI with a Docker Hub distribution image. The image
+bundles the CLI's runtime dependencies:
 
 | Dependency | Source | Used when | Security concern |
 | ---------- | ------ | --------- | ---------------- |
-| **bash** (4.0+) | System package | Always | OS-level updates; no bwx-specific risk |
-| **jq** | Native or Docker `ghcr.io/jqlang/jq` | Parsing BWS API JSON | Docker image may contain Alpine CVEs |
-| **bws** | Native or Docker `bitwarden/bws` | All BWS API operations | Docker image may contain OS/binary CVEs |
-| **curl** | Native or Docker `curlimages/curl` | Provider calls, HTTP fallback | Docker image may contain Alpine CVEs |
-| **openssl** | Native or Docker `alpine/openssl` | Self-signed cert generation | Docker image may contain Alpine CVEs |
-| **aws** | Native or Docker `amazon/aws-cli` | IAM key rotation (`aws-iam`) | Docker image may contain AL2 CVEs |
+| **Ubuntu 24.04** | Docker base image | Always | OS-level updates; scanned with the final image |
+| **bash** | Ubuntu package | Running the CLI | OS-level updates |
+| **bws** | Official BWS 1.0.0 binary; SHA-256 verified | BWS API operations | Upstream binary vulnerabilities |
+| **AWS CLI** | Pinned `amazon/aws-cli:2.27.0` image runtime | AWS IAM rotation | AWS CLI vulnerabilities |
+| **jq**, **curl**, **openssl** | Ubuntu packages | Parsing, provider calls, and TLS | OS/package vulnerabilities |
 
-### Docker image pins
-
-When native `jq`, `bws`, or `curl` are not installed, `bwx` falls back
-to Docker-wrapped alternatives.  The default image references are:
-
-| Variable | Default | Purpose |
-| -------- | ------- | ------- |
-| `BWX_JQ_IMAGE` | `ghcr.io/jqlang/jq:1.8.2` | jq wrapper |
-| `BWX_BWS_IMAGE` | `bitwarden/bws:latest` | Bitwarden CLI wrapper |
-| `BWX_CURL_IMAGE` | `curlimages/curl` | HTTP client and provider API calls |
-| `BWX_OPENSSL_IMAGE` | `alpine/openssl` | TLS certificate generation |
-| `BWX_AWS_IMAGE` | `amazon/aws-cli` | AWS IAM key rotation |
-
-To pin a specific image version (recommended for production):
-
-```bash
-export BWX_JQ_IMAGE="ghcr.io/jqlang/jq:1.8.2"
-export BWX_BWS_IMAGE="bitwarden/bws:2025.1.0"
-export BWX_CURL_IMAGE="curlimages/curl:8.11.1"
-export BWX_OPENSSL_IMAGE="alpine/openssl:3.4.1"
-export BWX_AWS_IMAGE="amazon/aws-cli:2.27.0"
-```
+The published `1121citrus/bwx` image is scanned by the release pipeline.
+The host launcher mounts the current working directory, `bwx` config and
+cache directories, and `~/.aws` read-only. It does not mount the Docker socket
+or the host's entire home directory. Custom provider environment variables
+can be supplied through `BWX_DOCKER_ENV_FILE`; keep that file mode `0600`.
 
 ### Scanning
 
-Stage 4 of the build scans all dependency images for HIGH and
-CRITICAL CVEs using Trivy:
-
 ```bash
-./build                    # includes dependency image scan
-./build --dry-run          # shows which images would be scanned
+./build
 ```
 
-The scan is advisory (does not block the build) because the
-vulnerabilities are in third-party images that `bwx` cannot patch
-directly.  When a CVE is found, update the default pin in
-`include/tools` or `include/http`, or override via the environment
-variables above.
+The shared CI pipeline scans the complete application image before
+publishing a release.
 
 ---
 
 ## Token handling
 
-`BWS_ACCESS_TOKEN` is passed to the `bws` CLI (or Docker container)
-via environment variable.  This means:
+`BWS_ACCESS_TOKEN` is passed into the `bwx` container as an environment
+variable. This means:
 
-- The token is visible in `docker inspect` output while a container
-  is running (Docker wrapper only).
+- The token is visible in `docker inspect` output while the container
+  is running.
 - The token is visible in `/proc/<pid>/environ` on Linux to
   processes running as the same user.
 - The token is written to disk by `bwx` only when you ask for it,
@@ -87,8 +62,8 @@ via environment variable.  This means:
 
 **Recommendations:**
 
-- On shared hosts, prefer a native `bws` install over the Docker
-  wrapper to avoid `docker inspect` exposure.
+- On shared hosts, account for the container's environment visibility
+  through `docker inspect` while it is running.
 - Never persist the token in `.bashrc`, `.profile`, or any other
   shell startup file.  Those files are frequently mode `0644`, they
   are read by every interactive shell, and they are easy to commit to
