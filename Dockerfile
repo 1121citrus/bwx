@@ -8,6 +8,7 @@ ARG GIT_COMMIT=unknown
 ARG BUILD_DATE=unknown
 ARG LICENSE=AGPL-3.0-or-later
 
+# hadolint ignore=DL3006
 FROM ${BASE_IMAGE} AS bws
 ARG BWS_VERSION
 ARG TARGETARCH
@@ -44,8 +45,10 @@ RUN apt-get update \
  && chmod 0755 /usr/local/bin/bws \
  && rm "/tmp/${bws_archive}"
 
+# hadolint ignore=DL3006
 FROM ${AWS_CLI_IMAGE} AS awscli
 
+# hadolint ignore=DL3006
 FROM ${BASE_IMAGE}
 
 ARG BASE_IMAGE
