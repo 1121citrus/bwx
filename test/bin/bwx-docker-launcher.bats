@@ -71,9 +71,8 @@ teardown() {
 
 @test "launcher fails clearly when Docker is unavailable" {
     mkdir -p "${TEST_TMPDIR}/empty-path"
-    run env PATH="${TEST_TMPDIR}/empty-path" \
+    run -127 env PATH="${TEST_TMPDIR}/empty-path" \
         "${BASH}" "${WRAPPER}" --version
-    [[ "${status}" -eq 127 ]]
     [[ "${output}" == *"Docker is required"* ]]
 }
 
