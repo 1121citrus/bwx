@@ -46,6 +46,26 @@ can be supplied through `BWX_DOCKER_ENV_FILE`; keep that file mode `0600`.
 The shared CI pipeline scans the complete application image before
 publishing a release.
 
+### Accepted exceptions
+
+`.trivyignore` records CVEs that are deliberately suppressed, not
+overlooked. Each entry carries a comment explaining why the finding
+does not apply and when to drop it. Current exceptions:
+
+| CVE IDs | Component |
+| ------- | --------- |
+| 16 krb5/krb5-libs CVEs (see `.trivyignore`) | `curlimages/curl` (Alpine base) |
+
+The fix exists upstream in Alpine's package index, but `curlimages/curl`
+has not been rebuilt against it yet. The affected code paths are
+KDC/kadmind server bugs; this image only ever runs the `curl` client
+(bwx's optional HTTP fallback), never a krb5 daemon.
+
+Review `.trivyignore` whenever Stage 4 of `./build` reports a new
+dependency-image CVE, and remove an entry as soon as a rescan no
+longer reports it — a stale entry would otherwise mask a different
+CVE reusing the same ID space.
+
 ---
 
 ## Token handling
