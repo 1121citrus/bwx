@@ -1,0 +1,5 @@
+# Verified gitleaks false positives, one fingerprint per line.
+# Mock Bitwarden Secrets Manager key name in a bats fixture, not a secret.
+# The fingerprint omits the commit so it matches every commit in history
+# that carries this fixture line; the CI scans complete history on tags.
+test/bin/bwx-deep-review-regressions.bats:generic-api-key:130
