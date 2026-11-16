@@ -140,8 +140,6 @@ IMAGE_NAME=bwx
 # Tool image references — edit these variables to update tool versions.
 BATS_KCOV_IMAGE=1121citrus/bats-kcov
 BATS_KCOV_TAG=latest
-HADOLINT_IMAGE=hadolint/hadolint
-HADOLINT_TAG=v2.14.0
 MARKDOWNLINT_IMAGE=ghcr.io/igorshubovych/markdownlint-cli
 MARKDOWNLINT_TAG=v0.48.0
 SCC_IMAGE=ghcr.io/boyter/scc
@@ -159,6 +157,10 @@ TRIVY_CACHE_VOLUME=bwx-trivy-cache
 # set_cache_targets — set cache-control flags for the named scanner targets.
 # Called by parse_cache_rules for each key=value pair from --cache.
 # Args: $1=mode (reset|skip-update)  $2=targets_csv (trivy,grype,all)
+# Known gap: CACHE_RESET_*/CACHE_SKIP_UPDATE_* are set here but not yet
+# consulted by Stage 4/5; reset_cache_db() and grype_db_ready() below are
+# written but never called. --cache is parsed and documented but inert.
+# shellcheck disable=SC2034
 set_cache_targets() {
     local mode="$1"
     local targets_csv="$2"

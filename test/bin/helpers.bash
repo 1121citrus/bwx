@@ -3,6 +3,7 @@
 # Source from setup() in each test file.
 
 BWX_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck disable=SC2034 # used by .bats files that source this helper
 BWX="${BWX_ROOT}/bin/bwx"
 
 # Set up the mock bws, stub PATH, and required env vars.
