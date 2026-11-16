@@ -246,7 +246,7 @@ bwx completion bash
 Set `BWX_DOCKER_IMAGE` to pin a release or use a private mirror:
 
 ```bash
-export BWX_DOCKER_IMAGE="1121citrus/bwx:1.3.2"
+export BWX_DOCKER_IMAGE="1121citrus/bwx:1.4.0"
 ```
 
 For provider credentials supplied through custom environment variables,

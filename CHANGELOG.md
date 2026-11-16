@@ -2,10 +2,16 @@
 
 ## Unreleased
 
+## 1.4.0
+
 ### Added
 
 - Docker Hub image distribution with a host wrapper. The image bundles
   Bash and all runtime dependencies for macOS and Linux.
+- `.trivyignore` exceptions for 16 krb5/krb5-libs CVEs in the
+  `curlimages/curl` dependency image, with a `SECURITY.md` note
+  documenting them as a deliberate, reviewed exception rather than an
+  oversight.
 
 ### Removed
 
