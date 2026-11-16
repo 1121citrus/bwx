@@ -4,6 +4,11 @@
 
 ## 1.3.2
 
+### Fixed
+
+- lib/bwx's bws() now passes --user "$(id -u):$(id -g)" to the
+  docker run that wraps the bws CLI.
+
 ## 1.3.1
 
 ### Fixed
