@@ -210,6 +210,7 @@ teardown() {
 }
 
 @test "aws-iam: successful rotation sets globals" {
+    jq --version >/dev/null 2>&1 || skip "jq required"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
         source "'"${BWX_ROOT}"'/include/note-parser"
@@ -241,6 +242,7 @@ teardown() {
 }
 
 @test "aws-iam: handles no existing key gracefully" {
+    jq --version >/dev/null 2>&1 || skip "jq required"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
         source "'"${BWX_ROOT}"'/include/note-parser"
@@ -268,6 +270,7 @@ teardown() {
 }
 
 @test "aws-iam: note credentials inject into environment" {
+    jq --version >/dev/null 2>&1 || skip "jq required"
     local aws_log="${TEST_TMPDIR}/aws-env"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
@@ -307,6 +310,7 @@ aws-region: eu-west-1"
 }
 
 @test "aws-iam: note username passes --user-name to aws CLI" {
+    jq --version >/dev/null 2>&1 || skip "jq required"
     local aws_log="${TEST_TMPDIR}/aws-args"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
@@ -334,6 +338,7 @@ aws-region: eu-west-1"
 }
 
 @test "aws-iam: defaults region to us-east-1 when absent" {
+    jq --version >/dev/null 2>&1 || skip "jq required"
     local aws_log="${TEST_TMPDIR}/aws-env"
     run bash -c '
         source "'"${BWX_ROOT}"'/include/logging"
@@ -375,6 +380,7 @@ aws-region: eu-west-1"
 }
 
 @test "aws-iam: credential fallback to secrets directory files" {
+    jq --version >/dev/null 2>&1 || skip "jq required"
     mkdir -p "${TEST_TMPDIR}/secrets"
     echo -n "AKIAFILE123" > "${TEST_TMPDIR}/secrets/aws-access-key-id"
     echo -n "fileSecretKey" > "${TEST_TMPDIR}/secrets/aws-secret-access-key"
@@ -408,6 +414,7 @@ aws-region: eu-west-1"
 }
 
 @test "aws-iam: env var credential reference resolves" {
+    jq --version >/dev/null 2>&1 || skip "jq required"
     local aws_log="${TEST_TMPDIR}/aws-env"
     run bash -c '
         export MY_AWS_KEY="AKIAENV789"
