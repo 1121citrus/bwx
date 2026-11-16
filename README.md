@@ -18,8 +18,9 @@ metadata, expiry tracking, and provider-driven rotation.
     - [Other commands](#other-commands)
   - [Structured note metadata](#structured-note-metadata)
   - [Installation](#installation)
-    - [Clone](#clone)
-    - [Homebrew](#homebrew)
+    - [Docker wrapper](#docker-wrapper)
+    - [Run the image directly](#run-the-image-directly)
+    - [Clone for development](#clone-for-development)
     - [Vendor dependency](#vendor-dependency)
     - [Prerequisites](#prerequisites)
   - [Documentation](#documentation)
@@ -47,9 +48,9 @@ the operational layer on top:
   key rotation with downgrade support
 - **Caching** — TTL-based local cache for API responses; one API
   call per session, not per command
-- **Zero install dependencies** — bash + Docker; `jq`, `bws`,
-  `curl`, `openssl`, and `aws` are wrapped via Docker containers
-  when not natively installed
+- **Portable Docker distribution** — the Docker Hub image includes
+  Bash, `bws`, `jq`, `curl`, `openssl`, and AWS CLI; no host Bash
+  upgrade or separate tool installation is required
 
 ## Intended workflow
 
@@ -220,7 +221,55 @@ release-tag: 2026.07.01.01
 
 ## Installation
 
-### Clone
+### Docker wrapper
+
+```bash
+mkdir -p "${HOME}/.local/bin" && \
+curl -fsSL \
+  https://raw.githubusercontent.com/1121citrus/bwx/main/install/bwx \
+  -o "${HOME}/.local/bin/bwx" && \
+chmod 0755 "${HOME}/.local/bin/bwx"
+```
+
+Add `${HOME}/.local/bin` to `PATH` if it is not already present. The
+wrapper pulls `1121citrus/bwx:latest` on first use and runs it as your
+host user. It mounts the current directory, the `bwx` config and cache
+directories, and `~/.aws` when present. Interactive commands and shell
+completion work through the wrapper.
+
+```bash
+export BWS_ACCESS_TOKEN="your-token-here"
+bwx secret list
+bwx completion bash
+```
+
+Set `BWX_DOCKER_IMAGE` to pin a release or use a private mirror:
+
+```bash
+export BWX_DOCKER_IMAGE="1121citrus/bwx:1.3.2"
+```
+
+For provider credentials supplied through custom environment variables,
+put them in a mode-`0600` file and set `BWX_DOCKER_ENV_FILE` to its
+path. Standard BWS, AWS, and `bwx` environment variables are forwarded
+by the wrapper.
+
+### Run the image directly
+
+The wrapper is recommended because it maps the working directory,
+configuration, cache, AWS credentials, host user, and terminal. For
+direct use, mount the working directory at the same path:
+
+```bash
+docker run --rm -it \
+  --user "$(id -u):$(id -g)" \
+  --volume "${PWD}:${PWD}" \
+  --workdir "${PWD}" \
+  --env BWS_ACCESS_TOKEN \
+  1121citrus/bwx:latest secret list
+```
+
+### Clone for development
 
 ```bash
 git clone https://github.com/1121citrus/bwx.git ~/.local/lib/bwx
@@ -228,32 +277,8 @@ export PATH="${HOME}/.local/lib/bwx/bin:${PATH}"
 eval "$(bwx completion bash)"
 ```
 
-### Homebrew
-
-```bash
-brew tap 1121citrus/bwx https://github.com/1121citrus/bwx
-brew install bwx
-```
-
-On macOS the system shell is Bash 3.2. If installed via Homebrew, ensure the Homebrew bash is first in your `PATH`:
-
-```bash
-brew install bash
-export PATH="$(brew --prefix)/bin:${PATH}"
-```
-
-If you use pkgsrc/pkgin instead of Homebrew, install Bash with:
-
-```bash
-pkgin install bash
-export PATH="/opt/pkg/bin:${PATH}"
-```
-
-Then verify the shell version:
-
-```bash
-bash --version
-```
+Running from a source checkout requires Bash 4 or newer. The Docker
+wrapper does not require Bash 4 on the host.
 
 ### Vendor dependency
 
@@ -266,8 +291,9 @@ Pin the checkout to a tag or commit when you need reproducible vendoring.
 
 ### Prerequisites
 
-- **Bash 4.0+** (macOS ships 3.2 — install a newer shell with Homebrew or pkgin)
-- **Docker** — used as a fallback when external tools are not natively installed
+- **Docker Desktop or Docker Engine** — required by the Docker wrapper
+- **curl** — required only to download the wrapper
+- **Bash 4.0+** — required only when running directly from a source checkout
 
 ## Documentation
 

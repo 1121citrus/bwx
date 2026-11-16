@@ -23,9 +23,9 @@ BWX="${BWX_ROOT}/bin/bwx"
     grep -q 'BASH_VERSINFO\[0\] < 4' "${BWX_ROOT}/build"
 }
 
-@test "version guard message text is present in bin/bwx" {
+@test "version guard directs users to Docker or a newer Bash" {
     grep -q 'bash 4.0 or later' "${BWX}"
-    grep -q 'brew install bash' "${BWX}"
+    grep -q 'Use the Docker wrapper' "${BWX}"
 }
 
 # ---------------------------------------------------------------------------

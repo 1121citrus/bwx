@@ -16,13 +16,14 @@ permissions:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Run build
-        run: ./build --no-scan
+    uses: 1121citrus/shared-github-workflows/.github/workflows/pipeline.yml@v1
+    with:
+      image: 1121citrus/bwx
+      inject-metadata: true
+      test-mode: bats-docker-cli
+      test-bats-files: test/bin
+      smoke-enabled: true
+      smoke-commands: |
+        docker run --rm "${IMAGE}:latest" --version
+        docker run --rm "${IMAGE}:latest" --help
+    secrets: inherit

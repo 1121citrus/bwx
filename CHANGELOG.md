@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Added
+
+- Docker Hub image distribution with a host wrapper. The image bundles
+  Bash and all runtime dependencies for macOS and Linux.
+
+### Removed
+
+- Homebrew formula and release checksum maintenance. Docker Hub is the
+  supported binary distribution.
+
 ## 1.3.2
 
 ### Fixed

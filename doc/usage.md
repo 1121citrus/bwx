@@ -6,8 +6,9 @@ Complete command reference for the current `bwx` release.
 
 - [bwx subcommand reference](#bwx-subcommand-reference)
   - [Installation](#installation)
-    - [Clone to `~/.local/lib/bwx`](#clone-to-locallibbwx)
-    - [Homebrew](#homebrew)
+    - [Docker wrapper](#docker-wrapper)
+    - [Run the image directly](#run-the-image-directly)
+    - [Clone for development](#clone-for-development)
     - [Vendor dependency](#vendor-dependency)
   - [Subcommand reference](#subcommand-reference)
     - [`secret` family](#secret-family)
@@ -69,7 +70,47 @@ Complete command reference for the current `bwx` release.
 
 ## Installation
 
-### Clone to `~/.local/lib/bwx`
+### Docker wrapper
+
+```bash
+mkdir -p "${HOME}/.local/bin" && \
+curl -fsSL \
+  https://raw.githubusercontent.com/1121citrus/bwx/main/install/bwx \
+  -o "${HOME}/.local/bin/bwx" && \
+chmod 0755 "${HOME}/.local/bin/bwx"
+```
+
+Add `${HOME}/.local/bin` to `PATH` if necessary. The wrapper runs the
+Docker Hub image as your host user and mounts the current directory,
+`bwx` configuration and cache, and `~/.aws` when present. It supports
+interactive commands and shell completion.
+
+To pin a release or use a private mirror:
+
+```bash
+export BWX_DOCKER_IMAGE="1121citrus/bwx:1.3.2"
+```
+
+For custom provider credentials supplied through environment variables,
+set `BWX_DOCKER_ENV_FILE` to a mode-`0600` file containing those
+variables. The wrapper forwards standard BWS, AWS, and `bwx`
+environment variables.
+
+### Run the image directly
+
+The wrapper is recommended. Direct use requires mounting the working
+directory at the same path and running with your host user:
+
+```bash
+docker run --rm -it \
+  --user "$(id -u):$(id -g)" \
+  --volume "${PWD}:${PWD}" \
+  --workdir "${PWD}" \
+  --env BWS_ACCESS_TOKEN \
+  1121citrus/bwx:latest secret list
+```
+
+### Clone for development
 
 ```bash
 git clone https://github.com/1121citrus/bwx.git ~/.local/lib/bwx
@@ -77,44 +118,8 @@ export PATH="${HOME}/.local/lib/bwx/bin:${PATH}"
 eval "$(bwx completion bash)"
 ```
 
-Add the `export` and `eval` lines to `~/.bashrc` (or `~/.zshrc` for zsh)
-to make them permanent.
-
-### Homebrew
-
-```bash
-brew tap 1121citrus/bwx https://github.com/1121citrus/bwx
-brew install bwx
-eval "$(bwx completion bash)"
-```
-
-To install the latest `main` branch instead of the released tag, use:
-
-```bash
-brew install --HEAD bwx
-```
-
-macOS ships Bash 3.2, which is too old for `bwx`. Install an updated bash and put it first in `PATH`:
-
-```bash
-brew install bash
-export PATH="$(brew --prefix)/bin:${PATH}"
-```
-
-If you prefer pkgsrc/pkgin, use:
-
-```bash
-pkgin install bash
-export PATH="/opt/pkg/bin:${PATH}"
-```
-
-Then make sure `bash --version` reports Bash 4 or newer before running `bwx`.
-
-Or install from a local clone:
-
-```bash
-brew install --HEAD --formula ./install/homebrew/Formula/bwx.rb
-```
+Running from a source checkout requires Bash 4 or newer; the Docker
+wrapper does not require Bash 4 on the host.
 
 ### Vendor dependency
 
